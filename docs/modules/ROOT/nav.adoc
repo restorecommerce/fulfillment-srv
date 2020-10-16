@@ -1,0 +1,12 @@
+// INDEX
+* xref:index.adoc[Fulfillment Service]
+
+// API
+* xref:index.adoc#API[API]
+** xref:index.adoc#api_fulfillment[Fulfillment]
+*** xref:index.adoc#api_fulfillment_crud[CRUD Operations]
+
+// EVENTS
+* xref:index.adoc#events[Events]
+** xref:index.adoc#emitted-events[Emitted]
+** xref:index.adoc#consumed-events[Consumed]

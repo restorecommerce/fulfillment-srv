@@ -1,0 +1,143 @@
+{
+  "logger": {
+    "elasticsearch": {
+      "level": "silly",
+      "clientOpts": {
+        "node": "http://elasticsearch:9200"
+      },
+      "source": "fulfillment-srv"
+    }
+  },
+  "database": {
+    "main": {
+      "host": "arangodb"
+    }
+  },
+  "redis": {
+    "host": "redis"
+  },
+  "events": {
+    "kafka": {
+      "kafkaHost": "kafka:9092"
+    }
+  },
+  "client": {
+    "services": {
+      "graph": {
+        "publisher": {
+          "name": "static",
+          "instances": [
+            "grpc://resource-srv:50051"
+          ]
+        }
+      }
+    }
+  },
+  "server": {
+    "transports": [
+      {
+        "name": "grpcFulfillmentSrv",
+        "provider": "grpc",
+        "services": {
+          "io-restorecommerce-fulfillment-srv": "io.restorecommerce.fulfillment.Service",
+          "io-restorecommerce-fulfillment_courier-srv": "io.restorecommerce.fulfillment_courier.Service",
+          "io-restorecommerce-fulfillment-reflection": "grpc.reflection.v1alpha.ServerReflection",
+          "io-restorecommerce-fulfillment-cis": "io.restorecommerce.commandinterface.Service",
+          "grpc-health-v1": "grpc.health.v1.Health"
+        },
+        "protos": [
+          "io/restorecommerce/fulfillment.proto",
+          "io/restorecommerce/fulfillment_courier.proto",
+          "grpc/reflection/v1alpha/reflection.proto",
+          "io/restorecommerce/commandinterface.proto",
+          "grpc/health/v1/health.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "addr": "0.0.0.0:50067"
+      }
+    ]
+  },
+  "wsdlUrl": {
+    "url": "https://cig.dhl.de/cig-wsdls/com/dpdhl/wsdl/geschaeftskundenversand-api/2.1/geschaeftskundenversand-api-2.1.wsdl"
+  },
+  "wsdlHeaders": {
+    "Authentification": {
+      "user": "user",
+      "signature": "signature"
+    }
+  },
+  "wadlurl": {
+    "url": "https://cig.dhl.de/services/production/rest/sendungsverfolgung?xml="
+  },
+  "ProdUrl": {
+    "url": "https://cig.dhl.de/services/production/rest/sendungsverfolgung?xml=<?xml"
+  },
+  "head": {
+    "CreateShipmentOrderRequest": {
+      "Version": {
+        "majorRelease": "2",
+        "minorRelease": "0",
+        "build": "14"
+      }
+    }
+  },
+  "ProdV01": {
+    "Product": "V01PAK",
+    "accountNumber": "accountNumber"
+  },
+  "ProdV53": {
+    "Product": "V53WPAK",
+    "accountNumber": "accountNumber"
+  },
+  "ProdV55": {
+    "Product": "V55PAK",
+    "accountNumber": "accountNumber"
+  },
+  "sequenceNumber": "01",
+  "labelResponseType": "URL",
+  "Bank": {
+    "BankData": {
+      "accountOwner": "accountOwner",
+      "bankName": "bankName",
+      "iban": "iban",
+      "note1": "note 1",
+      "note2": "note 2",
+      "bic": "bic",
+      "accountreference": "test"
+    }
+  },
+  "Shipper": {
+    "Name": {
+      "cis:name1": "name1"
+    },
+    "Address": {
+      "cis:streetName": "streetName",
+      "cis:streetNumber ": "streetNumber",
+      "cis:addressAddition ": "addressAddition",
+      "cis:zip": "zip",
+      "cis:city": "city",
+      "cis:Origin": {
+        "cis:country": "country",
+        "cis:countryISOCode": "countryISOCode"
+      }
+    },
+    "Communication": {
+      "cis:email": "email"
+    }
+  },
+  "SoapAuth": {
+    "userName": "userName",
+    "password": "password"
+  },
+  "dhlPortalCredentials": {
+    "username": "username",
+    "password": "password"
+  },
+  "dhltrackingCredentials": {
+    "appname": "appname",
+    "password": "password"
+  },
+  "endPoint": {
+    "url": "https://cig.dhl.de/services/production/soap"
+  }
+}

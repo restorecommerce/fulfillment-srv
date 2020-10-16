@@ -1,0 +1,14 @@
+= Fulfillment Service
+
+https://travis-ci.org/restorecommerce/fulfillment-srv?branch=master[image:https://img.shields.io/travis/restorecommerce/fulfillment-srv/master.svg?style=flat-square[Build Status]]
+https://david-dm.org/restorecommerce/fulfillment-srv[image:https://img.shields.io/david/restorecommerce/fulfillment-srv.svg?style=flat-square[Dependencies]]
+https://coveralls.io/github/restorecommerce/fulfillment-srv?branch=master[image:https://img.shields.io/coveralls/restorecommerce/fulfillment-srv/master.svg?style=flat-square[Coverage Status]]
+
+A microservice for handling the fulfillment-related resources.
+
+Please consult the documentation for using it:
+
+- *link:https://docs.restorecommerce.io/fulfillment-srv/index.html[Usage]*
+- *link:https://docs.restorecommerce.io/architecture/index.html[General Architecture]*
+
+Part of link:https://github.com/restorecommerce[Restorecommerce].

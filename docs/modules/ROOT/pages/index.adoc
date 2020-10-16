@@ -1,0 +1,215 @@
+= Fulfillment Service
+
+A microservice for handling the fulfillment-related resources.
+
+[#API]
+== API
+
+This microservice exposes the following gRPC endpoints:
+
+[#api_fulfillment]
+=== Fulfillment
+
+A Fulfillment resource.
+
+`io.restorecommerce.fulfillment.shipmentOrderLists`
+
+|===
+|Field |Type |Label |Description
+
+|ShipmentOrder |`io.restorecommerce.fulfillment.ShipmentOrder` |required |List of orders
+|===
+
+`io.restorecommerce.fulfillment.ShipmentOrder`
+
+|===
+|Field |Type |Label |Description
+
+|fulfillmentList |`io.restorecommerce.fulfillment.FulfillmentList` |required |List of fulfillments
+|meta |https://github.com/restorecommerce/protos/blob/master/io/restorecommerce/meta.proto[`io.restorecommerce.meta.Meta`] |required |Meta info.
+|===
+
+`io.restorecommerce.fulfillment.FulfillmentList`
+
+|===
+|Field |Type |Label |Description
+
+|Shipment |`io.restorecommerce.fulfillment.Shipment` |required |List of shipments
+|OrderId |string |required |Order Id
+|fulFillmentService |string |required |service used for fulfillment
+|===
+
+`io.restorecommerce.fulfillment.Shipment`
+
+|===
+|Field |Type |Label |Description
+
+|ShipmentDetails |`io.restorecommerce.fulfillment.ShipmentDetails` |required |List of shipment Details
+|customerReference |string |optional |A reference number that the client can assign for better association purposes. Appears on shipment label.
+|Receiver |`io.restorecommerce.fulfillment.Receiver` |required |Receiver Details
+|Shipper |`io.restorecommerce.fulfillment.Shipper` |required |Shipper Details
+|returnShipmentAccountNumber |string |optional |DHL account number
+|returnShipmentReference |string |required |A reference number that the client can assign for better association purposes. Appears on return shipment label
+|Notification |`io.restorecommerce.fulfillment.Notification` |required |Details for sending notifications
+|===
+
+`io.restorecommerce.fulfillment.ShipmentDetails`
+
+|===
+|Field |Type |Label |Description
+
+|ShipmentItem |`io.restorecommerce.fulfillment.ShipmentItem` |required |List of shipments in an order
+|===
+
+`io.restorecommerce.fulfillment.ShipmentItem`
+
+|===
+|Field |Type |Label |Description
+
+|weightInKG |Decimal |required |Weight of shipment item
+|lengthInCM |string |optional |lengthInCM of shipment item
+|widthInCM |string |optional |widthInCM of shipment item
+|heightInCM |string |optional |heightInCM of shipment item
+|ExportDocument |`io.restorecommerce.fulfillment.ExportDocument` |required |For shipments outside EU export document is mandatory
+|===
+
+`io.restorecommerce.fulfillment.ExportDocument`
+
+|===
+|Field |Type |Label |Description
+
+|invoiceNumber |string |optional |In case invoice has a number,client app can provide it in this field
+|exportType |string |Required |only mandatory for international, non EU shipments
+|exportTypeDescription |string |Optional |Description mandatory if ExportType is OTHER
+|termsOfTrade |string |Optional |Incoterms codes
+|placeOfCommital |string |Required |PlaceOfCommital is a Locaton
+|additionalFee |Decimal |Optional |Additional custom fees to be payed
+|ExportDocPosition |`io.restorecommerce.fulfillment.ExportDocPosition` |Optional |One or more child elements for every position to be defined within the Export Document. Each one contains description, country code of origin, amount, net weight, customs value. Multiple positions only possible for international shipments, other than EU shipments
+|===
+
+`io.restorecommerce.fulfillment.ExportDocPosition`
+
+|===
+|Field |Type |Label |Description
+
+|description |string |required |Description of the unit / position
+|countryCodeOrigin |string |required |Country's ISO-Code (ISO-2- Alpha) of the unit / position
+|customsTariffNumber |string |required |Customs tariff number of the unit / position
+|amount |int |required |Quantity of the unit / position
+|netWeightInKG |int |required |Net weight of the unit / position
+|customsValue |decimal |required |customs value amount of the unit / position
+|===
+
+`io.restorecommerce.fulfillment.Receiver`
+
+|===
+|Field |Type |Label |Description
+
+|name1 |string |required |Name of receiver
+|Address |`io.restorecommerce.fulfillment.Address` |required |Address of receiver
+|Communication |`io.restorecommerce.fulfillment.Communication` |required |Email/Phone of receiver
+|===
+
+`io.restorecommerce.fulfillment.Address`
+
+|===
+|Field |Type |Label |Description
+
+|streetName |string |required |Street Name of receiver/Shipper
+|streetNumber |string |required |House number of receiver/Shipper
+|addressAddition |string |required |Address add-on of receiver/Shipper,e.g floor,flat
+|zip |string |required |zip code of receiver/Shipper
+|city |string |required |city of receiver/Shipper
+|Origin |`io.restorecommerce.fulfillment.Origin` |required |country ISO code and Name
+|===
+
+`io.restorecommerce.fulfillment.Communication`
+
+|===
+|Field |Type |Label |Description
+
+|phone |string |optional |phone number of receiver/Shipper
+|email |string |required |email of receiver/Shipper
+|===
+
+`io.restorecommerce.fulfillment.Shipper`
+
+|===
+|Field |Type |Label |Description
+
+|Name |`io.restorecommerce.fulfillment.Name` |required |Name of shipper
+|Address |`io.restorecommerce.fulfillment.Address` |required |Address of receiver
+|Communication |`io.restorecommerce.fulfillment.Communication` |required |Email/Phone of receiver
+|===
+
+`io.restorecommerce.fulfillment.Notification`
+
+|===
+|Field |Type |Label |Description
+
+|recipientEmailAddress |string |required |email for notifications
+|===
+
+`io.restorecommerce.fulfillment.DeleteStatus`
+
+|===
+|Field |Type |Label |Description
+
+|deleteStatus |string |required | delete status
+|error |Error |required | error
+|===
+
+[#api_fulfillment_crud]
+==== CRUD Operations
+
+The microservice exposes the below CRUD operations for creating or modifying Fulfillment resources.
+
+`io.restorecommerce.fulfillment.Service`
+
+|===
+|Method Name |Request Type |Response Type |Description
+
+|CreateFulfillment |`io.restorecommerce.fulfillment.shipmentOrderLists` |`io.restorecommerce.fulfillment.FulfillmentResults` |creates fulfillment
+|getLabels |`io.restorecommerce.fulfillment.OrderId` |`io.restorecommerce.fulfillment.LabelResult` |labels for fulfillment
+|trackFulfillment |`io.restorecommerce.fulfillment.TrackingNumber` |`io.restorecommerce.fulfillment.Status` |fulfillment details
+|deleteFulfillment |`io.restorecommerce.fulfillment.OrderId` |`io.restorecommerce.fulfillment.DeleteStatus` |deletes fulfillment
+|getAllFulfillments |`io.restorecommerce.fulfillment.FulfillmentStatus` |`io.restorecommerce.fulfillment.AllFulfillments` |Fulfillments status list
+|===
+
+
+[#events]
+== Events
+
+[#emitted-events]
+=== Emitted
+
+List of events emitted by this microservice for below topics:
+
+[width="100%",cols="31%,33%,36%",options="header",]
+|==========================================================================================
+|Topic Name |Event Name |Description
+|`io.restorecommerce.command` |`restoreResponse` |system restore response
+| |`resetResponse` |system reset response
+| |`healthCheckResponse` |system health check response
+| |`versionResponse` |system version response
+|`io.restorecommerce.fulfillment.Status` |`Fulfilled` | Fulfilled status
+|`io.restorecommerce.fulfillment.Status` |`FulfillmentModified` | Fulfillment modified status
+|`io.restorecommerce.fulfillment.shipmentOrderLists` |`FulfillmentCreated` | Fulfillment created
+|==========================================================================================
+
+[#consumed-events]
+=== Consumed
+
+This microservice consumes messages for the following events by topic:
+
+[width="100%",cols="31%,33%,36%",options="header",]
+|=====================================================================================
+|Topic Name |Event Name |Description
+|`io.restorecommerce.command` |`restoreCommand` |for triggering for system restore
+| |`resetCommand` |for triggering system reset
+| |`healthCheckCommand` |to get system health check
+| |`versionCommand` |to get system version
+|`io.restorecommerce.jobs` |`queuedJob` | to get queued job
+|`io.restorecommerce.fulfillment.resource` |`createFulfillment` |to get status of each order created
+|=====================================================================================
+
