@@ -1,6 +1,6 @@
 {
   "name": "fulfillments-srv",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "main": "./lib/start.js",
   "description": "fulfillment service for creating and managing fulfillment",
   "author": "n-fuse GmbH",
