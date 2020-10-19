@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:experimental
 
 ### Base
-FROM node:12.16.1-alpine as base
+FROM node:12.18.3-alpine as base
 
 RUN apk add --no-cache git
 
