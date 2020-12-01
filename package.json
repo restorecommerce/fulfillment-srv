@@ -61,7 +61,7 @@
     "test": "npm run lint && nyc npm run mocha",
     "tsctests": "tsc -d -p tsconfig.test.json",
     "lcov-report": "nyc report --reporter=lcov",
-    "mocha": "cross-env NODE_ENV=test mocha -R spec ./test/*.js --full-trace --exit"
+    "mocha": "cross-env NODE_ENV=test mocha -r ts-node/register -R spec ./test/*.ts --full-trace --exit"
   },
   "engines": {
     "node": ">= 9.2.0"
