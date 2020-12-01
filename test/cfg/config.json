@@ -113,7 +113,7 @@
       "provider": "kafka",
       "groupId": "fulfillment-srv",
       "clientId": "fulfillment-srv",
-      "kafkaHost": "localhost:9092",
+      "kafkaHost": "localhost:29092",
       "latestOffset": false,
       "fulfillmentCreated": {
         "protos": [
