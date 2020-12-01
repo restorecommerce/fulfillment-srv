@@ -60,6 +60,7 @@
     "pretest": "npm run build && npm run tsctests && npm run createtopics",
     "test": "npm run lint && nyc npm run mocha",
     "tsctests": "tsc -d -p tsconfig.test.json",
+    "lcov-report": "nyc report --reporter=lcov",
     "mocha": "cross-env NODE_ENV=test mocha -R spec ./test/*.js --full-trace --exit"
   },
   "engines": {
