@@ -5,13 +5,14 @@ import {
   Health
 } from '@restorecommerce/chassis-srv';
 import { Events, Topic } from '@restorecommerce/kafka-client';
-import { Logger, createLogger } from '@restorecommerce/logger';
+import { createLogger } from '@restorecommerce/logger';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import {
   FulfillmentResourceService, FulfillmentCourierResourceService
 } from './service';
 import { RedisClient, createClient } from 'redis';
 import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
+import { Logger } from 'winston';
 
 
 const Fulfillment_Created = 'fulfillmentCreated';
