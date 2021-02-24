@@ -1,4 +1,4 @@
-FROM node:12.18.3-stretch
+FROM node:14.15.5-stretch
 
 # Install dependencies
 RUN apt-get update && apt-get install -y libc6-dev
@@ -14,6 +14,7 @@ RUN groupadd -r app &&\
 # Create app directory
 ENV HOME=/home/app
 ENV APP_HOME=/home/app/fulfillment-srv
+RUN npm install -g npm
 
 ## SETTING UP THE APP ##
 WORKDIR $APP_HOME

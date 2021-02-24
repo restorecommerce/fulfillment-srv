@@ -13,10 +13,10 @@
     "@restorecommerce/cluster-service": "^0.1.4",
     "@restorecommerce/grpc-client": "^0.0.9",
     "@restorecommerce/kafka-client": "^0.1.13",
-    "@restorecommerce/logger": "^0.5.4",
+    "@restorecommerce/logger": "^0.6.1",
     "@restorecommerce/protos": "^0.0.20",
     "@restorecommerce/resource-base-interface": "^0.0.7",
-    "@restorecommerce/service-config": "^0.3.4",
+    "@restorecommerce/service-config": "^0.4.1",
     "@types/request": "^2.48.5",
     "@types/soap": "^0.21.0",
     "co": "^4.6.0",
@@ -47,7 +47,7 @@
     "rimraf": "^3.0.2",
     "should": "^13.2.3",
     "ts-node": "^9.1.1",
-    "typescript": "^4.1.5"
+    "typescript": "4.1.5"
   },
   "scripts": {
     "start": "npm run createtopics && node lib/start.js",
