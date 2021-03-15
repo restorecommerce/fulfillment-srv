@@ -13,3 +13,5 @@ node_modules/
 
 !.eslintrc.js
 lib/
+test/*.d.ts
+test/*.js
