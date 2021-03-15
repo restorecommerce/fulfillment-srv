@@ -58,7 +58,7 @@
     "build:clean": "rimraf lib",
     "build": "npm-run-all lint build:clean build:tsc",
     "pretest": "npm run build && npm run tsctests && npm run createtopics",
-    "test": "npm run lint",
+    "test": "npm run lint && nyc npm run mocha",
     "tsctests": "tsc -d -p tsconfig.test.json",
     "lcov-report": "nyc report --reporter=lcov",
     "mocha": "cross-env NODE_ENV=test mocha -r ts-node/register -R spec ./test/*.ts --full-trace --exit"
