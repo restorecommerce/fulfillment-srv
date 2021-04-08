@@ -73,7 +73,7 @@ describe('testing fulfillment-srv', () => {
       });
 
       it('should create a job', async function () {
-        this.timeout(5000);
+        this.timeout(10000);
 
         const orderId = randomBytes(16).toString('hex');
 
