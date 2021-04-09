@@ -1,7 +1,7 @@
 npm-debug.log
 
-coverage/
 node_modules/
+coverage/
 
 .project
 .settings
@@ -11,5 +11,7 @@ node_modules/
 *.log
 *~
 
-!.eslintrc.js
+buildImage.bash
+Dockerfile
+.dockerignore
 lib/

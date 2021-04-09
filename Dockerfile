@@ -1,41 +1,40 @@
-FROM node:14.15.5-stretch
+# syntax = docker/dockerfile:experimental
 
-# Install dependencies
-RUN apt-get update && apt-get install -y libc6-dev
+### Base
+FROM node:14.15.5-alpine as base
 
-## CREATE APP USER ##
-# Create the home directory for the new app user.
-RUN mkdir -p /home/app
+RUN apk add --no-cache git
 
-# Create an app user so our application doesn't run as root.
-RUN groupadd -r app &&\
-    useradd -r -g app -d /home/app -s /sbin/nologin -c "Docker image user" app
-
-# Create app directory
-ENV HOME=/home/app
-ENV APP_HOME=/home/app/fulfillment-srv
 RUN npm install -g npm
+RUN npm install -g typescript@3.4.1
 
-## SETTING UP THE APP ##
+USER node
+ARG APP_HOME=/home/node/srv
 WORKDIR $APP_HOME
 
-# Chown all the files to the app user.
-RUN chown -R app:app $HOME
+COPY package.json package.json
+COPY package-lock.json package-lock.json
 
-# Change to the app user.
-USER app
 
-# Set config volumes
-VOLUME $APP_HOME/cfg
+### Build
+FROM base as build
 
-# Install Dependencies
-COPY --chown=app package.json $APP_HOME
-COPY --chown=app package-lock.json $APP_HOME
-RUN npm install
+RUN npm ci
 
-# Bundle app source
-COPY --chown=app . $APP_HOME
+COPY --chown=node:node . .
+
 RUN npm run build
+
+
+### Deployment
+FROM base as deployment
+
+RUN npm ci --only=production
+
+COPY --chown=node:node . $APP_HOME
+COPY --chown=node:node --from=build $APP_HOME/lib $APP_HOME/lib
+
+EXPOSE 50051
 
 USER root
 RUN GRPC_HEALTH_PROBE_VERSION=v0.3.3 && \
@@ -45,14 +44,4 @@ USER node
 
 HEALTHCHECK CMD ["/bin/grpc_health_probe", "-addr=:50051"]
 
-EXPOSE 50051
 CMD [ "npm", "start" ]
-
-# To build the image:
-# docker build -t restorecommerce/fullfillment-srv .
-#
-# To create a container:
-# docker create --name fullfillment-srv --net system_default restorecommerce/fullfillment-srv
-#
-# To run the container:
-# docker start fullfillment-srv
