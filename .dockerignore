@@ -15,3 +15,5 @@ buildImage.bash
 Dockerfile
 .dockerignore
 lib/
+test/*.d.ts
+test/*.js
