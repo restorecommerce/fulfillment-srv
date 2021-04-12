@@ -154,6 +154,7 @@ describe('testing fulfillment-srv', () => {
         should.exist(result.data);
         should.exist(result.data.fulfillmentResults);
         result.data.fulfillmentResults.should.have.length(1);
+        console.log(result.data.fulfillmentResults[0]);
         // should.exist(result.data.fulfillmentResults[0].Status);
         // should.exist(result.data.fulfillmentResults[0].Status.OrderId);
         // should.equal(result.data.fulfillmentResults[0].Status.OrderId, orderId);

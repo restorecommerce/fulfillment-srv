@@ -67,6 +67,7 @@ export class FulfillmentResourceService extends ServiceBase {
         }
       }
     } catch (error) {
+      this.logger.error('error creating fulfillment:', error);
       const responseDetails = {
         Status: { OrderId: '', OrderStatus: FULFILLMENT_NOT_CREATED },
         error
@@ -257,6 +258,7 @@ export class FulfillmentResourceService extends ServiceBase {
                 }
               },
               async soapError => {
+                console.error(soapError);
                 const errorMessage = await parseStringPromise(soapError.body)
                   .then(parseResult => parseResult['SOAP-ENV:Envelope']['SOAP-ENV:Body'][0]['SOAP-ENV:Fault'][0]['faultstring'][0]);
                 throw { code: [''], message: ['Invalid SOAP validation request: ' + errorMessage] };
@@ -286,6 +288,7 @@ export class FulfillmentResourceService extends ServiceBase {
                 }
               },
               async soapError => {
+                console.error(soapError);
                 const errorMessage = await parseStringPromise(soapError.body)
                   .then(parseResult => parseResult['SOAP-ENV:Envelope']['SOAP-ENV:Body'][0]['SOAP-ENV:Fault'][0]['faultstring'][0]);
                 throw { code: [''], message: ['Invalid SOAP creation request: ' + errorMessage] };
@@ -309,6 +312,8 @@ export class FulfillmentResourceService extends ServiceBase {
           fulfillmentResults.push(fulfillmentResult);
 
         } catch (error) {
+          console.error(error);
+          this.logger.error('error creating fulfillment:', error);
           const fulfillmentResult = {
             Status: {
               OrderId: item.orderId ? item.orderId : '',

@@ -10,15 +10,15 @@ export const createClientDHL = async (): Promise<any> => {
     const url = cfg.get().wsdlUrl.url;
     const username = cfg.get().SoapAuth.userName;
     const password = cfg.get().SoapAuth.password;
-    soap.createClient(url, (err: any, client: any): any => {
+    soap.createClient(url, (err, client): any => {
       if (err) {
         reject(err);
       }
       if (client) {
-        client.setEndpointAsync(cfg.get().endPoint.url);
-        client.setSecurityAsync(new soap.BasicAuthSecurity(username, password));
-        client.addSoapHeaderAsync(cfg.get().wsdlHeaders);
-        client.setSOAPActionAsync('urn:createShipmentOrder');
+        client.setEndpoint(cfg.get().endPoint.url);
+        client.setSecurity(new soap.BasicAuthSecurity(username, password));
+        client.addSoapHeader(cfg.get().wsdlHeaders);
+        client.setSOAPAction('urn:createShipmentOrder');
         resolve(client);
       }
     });
