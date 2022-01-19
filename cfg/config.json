@@ -1,4 +1,12 @@
 {
+  "logger": {
+    "console": {
+      "handleExceptions": false,
+      "level": "crit",
+      "colorize": true,
+      "prettyPrint": true
+    }
+  },
   "database": {
     "main": {
       "provider": "arango",
@@ -8,63 +16,166 @@
       "autoCreate": true,
       "collections": [
         "fulfillment",
-        "fulfillment_method",
-        "fulfillment_courier"
+        "fulfillment_courier",
+        "fulfillment_product"
       ]
     }
   },
   "redis": {
     "host": "localhost",
     "port": 6379,
-    "offsetStoreInterval": 1000,
-    "db-indexes": {
-      "db-offsetStore": 0,
-      "db-subject": 4
+    "offsetStoreInterval": 1000
+  },
+  "client": {
+    "fulfillment": {
+      "address": "localhost:50067",
+      "proto": {
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "protoPath": "io/restorecommerce/fulfillment.proto",
+        "services": {
+          "user": {
+            "packageName": "io.restorecommerce.fulfillment",
+            "serviceName": "Service"
+          }
+        }
+      }
+    },
+    "fulfillment_courier": {
+      "address": "localhost:50067",
+      "proto": {
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "protoPath": "io/restorecommerce/fulfillment_courier.proto",
+        "services": {
+          "user": {
+            "packageName": "io.restorecommerce.fulfillment_courier",
+            "serviceName": "Service"
+          }
+        }
+      }
+    },
+    "fulfillment_product": {
+      "address": "localhost:50067",
+      "proto": {
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "protoPath": "io/restorecommerce/fulfillment_product.proto",
+        "services": {
+          "user": {
+            "packageName": "io.restorecommerce.fulfillment_product",
+            "serviceName": "Service"
+          }
+        }
+      }
+    },
+    "reflection": {
+      "address": "localhost:50051",
+      "proto": {
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "protoPath": "grpc/reflection/v1alpha/reflection.proto",
+        "services": {
+          "reflection": {
+            "packageName": "grpc.reflection.v1alpha",
+            "serviceName": "ServerReflection"
+          }
+        }
+      }
+    },
+    "commandinterface": {
+      "address": "localhost:50051",
+      "proto": {
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "protoPath": "io/restorecommerce/commandinterface.proto",
+        "services": {
+          "commandinterface": {
+            "packageName": "io.restorecommerce.commandinterface",
+            "serviceName": "Service"
+          }
+        }
+      }
     }
   },
   "events": {
     "kafka": {
       "provider": "kafka",
-      "groupId": "fulfillment-srv",
-      "clientId": "fulfillment-srv",
-      "kafkaHost": "localhost:29092",
+      "groupId": "restore-fulfillment-srv-test",
+      "clientId": "restore-fulfillment-srv-test",
       "latestOffset": false,
+      "kafka": {
+        "clientId": "restore-fulfillment-srv-test",
+        "brokers": [
+          "localhost:29092"
+        ]
+      },
       "fulfillmentCreated": {
         "protos": [
           "io/restorecommerce/fulfillment.proto"
         ],
         "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.fulfillment.shipmentOrderLists"
-      },
-      "createFulfillment": {
-        "protos": [
-          "io/restorecommerce/fulfillment.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.fulfillment.shipmentOrderLists"
-      },
-      "fulfillmentCompleted": {
-        "protos": [
-          "io/restorecommerce/fulfillment.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.fulfillment.responseDetails"
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
       "fulfillmentModified": {
         "protos": [
           "io/restorecommerce/fulfillment.proto"
         ],
         "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.fulfillment.Status"
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
-      "fulfilled": {
+      "fulfillmentCancelled": {
         "protos": [
           "io/restorecommerce/fulfillment.proto"
         ],
         "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.fulfillment.Status"
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
-      "queuedJob": {
+      "fulfillmentDeleted": {
+        "protos": [
+          "io/restorecommerce/fulfillment.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment.Deleted"
+      },
+      "fulfillmentFulfilled": {
+        "protos": [
+          "io/restorecommerce/fulfillment.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
+      },
+      "fulfillmentLabelOrdered": {
+        "protos": [
+          "io/restorecommerce/fulfillment.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "fulfillmentLabelInvalid": {
+        "protos": [
+          "io/restorecommerce/fulfillment.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "fulfillmentLabelShipping": {
+        "protos": [
+          "io/restorecommerce/fulfillment.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "fulfillmentLabelDone": {
+        "protos": [
+          "io/restorecommerce/fulfillment.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "fulfillmentLabelFailed": {
+        "protos": [
+          "io/restorecommerce/fulfillment.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "jobScheduled": {
         "protos": [
           "io/restorecommerce/job.proto"
         ],
@@ -157,8 +268,8 @@
             "queuedJob"
           ]
         },
-        "fulfillment_method.resource": {
-          "topic": "io.restorecommerce.fulfillment_method.resource"
+        "fulfillment_product.resource": {
+          "topic": "io.restorecommerce.fulfillment_product.resource"
         },
         "fulfillment_courier.resource": {
           "topic": "io.restorecommerce.fulfillment_courier.resource"
@@ -166,7 +277,9 @@
         "fulfillment.resource": {
           "topic": "io.restorecommerce.fulfillment.resource",
           "events": [
-            "createFulfillment"
+            "createFulfillments",
+            "trackFulfillments",
+            "cancelFulfillments"
           ]
         }
       }
@@ -183,27 +296,17 @@
   "server": {
     "services": {
       "io-restorecommerce-fulfillment-srv": {
-        "createFulfillment": {
+        "create": {
           "transport": [
             "grpcFulfillmentSrv"
           ]
         },
-        "getLabels": {
+        "track": {
           "transport": [
             "grpcFulfillmentSrv"
           ]
         },
-        "trackFulfillment": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "deleteFulfillment": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "getAllFulfillments": {
+        "cancel": {
           "transport": [
             "grpcFulfillmentSrv"
           ]
@@ -214,8 +317,50 @@
           ]
         }
       },
-      "io-restorecommerce-fulfillment_courier-srv": {
+      "io-restorecommerce-fulfillment-courier-srv": {
         "create": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        },
+        "update": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        },
+        "upsert": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        },
+        "delete": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        }
+      },
+      "io-restorecommerce-fulfillment-product-srv": {
+        "find": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        },
+        "create": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        },
+        "update": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        },
+        "upsert": {
+          "transport": [
+            "grpcFulfillmentSrv"
+          ]
+        },
+        "delete": {
           "transport": [
             "grpcFulfillmentSrv"
           ]
@@ -254,7 +399,8 @@
         "provider": "grpc",
         "services": {
           "io-restorecommerce-fulfillment-srv": "io.restorecommerce.fulfillment.Service",
-          "io-restorecommerce-fulfillment_courier-srv": "io.restorecommerce.fulfillment_courier.Service",
+          "io-restorecommerce-fulfillment-courier-srv": "io.restorecommerce.fulfillment_courier.Service",
+          "io-restorecommerce-fulfillment-product-srv": "io.restorecommerce.fulfillment_product.Service",
           "io-restorecommerce-fulfillment-reflection": "grpc.reflection.v1alpha.ServerReflection",
           "io-restorecommerce-fulfillment-cis": "io.restorecommerce.commandinterface.Service",
           "grpc-health-v1": "grpc.health.v1.Health"
@@ -262,76 +408,43 @@
         "protos": [
           "io/restorecommerce/fulfillment.proto",
           "io/restorecommerce/fulfillment_courier.proto",
+          "io/restorecommerce/fulfillment_product.proto",
           "grpc/reflection/v1alpha/reflection.proto",
           "io/restorecommerce/commandinterface.proto",
           "grpc/health/v1/health.proto"
         ],
         "protoRoot": "node_modules/@restorecommerce/protos/",
-        "addr": "0.0.0.0:50067"
+        "addr": "localhost:50067"
       }
     ]
   },
   "serviceNames": {
     "fulfillment": "io-restorecommerce-fulfillment-srv",
-    "fulfillment_courier": "io-restorecommerce-fulfillment_courier-srv",
+    "fulfillment_courier": "io-restorecommerce-fulfillment-courier-srv",
+    "fulfillment_product": "io-restorecommerce-fulfillment-product-srv",
     "cis": "io-restorecommerce-fulfillment-cis",
     "reflection": "io-restorecommerce-fulfillment-reflection",
-    "health":  "grpc-health-v1"
+    "health": "grpc-health-v1"
   },
-  "EU_ISO_CODES_DHL": {
-    "codes": "['AT','BE', 'BG', 'CY', 'CZ', 'DK', 'EE', 'ES', 'FI', 'FR','GB', 'UK', 'GR', 'EL', 'DE', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'PT', 'RO', 'SE', 'SI', 'SK']"
-  },
-  "receiver_country": "DE",
-  "wsdlUrl": {
-    "url": "https://cig.dhl.de/cig-wsdls/com/dpdhl/wsdl/geschaeftskundenversand-api/2.1/geschaeftskundenversand-api-2.1.wsdl"
-  },
-  "wsdlHeaders": {
-    "Authentification": {
-      "user": "user",
-      "signature": "signature"
+  "fieldHandlers": {
+    "fulfillment_courier": {
+      "bufferField": "configuration"
     }
   },
-  "wadlurl": {
-    "url": "https://cig.dhl.de/services/sandbox/rest/sendungsverfolgung?xml=<?xml"
-  },
-  "ProdUrl": {
-    "url": "https://cig.dhl.de/services/production/rest/sendungsverfolgung?xml=<?xml"
-  },
-  "head": {
-    "CreateShipmentOrderRequest": {
-      "Version": {
-        "majorRelease": "2",
-        "minorRelease": "0",
-        "build": "14"
+  "stubs": {
+    "DHL": {
+      "ordering": {
+        "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.1.4.wsdl",
+        "endpoint": "https://cig.dhl.de/services/sandbox/soap",
+        "username": "",
+        "password": "",
+        "wsdl_header": {
+          "Authentification": {
+            "user": "2222222222_01",
+            "signature": "pass"
+          }
+        }
       }
     }
-  },
-  "ProdV01": {
-    "Product": "V01PAK",
-    "accountNumber": "accountNumber"
-  },
-  "ProdV53": {
-    "Product": "V53WPAK",
-    "accountNumber": "accountNumber"
-  },
-  "ProdV55": {
-    "Product": "V55PAK",
-    "accountNumber": "accountNumber"
-  },
-  "sequenceNumber": "01",
-  "SoapAuth": {
-    "userName": "userName",
-    "password": "password22"
-  },
-  "dhlPortalCredentials": {
-    "username": "username",
-    "password": "password"
-  },
-  "dhltrackingCredentials": {
-    "appname": "appname",
-    "password": "password"
-  },
-  "endPoint": {
-    "url": "https://cig.dhl.de/services/sandbox/soap"
   }
 }

@@ -8,16 +8,17 @@ import { Events, Topic } from '@restorecommerce/kafka-client';
 import { createLogger } from '@restorecommerce/logger';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import {
-  FulfillmentResourceService, FulfillmentCourierResourceService
-} from './service';
+  FulfillmentResourceService,
+  FulfillmentCourierResourceService,
+  FulfillmentProductResourceService
+} from './services/';
 import { RedisClient, createClient } from 'redis';
 import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
 import { Logger } from 'winston';
 
-
-const Fulfillment_Created = 'fulfillmentCreated';
-const Fulfillment_Status = 'fulfillmentStatus';
-const Create_Fulfillment = 'createFulfillment';
+const CREATE_FULFILLMENTS = 'createFulfillments';
+const TRACK_FULFILLMENTS = 'trackFulfillments';
+const CANCEL_FULFILLMENTS = 'cancelFulfillments';
 const QUEUED_JOB = 'queuedJob';
 
 
@@ -32,7 +33,7 @@ class FulfillmentCommandInterface extends CommandInterface {
 }
 
 export class Worker {
-  cfg: any;
+  private _cfg: any;
   offsetStore: OffsetStore;
   server: Server;
   events: Events;
@@ -40,17 +41,17 @@ export class Worker {
   topics: Map<string, Topic>;
   cis: FulfillmentCommandInterface;
   redisClient: RedisClient;
-  constructor(cfg?: any) {
-    this.cfg = cfg || createServiceConfig(process.cwd());
-    this.logger = createLogger(this.cfg.get('logger'));
+
+  get cfg(): any {
+    return this._cfg;
   }
 
-  async start(cfg?: any): Promise<any> {
+  async start(cfg?: any, logger?: any): Promise<any> {
     // Load config
-    cfg = cfg || createServiceConfig(process.cwd());
+    this._cfg = cfg = cfg || createServiceConfig(process.cwd());
 
     // create server
-    const logger = createLogger(cfg.get('logger'));
+    this.logger = logger = logger || createLogger(cfg.get('logger'));
     this.server = new Server(cfg.get('server'), logger);
 
     // get database connection
@@ -62,7 +63,6 @@ export class Worker {
     await this.events.start();
     this.offsetStore = new OffsetStore(this.events, cfg, logger);
 
-
     const topicTypes = _.keys(kafkaCfg.topics);
     this.topics = new Map<string, Topic>();
 
@@ -71,31 +71,57 @@ export class Worker {
     this.redisClient = createClient(redisConfig);
 
     const that = this;
-    let fulfillmentService: FulfillmentResourceService;
-    let fulfillmentServiceEventListener = async (msg: any, context: any, config: any, eventName: string) => {
-      if (eventName == Create_Fulfillment) {
-        const reqmsg = { request: msg };
-        await fulfillmentService.createFulfillment(reqmsg);
-      } else if (eventName == QUEUED_JOB) {
-        if (msg && msg.type == that.cfg.get('fulfillmentTrackingJob')) {
-          const type = { request: { type: 'job' } };
-          await fulfillmentService.trackFulfillment(type);
-        }
-      } else {
-        // command events
+    const fulfillmentServiceEventListener = async (msg: any, context: any, config: any, eventName: string) => {
+      if (eventName == CREATE_FULFILLMENTS) {
+        await fulfillmentService.create({ request: msg }, context).then(
+          () => that.logger.info(`Event ${eventName} done.`),
+          err => that.logger.error(`Event ${eventName} failed: ${err}`)
+        );
+      }
+      else if (eventName == QUEUED_JOB && msg?.type == CREATE_FULFILLMENTS) {
+        await fulfillmentService.create({ request: msg?.data?.payload }, context).then(
+          () => that.logger.info(`Job ${eventName} done.`),
+          err => that.logger.error(`Job ${eventName} failed: ${err}`)
+        );
+      }
+      else if (eventName == TRACK_FULFILLMENTS) {
+        await fulfillmentService.track({ request: msg }, context).then(
+          () => that.logger.info(`Event ${eventName} done.`),
+          err => that.logger.error(`Event ${eventName} failed: ${err}`)
+        );
+      }
+      else if (eventName == QUEUED_JOB && msg?.type == TRACK_FULFILLMENTS) {
+        await fulfillmentService.track({ request: msg?.data?.payload }, context).then(
+          () => that.logger.info(`Job ${eventName} done.`),
+          err => that.logger.error(`Job ${eventName} failed: ${err}`)
+        );
+      }
+      else if (eventName == CANCEL_FULFILLMENTS) {
+        await fulfillmentService.track({ request: msg }, context).then(
+          () => that.logger.info("Event trackFulfillments done."),
+          err => that.logger.error(`Event trackFulfillments failed: ${err}`)
+        );
+      }
+      else if (eventName == QUEUED_JOB && msg?.type == CANCEL_FULFILLMENTS) {
+        await fulfillmentService.track({ request: msg?.data?.payload }, context).then(
+          () => that.logger.info(`Job ${eventName} done.`),
+          err => that.logger.error(`Job ${eventName} failed: ${err}`)
+        );
+      }
+      else {
         await that.cis.command(msg, context);
       }
     };
 
     for (let topicType of topicTypes) {
       const topicName = kafkaCfg.topics[topicType].topic;
-      const topic = this.events.topic(topicName);
+      const topic = await this.events.topic(topicName);
       const offSetValue: number = await this.offsetStore.getOffset(topicName);
       logger.info('subscribing to topic with offset value', topicName, offSetValue);
       if (kafkaCfg.topics[topicType].events) {
         const eventNames = kafkaCfg.topics[topicType].events;
         for (let eventName of eventNames) {
-          await topic.on(eventName, fulfillmentServiceEventListener, {
+          topic.on(eventName, fulfillmentServiceEventListener, {
             startingOffset: offSetValue
           });
         }
@@ -103,17 +129,21 @@ export class Worker {
       this.topics.set(topicType, topic);
     }
 
-    fulfillmentService =
-      new FulfillmentResourceService(this.topics.get('fulfillment.resource'), db, cfg, logger);
-
-    const fullfillmentCourierService =
-    new FulfillmentCourierResourceService(this.topics.get('fulfillment_courier.resource'), db, cfg, logger);
-
+    const fulfillmentCourierService = new FulfillmentCourierResourceService(
+      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
+    );
+    const fulfillmentProductService = new FulfillmentProductResourceService(
+      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
+    );
+    const fulfillmentService = new FulfillmentResourceService(
+      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
+    );
     this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
 
     const serviceNamesCfg = cfg.get('serviceNames');
     await this.server.bind(serviceNamesCfg.fulfillment, fulfillmentService);
-    await this.server.bind(serviceNamesCfg.fulfillment_courier, fullfillmentCourierService);
+    await this.server.bind(serviceNamesCfg.fulfillment_courier, fulfillmentCourierService);
+    await this.server.bind(serviceNamesCfg.fulfillment_product, fulfillmentProductService);
     await this.server.bind(serviceNamesCfg.cis, this.cis);
 
     // Add reflection service
@@ -122,7 +152,6 @@ export class Worker {
     const transport = this.server.transport[transportName];
     const reflectionService = new ServerReflection(transport.$builder, this.server.config);
     await this.server.bind(reflectionServiceName, reflectionService);
-
     await this.server.bind(serviceNamesCfg.health, new Health(this.cis, {
       readiness: async () => !!await ((db as Arango).db).version()
     }));
@@ -140,7 +169,7 @@ export class Worker {
   }
 }
 
-if (require.main === module) {
+if (require.main == module) {
   const service = new Worker();
   const logger = service.logger;
   service.start().then().catch((err) => {

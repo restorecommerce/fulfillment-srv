@@ -10,6 +10,7 @@ coverage/
 
 *.log
 *~
+*.env
 
 buildImage.bash
 Dockerfile

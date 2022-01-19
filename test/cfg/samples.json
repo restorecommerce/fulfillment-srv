@@ -1,0 +1,546 @@
+{
+  "DHL": {
+    "CreateCouriers": {
+      "items": [{
+        "id": "dhl-1",
+        "name": "DHL International GmbH",
+        "description": "International courier, package delivery and express mail service",
+        "logo": "",
+        "website": "https://www.dhl.de/de",
+        "stub_type": "DHL",
+        "configuration": {
+          "ordering": {
+            "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.1.4.wsdl",
+            "endpoint": "https://cig.dhl.de/services/sandbox/soap",
+            "username": "",
+            "password": "",
+            "wsdl_header": {
+              "Authentification": {
+                "user": "2222222222_01",
+                "signature": "pass"
+              }
+            }
+          },
+          "tracking": {
+            "endpoint": "https://cig.dhl.de/services/sandbox/rest/sendungsverfolgung",
+            "appname": "zt12345",
+            "username": "",
+            "token": "",
+            "password": ""
+          }
+        },
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      },{
+        "id": "dhl-2",
+        "name": "DHL International GmbH",
+        "description": "International courier, package delivery and express mail service",
+        "logo": "",
+        "website": "https://www.dhl.de/de",
+        "stub_type": "DHL",
+        "configuration": {
+          "ordering": {
+            "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.1.4.wsdl",
+            "endpoint": "https://cig.dhl.de/services/sandbox/soap",
+            "username": "",
+            "password": "",
+            "wsdl_header": {
+              "Authentification": {
+                "user": "2222222222_01",
+                "signature": "pass"
+              }
+            }
+          },
+          "tracking": {
+            "endpoint": "https://cig.dhl.de/services/sandbox/rest/sendungsverfolgung?xml=",
+            "appname": "zt12345",
+            "username": "",
+            "token": "",
+            "password": ""
+          }
+        },
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      }],
+      "total_count": 2
+    },
+    "CreateProducts": {
+      "items": [{
+        "id": "dhl-1-national",
+        "name": "DHL National (Germany)",
+        "description": "Versendungen innerhalb Deutschland",
+        "courier_id": "dhl-1",
+        "start_zones": ["DE"],
+        "destination_zones": ["DE"],
+        "tax_id": ["tax1"],
+        "attributes": [{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "value": "V01PAK" 
+        },{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "value": "22222222220104"
+        }],
+        "variants": [{
+          "id": "dhl-1-national-s",
+          "name": "Parcel S up to 2kg",
+          "description": "For small parcels up to 2kg",
+          "price": 3.79,
+          "max_weight": 2000,
+          "max_height": 35,
+          "max_width": 25,
+          "max_length": 10,
+          "max_volume": 8750
+        },{
+          "id": "dhl-1-national-m",
+          "name": "Parcel M up to 2kg",
+          "description": "For medium sized parcels up to 2kg",
+          "price": 4.49,
+          "max_weight": 2000,
+          "max_height": 60,
+          "max_width": 30,
+          "max_length": 15,
+          "max_volume": 27000
+        }],
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      },{
+        "id": "dhl-1-europe",
+        "name": "DHL Europe",
+        "description": "Versendungen innerhalb Europas",
+        "courier_id": "dhl-1",
+        "tax_id": ["tax1"],
+        "attributes": [{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "value": "V01PAK" 
+        },{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "value": "22222222220104"
+        }],
+        "variants": [{
+          "id": "dhl-1-europe-s",
+          "name": "Parcel S up to 2kg",
+          "description": "For small sized parcels up to 2kg",
+          "price": 3.79,
+          "max_weight": 2000,
+          "max_height": 35,
+          "max_width": 25,
+          "max_length": 10,
+          "max_volume": 8750
+        },{
+          "id": "dhl-1-europe-m",
+          "name": "Parcel M up to 2kg",
+          "description": "For medium sized parcels up to 2kg",
+          "price": 4.49,
+          "max_weight": 2000,
+          "max_height": 60,
+          "max_width": 30,
+          "max_length": 15,
+          "max_volume": 27000
+        }],
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      },{
+        "id": "dhl-2-national",
+        "name": "DHL National (Germany)",
+        "description": "Versendungen innerhalb Deutschland",
+        "courier_id": "dhl-2",
+        "start_zones": ["DE"],
+        "destination_zones": ["DE"],
+        "tax_id": ["tax1"],
+        "attributes": [{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "value": "V01PAK" 
+        },{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "value": "22222222220104"
+        }],
+        "variants": [{
+          "id": "dhl-2-national-s",
+          "name": "Parcel S up to 2kg",
+          "description": "For small parcels up to 2kg",
+          "price": 4.79,
+          "max_weight": 2000,
+          "max_height": 35,
+          "max_width": 25,
+          "max_length": 10,
+          "max_volume": 8750
+        },{
+          "id": "dhl-2-national-m",
+          "name": "Parcel M up to 2kg",
+          "description": "For medium sized parcels up to 2kg",
+          "price": 5.49,
+          "max_weight": 2000,
+          "max_height": 60,
+          "max_width": 30,
+          "max_length": 15,
+          "max_volume": 27000
+        }],
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      },{
+        "id": "dhl-2-europe",
+        "name": "DHL Europe",
+        "description": "Versendungen innerhalb Europas",
+        "courier_id": "dhl-2",
+        "start_zones": ["DE", "FR", "IT", "ES"],
+        "destination_zones": ["DE", "FR", "IT", "ES"],
+        "tax_id": ["tax1"],
+        "attributes": [{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "value": "V01PAK" 
+        },{
+          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "value": "22222222220104"
+        }],
+        "variants": [{
+          "id": "dhl-2-europe-s",
+          "name": "Parcel S up to 2kg",
+          "description": "For small sized parcels up to 2kg",
+          "price": 4.79,
+          "max_weight": 2000,
+          "max_height": 35,
+          "max_width": 25,
+          "max_length": 10,
+          "max_volume": 8750
+        },{
+          "id": "dhl-2-europe-m",
+          "name": "Parcel M up to 2kg",
+          "description": "For medium sized parcels up to 2kg",
+          "price": 8.49,
+          "max_weight": 2000,
+          "max_height": 60,
+          "max_width": 30,
+          "max_length": 15,
+          "max_volume": 27000
+        }],
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      }],
+      "total_count": 4
+    },
+    "ProductQuery": {
+      "items": [{
+        "sender": {
+          "type": "address",
+          "title": "Frau",
+          "name": [
+            "name1",
+            "name2",
+            "name3"
+          ],
+          "address": {
+            "street": "Vegesacker Heerstr.",
+            "building_number": "111",
+            "postcode": "28757",
+            "locality": "Bremen",
+            "region": "Bremen"
+          },
+          "country": {
+            "name": "Germany",
+            "country_code": "DE",
+            "geographical_name": "Deutschland"
+          },
+          "contact": {
+            "name": "Absender",
+            "phone": "+4917621908330",
+            "email": "absender@test.de"
+          }
+        },
+        "receiver": {
+          "type": "address",
+          "title": "Herr",
+          "name": [
+            "name1",
+            "name2",
+            "name3"
+          ],
+          "address": {
+            "street": "Vegesacker Heerstr.",
+            "building_number": "111",
+            "postcode": "28757",
+            "locality": "Bremen",
+            "region": "Bremen"
+          },
+          "country": {
+            "name": "Germany",
+            "country_code": "DE",
+            "geographical_name": "Deutschland"
+          },
+          "contact": {
+            "name": "Absender",
+            "phone": "+4917621908330",
+            "email": "absender@test.de"
+          }
+        },
+        "goods": [{
+          "product_variant_bundle_id": "item_1",
+          "quantity": 50,
+          "price": 5,
+          "weight_in_kg": 10,
+          "length_in_cm": 5,
+          "width_in_cm": 3,
+          "height_in_cm": 5
+          
+        },{
+          "product_variant_bundle_id": "item_2",
+          "quantity": 7,
+          "price": 15,
+          "weight_in_kg": 200,
+          "length_in_cm": 30,
+          "width_in_cm": 20,
+          "height_in_cm": 10
+        }],
+        "preferences": {
+          "couriers": [],
+          "pricing": 1.0,
+          "compactness": 0.5,
+          "homogeneity": 1.0
+        },
+        "reference_id": "order_1"
+      }],
+      "total_count": 1
+    },
+    "CreateFulfillments": {
+      "items": [{
+        "id": "fulfillment_test_id_1",
+        "order": {
+          "parcels": [{
+            "product_id": "dhl-1-national",
+            "product_variant_id": "dhl-2-national-m",
+            "item_ids": [],
+            "weight_in_kg": 10,
+            "width_in_cm": 50,
+            "length_in_cm": 50,
+            "height_in_cm": 20
+          },{
+            "product_id": "dhl-1-national",
+            "product_variant_id": "dhl-2-national-m",
+            "item_ids": [],
+            "weight_in_kg": 30,
+            "width_in_cm": 100,
+            "length_in_cm": 100,
+            "height_in_cm": 20
+          }],
+          "sender": {
+            "type": "address",
+            "title": "Frau",
+            "name": [
+              "name1",
+              "name2",
+              "name3"
+            ],
+            "address": {
+              "street": "Vegesacker Heerstr.",
+              "building_number": "111",
+              "postcode": "28757",
+              "locality": "Bremen",
+              "region": "Bremen"
+            },
+            "country": {
+              "name": "Germany",
+              "country_code": "DE",
+              "geographical_name": "Deutschland"
+            },
+            "contact": {
+              "name": "Absender",
+              "phone": "+4917621908330",
+              "email": "absender@test.de"
+            }
+          },
+          "receiver": {
+            "type": "address",
+            "title": "Frau",
+            "name": [
+              "name1",
+              "name2",
+              "name3"
+            ],
+            "address": {
+              "street": "Vegesacker Heerstr.",
+              "building_number": "111",
+              "postcode": "28757",
+              "locality": "Bremen",
+              "region": "Bremen"
+            },
+            "country": {
+              "name": "Germany",
+              "country_code": "DE",
+              "geographical_name": "Deutschland"
+            },
+            "contact": {
+              "name": "Absender",
+              "phone": "+4917621908330",
+              "email": "absender@test.de"
+            }
+          },
+          "notify": "empfaenger@test.de"
+        },
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      }]
+    },
+    "MockFulfillments": {
+      "items":[{
+        "id": "fulfillment_mock_id_2",
+        "order": {
+          "parcels": [{
+            "product_id": "dhl-1-national",
+            "product_variant_id": "dhl-2-national-m",
+            "item_ids": [],
+            "weight_in_kg": 10,
+            "width_in_cm": 50,
+            "length_in_cm": 50,
+            "height_in_cm": 20
+          },{
+            "product_id": "dhl-1-national",
+            "product_variant_id": "dhl-2-national-m",
+            "item_ids": [],
+            "weight_in_kg": 30,
+            "width_in_cm": 100,
+            "length_in_cm": 100,
+            "height_in_cm": 20
+          }],
+          "sender": {
+            "type": "address",
+            "title": "Frau",
+            "name": [
+              "name1",
+              "name2",
+              "name3"
+            ],
+            "address": {
+              "street": "Vegesacker Heerstr.",
+              "building_number": "111",
+              "postcode": "28757",
+              "locality": "Bremen",
+              "region": "Bremen"
+            },
+            "country": {
+              "name": "Germany",
+              "country_code": "DE",
+              "geographical_name": "Deutschland"
+            },
+            "contact": {
+              "name": "Absender",
+              "phone": "+4917621908330",
+              "email": "absender@test.de"
+            }
+          },
+          "receiver": {
+            "type": "address",
+            "title": "Frau",
+            "name": [
+              "name1",
+              "name2",
+              "name3"
+            ],
+            "address": {
+              "street": "Vegesacker Heerstr.",
+              "building_number": "111",
+              "postcode": "28757",
+              "locality": "Bremen",
+              "region": "Bremen"
+            },
+            "country": {
+              "name": "Germany",
+              "country_code": "DE",
+              "geographical_name": "Deutschland"
+            },
+            "contact": {
+              "name": "Absender",
+              "phone": "+4917621908330",
+              "email": "absender@test.de"
+            }
+          },
+          "notify": "empfaenger@test.de"
+        },
+        "labels": [{
+          "shipment_number": "00340434161094027318",
+          "state": 2
+        }],
+        "meta": {
+          "modified_by": "SYSTEM",
+          "owner": [{
+            "id": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+            "value": "urn:restorecommerce:acs:model:user.User"
+          },
+          {
+            "id": "urn:restorecommerce:acs:names:ownerInstance",
+            "value": "UserID"
+          }]
+        }
+      }]
+    },
+    "TrackFulfillments": {
+      "items":[{
+        "fulfillment_id": "fulfillment_mock_id_2"
+      }]
+    },
+    "CancelFulfillments": {
+      "ids": ["fulfillment_test_id_1"]
+    }
+  }
+}

@@ -2,6 +2,7 @@
 *.d.ts
 *.js
 *.log
+*.env
 
 !setupTopics.js
 !.eslintrc.js

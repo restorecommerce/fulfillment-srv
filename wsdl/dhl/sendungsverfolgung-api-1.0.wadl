@@ -1,0 +1,26 @@
+<application xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns="http://wadl.dev.java.net/2009/02"
+             xsi:schemaLocation="http://wadl.dev.java.net/2009/02 http://www.w3.org/Submission/wadl/wadl.xsd"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+
+    <resources base="https://cig.dhl.de/services/production/rest/sendungsverfolgung">
+      <resource path="">
+         <method href="#xml"/>
+      </resource>
+    </resources>
+
+    <method name="GET" id="xml">
+        <request>
+          <param style="query" name="xml" />
+          <!-- Operations and parameters are encoded in the xml query parameter. Example:
+              <?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+              <data appname="Daniel.Reiberg" language-code="de" password="Dreib12!" piece-code="563528003300"
+                request="d-get-piece"/>
+          -->
+        </request>
+        <response>
+            <representation mediaType="text/xml" element="response"/>
+        </response>
+    </method>
+</application>
