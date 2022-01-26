@@ -3,7 +3,7 @@ import { FileDescriptorProto } from "ts-proto-descriptors/google/protobuf/descri
 import {
   protoMetadata as protoMetadata1,
   Attribute,
-} from "./attribute";
+} from "../../io/restorecommerce/attribute";
 import { Writer, Reader } from "protobufjs/minimal";
 
 export const protobufPackage = "io.restorecommerce.auth";
@@ -1113,8 +1113,10 @@ export const protoMetadata: ProtoMetadata = {
     ".io.restorecommerce.auth.Tokens": Tokens,
     ".io.restorecommerce.auth.HierarchicalScope": HierarchicalScope,
     ".io.restorecommerce.auth.RoleAssociation": RoleAssociation,
-    ".io.restorecommerce.auth.HierarchicalScopesRequest": HierarchicalScopesRequest,
-    ".io.restorecommerce.auth.HierarchicalScopesResponse": HierarchicalScopesResponse,
+    ".io.restorecommerce.auth.HierarchicalScopesRequest":
+      HierarchicalScopesRequest,
+    ".io.restorecommerce.auth.HierarchicalScopesResponse":
+      HierarchicalScopesResponse,
   },
   dependencies: [protoMetadata1],
 };

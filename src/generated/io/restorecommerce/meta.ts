@@ -4,7 +4,7 @@ import {
   protoMetadata as protoMetadata1,
   Attribute,
   AttributeObj,
-} from "./attribute";
+} from "../../io/restorecommerce/attribute";
 import { Writer, Reader } from "protobufjs/minimal";
 
 export const protobufPackage = "io.restorecommerce.meta";

@@ -2329,14 +2329,20 @@ export const protoMetadata: ProtoMetadata = {
     ".io.restorecommerce.fulfillment_product.Preferences": Preferences,
     ".io.restorecommerce.fulfillment_product.Query": Query,
     ".io.restorecommerce.fulfillment_product.QueryList": QueryList,
-    ".io.restorecommerce.fulfillment_product.FulfillmentProduct": FulfillmentProduct,
+    ".io.restorecommerce.fulfillment_product.FulfillmentProduct":
+      FulfillmentProduct,
     ".io.restorecommerce.fulfillment_product.Variant": Variant,
-    ".io.restorecommerce.fulfillment_product.FulfillmentProductList": FulfillmentProductList,
-    ".io.restorecommerce.fulfillment_product.FulfillmentProductResponse": FulfillmentProductResponse,
-    ".io.restorecommerce.fulfillment_product.FulfillmentProductResponseList": FulfillmentProductResponseList,
+    ".io.restorecommerce.fulfillment_product.FulfillmentProductList":
+      FulfillmentProductList,
+    ".io.restorecommerce.fulfillment_product.FulfillmentProductResponse":
+      FulfillmentProductResponse,
+    ".io.restorecommerce.fulfillment_product.FulfillmentProductResponseList":
+      FulfillmentProductResponseList,
     ".io.restorecommerce.fulfillment_product.PackingSolution": PackingSolution,
-    ".io.restorecommerce.fulfillment_product.PackingSolutionResponse": PackingSolutionResponse,
-    ".io.restorecommerce.fulfillment_product.PackingSolutionResponseList": PackingSolutionResponseList,
+    ".io.restorecommerce.fulfillment_product.PackingSolutionResponse":
+      PackingSolutionResponse,
+    ".io.restorecommerce.fulfillment_product.PackingSolutionResponseList":
+      PackingSolutionResponseList,
     ".io.restorecommerce.fulfillment_product.Deleted": Deleted,
   },
   dependencies: [

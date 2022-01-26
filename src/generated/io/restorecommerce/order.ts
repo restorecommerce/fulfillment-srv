@@ -3,22 +3,22 @@ import { FileDescriptorProto } from "ts-proto-descriptors/google/protobuf/descri
 import {
   Subject,
   protoMetadata as protoMetadata3,
-} from "./auth";
+} from "../../io/restorecommerce/auth";
 import {
   OperationStatus,
   Status,
   protoMetadata as protoMetadata4,
-} from "./status";
+} from "../../io/restorecommerce/status";
 import {
   Meta,
   protoMetadata as protoMetadata2,
-} from "./meta";
+} from "../../io/restorecommerce/meta";
 import {
   protoMetadata as protoMetadata1,
   DeleteResponse,
   ReadRequest,
   DeleteRequest,
-} from "./resource_base";
+} from "../../io/restorecommerce/resource_base";
 import { Writer, Reader } from "protobufjs/minimal";
 
 export const protobufPackage = "io.restorecommerce.order";
@@ -46,6 +46,7 @@ export interface Order {
   name: string;
   description: string;
   status: string;
+  customer_reference: string;
   items: Items[];
   /** sum of all the quantity_price will be total_price */
   total_price: number;
@@ -434,6 +435,7 @@ const baseOrder: object = {
   name: "",
   description: "",
   status: "",
+  customer_reference: "",
   total_price: 0,
   shipping_contact_point_id: "",
   billing_contact_point_id: "",
@@ -457,20 +459,23 @@ export const Order = {
     if (message.status !== "") {
       writer.uint32(42).string(message.status);
     }
+    if (message.customer_reference !== "") {
+      writer.uint32(50).string(message.customer_reference);
+    }
     for (const v of message.items) {
-      Items.encode(v!, writer.uint32(50).fork()).ldelim();
+      Items.encode(v!, writer.uint32(58).fork()).ldelim();
     }
     if (message.total_price !== 0) {
-      writer.uint32(57).double(message.total_price);
+      writer.uint32(65).double(message.total_price);
     }
     if (message.shipping_contact_point_id !== "") {
-      writer.uint32(66).string(message.shipping_contact_point_id);
+      writer.uint32(74).string(message.shipping_contact_point_id);
     }
     if (message.billing_contact_point_id !== "") {
-      writer.uint32(74).string(message.billing_contact_point_id);
+      writer.uint32(82).string(message.billing_contact_point_id);
     }
     if (message.total_weight_in_kg !== 0) {
-      writer.uint32(81).double(message.total_weight_in_kg);
+      writer.uint32(89).double(message.total_weight_in_kg);
     }
     return writer;
   },
@@ -499,18 +504,21 @@ export const Order = {
           message.status = reader.string();
           break;
         case 6:
-          message.items.push(Items.decode(reader, reader.uint32()));
+          message.customer_reference = reader.string();
           break;
         case 7:
-          message.total_price = reader.double();
+          message.items.push(Items.decode(reader, reader.uint32()));
           break;
         case 8:
-          message.shipping_contact_point_id = reader.string();
+          message.total_price = reader.double();
           break;
         case 9:
-          message.billing_contact_point_id = reader.string();
+          message.shipping_contact_point_id = reader.string();
           break;
         case 10:
+          message.billing_contact_point_id = reader.string();
+          break;
+        case 11:
           message.total_weight_in_kg = reader.double();
           break;
         default:
@@ -548,6 +556,14 @@ export const Order = {
       message.status = String(object.status);
     } else {
       message.status = "";
+    }
+    if (
+      object.customer_reference !== undefined &&
+      object.customer_reference !== null
+    ) {
+      message.customer_reference = String(object.customer_reference);
+    } else {
+      message.customer_reference = "";
     }
     if (object.items !== undefined && object.items !== null) {
       for (const e of object.items) {
@@ -618,6 +634,14 @@ export const Order = {
     } else {
       message.status = "";
     }
+    if (
+      object.customer_reference !== undefined &&
+      object.customer_reference !== null
+    ) {
+      message.customer_reference = object.customer_reference;
+    } else {
+      message.customer_reference = "";
+    }
     if (object.items !== undefined && object.items !== null) {
       for (const e of object.items) {
         message.items.push(Items.fromPartial(e));
@@ -664,6 +688,8 @@ export const Order = {
     message.description !== undefined &&
       (obj.description = message.description);
     message.status !== undefined && (obj.status = message.status);
+    message.customer_reference !== undefined &&
+      (obj.customer_reference = message.customer_reference);
     if (message.items) {
       obj.items = message.items.map((e) => (e ? Items.toJSON(e) : undefined));
     } else {
@@ -2054,8 +2080,15 @@ export const protoMetadata: ProtoMetadata = {
           },
           { name: "status", number: 5, label: 1, type: 9, jsonName: "status" },
           {
-            name: "items",
+            name: "customer_reference",
             number: 6,
+            label: 1,
+            type: 9,
+            jsonName: "customerReference",
+          },
+          {
+            name: "items",
+            number: 7,
             label: 3,
             type: 11,
             typeName: ".io.restorecommerce.order.Items",
@@ -2063,28 +2096,28 @@ export const protoMetadata: ProtoMetadata = {
           },
           {
             name: "total_price",
-            number: 7,
+            number: 8,
             label: 1,
             type: 1,
             jsonName: "totalPrice",
           },
           {
             name: "shipping_contact_point_id",
-            number: 8,
+            number: 9,
             label: 1,
             type: 9,
             jsonName: "shippingContactPointId",
           },
           {
             name: "billing_contact_point_id",
-            number: 9,
+            number: 10,
             label: 1,
             type: 9,
             jsonName: "billingContactPointId",
           },
           {
             name: "total_weight_in_kg",
-            number: 10,
+            number: 11,
             label: 1,
             type: 1,
             jsonName: "totalWeightInKg",
@@ -2512,28 +2545,28 @@ export const protoMetadata: ProtoMetadata = {
     sourceCodeInfo: {
       location: [
         {
-          path: [4, 3, 2, 6],
-          span: [44, 2, 25],
+          path: [4, 3, 2, 7],
+          span: [45, 2, 25],
           leadingDetachedComments: [],
           leadingComments:
             " sum of all the quantity_price will be total_price\n",
         },
         {
-          path: [4, 3, 2, 7],
-          span: [46, 2, 39],
+          path: [4, 3, 2, 8],
+          span: [47, 2, 39],
           leadingDetachedComments: [],
           leadingComments: " shipping address\n",
         },
         {
           path: [4, 5, 2, 0],
-          span: [58, 2, 39],
+          span: [59, 2, 39],
           leadingDetachedComments: [],
           leadingComments:
             " below identifier is id of product, variant or bundle\n",
         },
         {
           path: [4, 9, 2, 1],
-          span: [94, 2, 37],
+          span: [95, 2, 37],
           leadingDetachedComments: [],
           leadingComments:
             " below properties are used for international packaging\n",
@@ -2541,7 +2574,7 @@ export const protoMetadata: ProtoMetadata = {
         },
         {
           path: [4, 9, 2, 2],
-          span: [95, 2, 19],
+          span: [96, 2, 19],
           leadingDetachedComments: [],
           trailingComments: " number of items\n",
         },

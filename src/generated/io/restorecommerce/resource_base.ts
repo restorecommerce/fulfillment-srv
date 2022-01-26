@@ -7,20 +7,20 @@ import {
 import {
   Subject,
   protoMetadata as protoMetadata3,
-} from "./auth";
+} from "../../io/restorecommerce/auth";
 import {
   OperationStatus,
   Status,
   protoMetadata as protoMetadata4,
-} from "./status";
+} from "../../io/restorecommerce/status";
 import {
   Meta,
   protoMetadata as protoMetadata2,
-} from "./meta";
+} from "../../io/restorecommerce/meta";
 import {
   protoMetadata as protoMetadata5,
   FilterOp as FilterOp6,
-} from "./filter";
+} from "../../io/restorecommerce/filter";
 import { Writer, Reader } from "protobufjs/minimal";
 
 export const protobufPackage = "io.restorecommerce.resourcebase";
@@ -2200,7 +2200,8 @@ export const protoMetadata: ProtoMetadata = {
     ".io.restorecommerce.resourcebase.DeleteRequest": DeleteRequest,
     ".io.restorecommerce.resourcebase.DeleteResponse": DeleteResponse,
     ".io.restorecommerce.resourcebase.ResourceList": ResourceList,
-    ".io.restorecommerce.resourcebase.ResourceListResponse": ResourceListResponse,
+    ".io.restorecommerce.resourcebase.ResourceListResponse":
+      ResourceListResponse,
     ".io.restorecommerce.resourcebase.ResourceResponse": ResourceResponse,
     ".io.restorecommerce.resourcebase.Resource": Resource,
   },

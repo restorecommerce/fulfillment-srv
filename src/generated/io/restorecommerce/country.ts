@@ -3,22 +3,22 @@ import { FileDescriptorProto } from "ts-proto-descriptors/google/protobuf/descri
 import {
   Subject,
   protoMetadata as protoMetadata3,
-} from "./auth";
+} from "../../io/restorecommerce/auth";
 import {
   OperationStatus,
   Status,
   protoMetadata as protoMetadata4,
-} from "./status";
+} from "../../io/restorecommerce/status";
 import {
   Meta,
   protoMetadata as protoMetadata2,
-} from "./meta";
+} from "../../io/restorecommerce/meta";
 import {
   protoMetadata as protoMetadata1,
   DeleteResponse,
   ReadRequest,
   DeleteRequest,
-} from "./resource_base";
+} from "../../io/restorecommerce/resource_base";
 import { Writer, Reader } from "protobufjs/minimal";
 
 export const protobufPackage = "io.restorecommerce.country";

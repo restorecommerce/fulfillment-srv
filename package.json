@@ -69,7 +69,8 @@
     "test": "npm run lint && nyc npm run mocha",
     "tsctests": "tsc -d -p tsconfig.test.json",
     "lcov-report": "nyc report --reporter=lcov",
-    "mocha": "cross-env NODE_ENV=test mocha -r ts-node/register -R spec ./test/*-test.ts --full-trace --exit"
+    "mocha": "cross-env NODE_ENV=test mocha -r ts-node/register -R spec ./test/*-test.ts --full-trace --exit",
+    "generate": "protoc --ts_proto_opt=outputClientImpl=false,env=node,useOptionals=true,outputJsonMethods=true,outputSchema=true,snakeToCamel=false --plugin=./node_modules/.bin/protoc-gen-ts_proto --proto_path=./node_modules/@restorecommerce/protos --ts_proto_out=./src/generated ./node_modules/@restorecommerce/protos/io/restorecommerce/fulfillment*.proto ./node_modules/@restorecommerce/protos/io/restorecommerce/filter.proto"
   },
   "engines": {
     "node": ">= 9.2.0"

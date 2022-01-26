@@ -237,13 +237,13 @@ export namespace DHL
 
       return fulfillment;
     }
-    );
+  );
 
   const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
     timestamp: attributes['event-timestamp'],
     location: attributes['event-location'],
     details: {
-      typeUrl: null,
+      type_url: null,
       value: Buffer.from(JSON.stringify(attributes)) // because Any
     },
     status: {
@@ -284,7 +284,7 @@ export namespace DHL
             shipment_number: request.fulfillment.label.shipment_number,
             events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
             details: {
-              typeUrl: null,
+              type_url: null,
               value: Buffer.from(JSON.stringify(response.elements[0].elements[0].attributes))
             },
             status

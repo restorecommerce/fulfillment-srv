@@ -891,10 +891,14 @@ export const protoMetadata: ProtoMetadata = {
     syntax: "proto3",
   }),
   references: {
-    ".io.restorecommerce.fulfillment_courier.FulfillmentCourier": FulfillmentCourier,
-    ".io.restorecommerce.fulfillment_courier.FulfillmentCourierList": FulfillmentCourierList,
-    ".io.restorecommerce.fulfillment_courier.FulfillmentCourierResponse": FulfillmentCourierResponse,
-    ".io.restorecommerce.fulfillment_courier.FulfillmentCourierResponseList": FulfillmentCourierResponseList,
+    ".io.restorecommerce.fulfillment_courier.FulfillmentCourier":
+      FulfillmentCourier,
+    ".io.restorecommerce.fulfillment_courier.FulfillmentCourierList":
+      FulfillmentCourierList,
+    ".io.restorecommerce.fulfillment_courier.FulfillmentCourierResponse":
+      FulfillmentCourierResponse,
+    ".io.restorecommerce.fulfillment_courier.FulfillmentCourierResponseList":
+      FulfillmentCourierResponseList,
     ".io.restorecommerce.fulfillment_courier.Deleted": Deleted,
   },
   dependencies: [

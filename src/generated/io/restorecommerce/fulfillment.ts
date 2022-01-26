@@ -3508,10 +3508,12 @@ export const protoMetadata: ProtoMetadata = {
     ".io.restorecommerce.fulfillment.Order": Order,
     ".io.restorecommerce.fulfillment.Label": Label,
     ".io.restorecommerce.fulfillment.FulfillmentRequest": FulfillmentRequest,
-    ".io.restorecommerce.fulfillment.FulfillmentRequestList": FulfillmentRequestList,
+    ".io.restorecommerce.fulfillment.FulfillmentRequestList":
+      FulfillmentRequestList,
     ".io.restorecommerce.fulfillment.Fulfillment": Fulfillment,
     ".io.restorecommerce.fulfillment.FulfillmentResponse": FulfillmentResponse,
-    ".io.restorecommerce.fulfillment.FulfillmentResponseList": FulfillmentResponseList,
+    ".io.restorecommerce.fulfillment.FulfillmentResponseList":
+      FulfillmentResponseList,
     ".io.restorecommerce.fulfillment.TrackingRequest": TrackingRequest,
     ".io.restorecommerce.fulfillment.TrackingRequestList": TrackingRequestList,
     ".io.restorecommerce.fulfillment.Event": Event,
