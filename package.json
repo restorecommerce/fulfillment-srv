@@ -9,7 +9,7 @@
     "url": "https://github.com/restorecommerce/fulfillment-srv"
   },
   "dependencies": {
-    "@restorecommerce/cart": "^0.3.2",
+    "@restorecommerce/cart": "^0.3.5",
     "@restorecommerce/chassis-srv": "^0.3.5",
     "@restorecommerce/cluster-service": "^0.1.10",
     "@restorecommerce/grpc-client": "^0.2.14",
