@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { FileDescriptorProto } from "ts-proto-descriptors/google/protobuf/descriptor";
-import { Writer, Reader } from "protobufjs/minimal";
+import * as Long from "long";
+import * as _m0 from "protobufjs/minimal";
 
 export const protobufPackage = "io.restorecommerce.status";
 
@@ -15,11 +15,11 @@ export interface StatusArray {
 }
 
 export interface StatusObj {
-  status?: Status;
+  status: Status;
 }
 
 export interface OperationStatusObj {
-  operation_status?: OperationStatus;
+  operationStatus: OperationStatus;
 }
 
 export interface OperationStatus {
@@ -27,10 +27,15 @@ export interface OperationStatus {
   message: string;
 }
 
-const baseStatus: object = { id: "", code: 0, message: "" };
+function createBaseStatus(): Status {
+  return { id: "", code: 0, message: "" };
+}
 
 export const Status = {
-  encode(message: Status, writer: Writer = Writer.create()): Writer {
+  encode(
+    message: Status,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
     if (message.id !== "") {
       writer.uint32(10).string(message.id);
     }
@@ -43,10 +48,10 @@ export const Status = {
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): Status {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): Status {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(baseStatus) as Status;
+    const message = createBaseStatus();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -68,69 +73,49 @@ export const Status = {
   },
 
   fromJSON(object: any): Status {
-    const message = globalThis.Object.create(baseStatus) as Status;
-    if (object.id !== undefined && object.id !== null) {
-      message.id = String(object.id);
-    } else {
-      message.id = "";
-    }
-    if (object.code !== undefined && object.code !== null) {
-      message.code = Number(object.code);
-    } else {
-      message.code = 0;
-    }
-    if (object.message !== undefined && object.message !== null) {
-      message.message = String(object.message);
-    } else {
-      message.message = "";
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<Status>): Status {
-    const message = { ...baseStatus } as Status;
-    if (object.id !== undefined && object.id !== null) {
-      message.id = object.id;
-    } else {
-      message.id = "";
-    }
-    if (object.code !== undefined && object.code !== null) {
-      message.code = object.code;
-    } else {
-      message.code = 0;
-    }
-    if (object.message !== undefined && object.message !== null) {
-      message.message = object.message;
-    } else {
-      message.message = "";
-    }
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      code: isSet(object.code) ? Number(object.code) : 0,
+      message: isSet(object.message) ? String(object.message) : "",
+    };
   },
 
   toJSON(message: Status): unknown {
     const obj: any = {};
     message.id !== undefined && (obj.id = message.id);
-    message.code !== undefined && (obj.code = message.code);
+    message.code !== undefined && (obj.code = Math.round(message.code));
     message.message !== undefined && (obj.message = message.message);
     return obj;
   },
+
+  fromPartial<I extends Exact<DeepPartial<Status>, I>>(object: I): Status {
+    const message = createBaseStatus();
+    message.id = object.id ?? "";
+    message.code = object.code ?? 0;
+    message.message = object.message ?? "";
+    return message;
+  },
 };
 
-const baseStatusArray: object = {};
+function createBaseStatusArray(): StatusArray {
+  return { status: [] };
+}
 
 export const StatusArray = {
-  encode(message: StatusArray, writer: Writer = Writer.create()): Writer {
+  encode(
+    message: StatusArray,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
     for (const v of message.status) {
       Status.encode(v!, writer.uint32(10).fork()).ldelim();
     }
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): StatusArray {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): StatusArray {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(baseStatusArray) as StatusArray;
-    message.status = [];
+    const message = createBaseStatusArray();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -146,25 +131,11 @@ export const StatusArray = {
   },
 
   fromJSON(object: any): StatusArray {
-    const message = globalThis.Object.create(baseStatusArray) as StatusArray;
-    message.status = [];
-    if (object.status !== undefined && object.status !== null) {
-      for (const e of object.status) {
-        message.status.push(Status.fromJSON(e));
-      }
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<StatusArray>): StatusArray {
-    const message = { ...baseStatusArray } as StatusArray;
-    message.status = [];
-    if (object.status !== undefined && object.status !== null) {
-      for (const e of object.status) {
-        message.status.push(Status.fromPartial(e));
-      }
-    }
-    return message;
+    return {
+      status: Array.isArray(object?.status)
+        ? object.status.map((e: any) => Status.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: StatusArray): unknown {
@@ -178,22 +149,35 @@ export const StatusArray = {
     }
     return obj;
   },
+
+  fromPartial<I extends Exact<DeepPartial<StatusArray>, I>>(
+    object: I
+  ): StatusArray {
+    const message = createBaseStatusArray();
+    message.status = object.status?.map((e) => Status.fromPartial(e)) || [];
+    return message;
+  },
 };
 
-const baseStatusObj: object = {};
+function createBaseStatusObj(): StatusObj {
+  return { status: undefined };
+}
 
 export const StatusObj = {
-  encode(message: StatusObj, writer: Writer = Writer.create()): Writer {
+  encode(
+    message: StatusObj,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
     if (message.status !== undefined) {
       Status.encode(message.status, writer.uint32(10).fork()).ldelim();
     }
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): StatusObj {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): StatusObj {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(baseStatusObj) as StatusObj;
+    const message = createBaseStatusObj();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -209,23 +193,9 @@ export const StatusObj = {
   },
 
   fromJSON(object: any): StatusObj {
-    const message = globalThis.Object.create(baseStatusObj) as StatusObj;
-    if (object.status !== undefined && object.status !== null) {
-      message.status = Status.fromJSON(object.status);
-    } else {
-      message.status = undefined;
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<StatusObj>): StatusObj {
-    const message = { ...baseStatusObj } as StatusObj;
-    if (object.status !== undefined && object.status !== null) {
-      message.status = Status.fromPartial(object.status);
-    } else {
-      message.status = undefined;
-    }
-    return message;
+    return {
+      status: isSet(object.status) ? Status.fromJSON(object.status) : undefined,
+    };
   },
 
   toJSON(message: StatusObj): unknown {
@@ -234,35 +204,46 @@ export const StatusObj = {
       (obj.status = message.status ? Status.toJSON(message.status) : undefined);
     return obj;
   },
+
+  fromPartial<I extends Exact<DeepPartial<StatusObj>, I>>(
+    object: I
+  ): StatusObj {
+    const message = createBaseStatusObj();
+    message.status =
+      object.status !== undefined && object.status !== null
+        ? Status.fromPartial(object.status)
+        : undefined;
+    return message;
+  },
 };
 
-const baseOperationStatusObj: object = {};
+function createBaseOperationStatusObj(): OperationStatusObj {
+  return { operationStatus: undefined };
+}
 
 export const OperationStatusObj = {
   encode(
     message: OperationStatusObj,
-    writer: Writer = Writer.create()
-  ): Writer {
-    if (message.operation_status !== undefined) {
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.operationStatus !== undefined) {
       OperationStatus.encode(
-        message.operation_status,
+        message.operationStatus,
         writer.uint32(10).fork()
       ).ldelim();
     }
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): OperationStatusObj {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): OperationStatusObj {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(
-      baseOperationStatusObj
-    ) as OperationStatusObj;
+    const message = createBaseOperationStatusObj();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.operation_status = OperationStatus.decode(
+          message.operationStatus = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -276,51 +257,43 @@ export const OperationStatusObj = {
   },
 
   fromJSON(object: any): OperationStatusObj {
-    const message = globalThis.Object.create(
-      baseOperationStatusObj
-    ) as OperationStatusObj;
-    if (
-      object.operation_status !== undefined &&
-      object.operation_status !== null
-    ) {
-      message.operation_status = OperationStatus.fromJSON(
-        object.operation_status
-      );
-    } else {
-      message.operation_status = undefined;
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<OperationStatusObj>): OperationStatusObj {
-    const message = { ...baseOperationStatusObj } as OperationStatusObj;
-    if (
-      object.operation_status !== undefined &&
-      object.operation_status !== null
-    ) {
-      message.operation_status = OperationStatus.fromPartial(
-        object.operation_status
-      );
-    } else {
-      message.operation_status = undefined;
-    }
-    return message;
+    return {
+      operationStatus: isSet(object.operationStatus)
+        ? OperationStatus.fromJSON(object.operationStatus)
+        : undefined,
+    };
   },
 
   toJSON(message: OperationStatusObj): unknown {
     const obj: any = {};
-    message.operation_status !== undefined &&
-      (obj.operation_status = message.operation_status
-        ? OperationStatus.toJSON(message.operation_status)
+    message.operationStatus !== undefined &&
+      (obj.operationStatus = message.operationStatus
+        ? OperationStatus.toJSON(message.operationStatus)
         : undefined);
     return obj;
   },
+
+  fromPartial<I extends Exact<DeepPartial<OperationStatusObj>, I>>(
+    object: I
+  ): OperationStatusObj {
+    const message = createBaseOperationStatusObj();
+    message.operationStatus =
+      object.operationStatus !== undefined && object.operationStatus !== null
+        ? OperationStatus.fromPartial(object.operationStatus)
+        : undefined;
+    return message;
+  },
 };
 
-const baseOperationStatus: object = { code: 0, message: "" };
+function createBaseOperationStatus(): OperationStatus {
+  return { code: 0, message: "" };
+}
 
 export const OperationStatus = {
-  encode(message: OperationStatus, writer: Writer = Writer.create()): Writer {
+  encode(
+    message: OperationStatus,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
     if (message.code !== 0) {
       writer.uint32(8).uint32(message.code);
     }
@@ -330,12 +303,10 @@ export const OperationStatus = {
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): OperationStatus {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): OperationStatus {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(
-      baseOperationStatus
-    ) as OperationStatus;
+    const message = createBaseOperationStatus();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -354,188 +325,38 @@ export const OperationStatus = {
   },
 
   fromJSON(object: any): OperationStatus {
-    const message = globalThis.Object.create(
-      baseOperationStatus
-    ) as OperationStatus;
-    if (object.code !== undefined && object.code !== null) {
-      message.code = Number(object.code);
-    } else {
-      message.code = 0;
-    }
-    if (object.message !== undefined && object.message !== null) {
-      message.message = String(object.message);
-    } else {
-      message.message = "";
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<OperationStatus>): OperationStatus {
-    const message = { ...baseOperationStatus } as OperationStatus;
-    if (object.code !== undefined && object.code !== null) {
-      message.code = object.code;
-    } else {
-      message.code = 0;
-    }
-    if (object.message !== undefined && object.message !== null) {
-      message.message = object.message;
-    } else {
-      message.message = "";
-    }
-    return message;
+    return {
+      code: isSet(object.code) ? Number(object.code) : 0,
+      message: isSet(object.message) ? String(object.message) : "",
+    };
   },
 
   toJSON(message: OperationStatus): unknown {
     const obj: any = {};
-    message.code !== undefined && (obj.code = message.code);
+    message.code !== undefined && (obj.code = Math.round(message.code));
     message.message !== undefined && (obj.message = message.message);
     return obj;
   },
-};
 
-export interface ProtoMetadata {
-  fileDescriptor: FileDescriptorProto;
-  references: { [key: string]: any };
-  dependencies?: ProtoMetadata[];
-}
-
-export const protoMetadata: ProtoMetadata = {
-  fileDescriptor: FileDescriptorProto.fromPartial({
-    dependency: [],
-    publicDependency: [],
-    weakDependency: [],
-    messageType: [
-      {
-        field: [
-          { name: "id", number: 1, label: 1, type: 9, jsonName: "id" },
-          { name: "code", number: 2, label: 1, type: 13, jsonName: "code" },
-          {
-            name: "message",
-            number: 3,
-            label: 1,
-            type: 9,
-            jsonName: "message",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "Status",
-      },
-      {
-        field: [
-          {
-            name: "status",
-            number: 1,
-            label: 3,
-            type: 11,
-            typeName: ".io.restorecommerce.status.Status",
-            jsonName: "status",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "StatusArray",
-      },
-      {
-        field: [
-          {
-            name: "status",
-            number: 1,
-            label: 1,
-            type: 11,
-            typeName: ".io.restorecommerce.status.Status",
-            jsonName: "status",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "StatusObj",
-      },
-      {
-        field: [
-          {
-            name: "operation_status",
-            number: 1,
-            label: 1,
-            type: 11,
-            typeName: ".io.restorecommerce.status.OperationStatus",
-            jsonName: "operationStatus",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "OperationStatusObj",
-      },
-      {
-        field: [
-          { name: "code", number: 1, label: 1, type: 13, jsonName: "code" },
-          {
-            name: "message",
-            number: 2,
-            label: 1,
-            type: 9,
-            jsonName: "message",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "OperationStatus",
-      },
-    ],
-    enumType: [],
-    service: [],
-    extension: [],
-    name: "io/restorecommerce/status.proto",
-    package: "io.restorecommerce.status",
-    sourceCodeInfo: { location: [] },
-    syntax: "proto3",
-  }),
-  references: {
-    ".io.restorecommerce.status.Status": Status,
-    ".io.restorecommerce.status.StatusArray": StatusArray,
-    ".io.restorecommerce.status.StatusObj": StatusObj,
-    ".io.restorecommerce.status.OperationStatusObj": OperationStatusObj,
-    ".io.restorecommerce.status.OperationStatus": OperationStatus,
+  fromPartial<I extends Exact<DeepPartial<OperationStatus>, I>>(
+    object: I
+  ): OperationStatus {
+    const message = createBaseOperationStatus();
+    message.code = object.code ?? 0;
+    message.message = object.message ?? "";
+    return message;
   },
-  dependencies: [],
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-var globalThis: any = (() => {
-  if (typeof globalThis !== "undefined") return globalThis;
-  if (typeof self !== "undefined") return self;
-  if (typeof window !== "undefined") return window;
-  if (typeof global !== "undefined") return global;
-  throw "Unable to locate global object";
-})();
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-type Builtin = Date | Function | Uint8Array | string | number | undefined;
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -545,3 +366,22 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
+
+// If you get a compile-error about 'Constructor<Long> and ... have no overlap',
+// add '--ts_proto_opt=esModuleInterop=true' as a flag when calling 'protoc'.
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
+}

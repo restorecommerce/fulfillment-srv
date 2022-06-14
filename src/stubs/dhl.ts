@@ -149,12 +149,12 @@ export namespace DHL
           },
           Address: {
             streetName: request.order.sender.address?.street,
-            streetNumber: request.order.sender.address?.building_number,
+            streetNumber: request.order.sender.address?.buildingNumber,
             zip: request.order.sender.address?.postcode,
             city: request.order.sender.address?.region,
             Origin: {
               country: request.order.sender.country.name,
-              countryISOCode: request.order.sender.country.country_code
+              countryISOCode: request.order.sender.country.countryCode
             },
             Communication: {
               contactPerson: request.order.sender.contact?.name,
@@ -169,12 +169,12 @@ export namespace DHL
             name2: request.order.receiver.name[1],
             name3: request.order.receiver.name[2],
             streetName: request.order.receiver.address?.street,
-            streetNumber: request.order.receiver.address?.building_number,
+            streetNumber: request.order.receiver.address?.buildingNumber,
             zip: request.order.receiver.address?.postcode,
             city: request.order.receiver.address?.region,
             Origin: {
               country: request.order.receiver.country.name,
-              countryISOCode: request.order.receiver.country.country_code
+              countryISOCode: request.order.receiver.country.countryCode
             },
             Communication: {
               contactPerson: request.order.receiver.contact?.name,
@@ -186,15 +186,15 @@ export namespace DHL
         ShipmentDetails: {
           shipmentDate: moment().format('YYYY-MM-DD'),
           costCenter: '',
-          customerReference: request.order.reference_id,
+          customerReference: request.order.referenceId,
           product: request.product.attributes.find(att => att.id == 'urn:restorecommerce:fufs:names:product:attr:dhl:productName').value,
           accountNumber: request.product.attributes.find(att => att.id == 'urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber').value,
           // Service: parseService(request.order.parcels[0].attributes),
           ShipmentItem: {
-            heightInCM: request.parcel.height_in_cm,
-            lengthInCM: request.parcel.length_in_cm,
-            weightInKG: request.parcel.weight_in_kg,
-            widthInCM: request.parcel.width_in_cm
+            heightInCM: request.parcel.heightInCm,
+            lengthInCM: request.parcel.lengthInCm,
+            weightInKG: request.parcel.weightInKg,
+            widthInCM: request.parcel.widthInCm
           },
           Notification: {
             recipientEmailAddress: request.order.notify
@@ -219,7 +219,7 @@ export namespace DHL
       }
 
       const label = {
-        shipment_number: dhl_state?.shipmentNumber,
+        shipmentNumber: dhl_state?.shipmentNumber,
         type: 'url',
         url: dhl_state?.LabelData.labelUrl,
         png: undefined,
@@ -237,13 +237,13 @@ export namespace DHL
 
       return fulfillment;
     }
-  );
+    );
 
   const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
     timestamp: attributes['event-timestamp'],
     location: attributes['event-location'],
     details: {
-      type_url: null,
+      typeUrl: null,
       value: Buffer.from(JSON.stringify(attributes)) // because Any
     },
     status: {
@@ -257,11 +257,11 @@ export namespace DHL
     if (err || response?.status != 200) {
       request.fulfillment.label.state = State.Invalid;
       return {
-        shipment_number: request.fulfillment.label.shipment_number,
+        shipmentNumber: request.fulfillment.label.shipmentNumber,
         events: null,
         details: null,
         status: {
-          id: request.fulfillment.label.shipment_number,
+          id: request.fulfillment.label.shipmentNumber,
           code: response?.status || err?.code || 500,
           message: response?.statusText || err?.message || err?.msg || JSON.stringify(err, null, 2)
         }
@@ -273,18 +273,18 @@ export namespace DHL
         const response = xml2js(response_text);
         if (response?.elements?.[0]?.attributes?.code == 0) {
           const status = {
-            id: request.fulfillment.label.shipment_number,
+            id: request.fulfillment.label.shipmentNumber,
             code: response.elements[0].attributes.code,
             message: response.elements[0].attributes.error || response.elements[0].elements[0].attributes.status
-          }
+          };
           request.fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Done : State.Shipping;
           request.fulfillment.label.status = status;
           request.fulfillment.fulfilled = request.fulfillment.label.state == State.Done;
           return {
-            shipment_number: request.fulfillment.label.shipment_number,
+            shipmentNumber: request.fulfillment.label.shipmentNumber,
             events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
             details: {
-              type_url: null,
+              typeUrl: null,
               value: Buffer.from(JSON.stringify(response.elements[0].elements[0].attributes))
             },
             status
@@ -293,25 +293,25 @@ export namespace DHL
         else {
           request.fulfillment.label.state = State.Invalid;
           return {
-            shipment_number: request.fulfillment.label.shipment_number,
+            shipmentNumber: request.fulfillment.label.shipmentNumber,
             events: null,
             details: null,
             status: {
-              id: request.fulfillment.label.shipment_number,
+              id: request.fulfillment.label.shipmentNumber,
               code: response?.elements?.[0]?.attributes?.code || 500,
-              message: response?.elements?.[0]?.attributes?.error || "Error Unknown!"
+              message: response?.elements?.[0]?.attributes?.error || 'Error Unknown!'
             }
           };
         }
       },
-      (err:any): Tracking => {
+      (err: any): Tracking => {
         request.fulfillment.label.state = State.Invalid;
         return {
-          shipment_number: request.fulfillment.label.shipment_number,
+          shipmentNumber: request.fulfillment.label.shipmentNumber,
           events: null,
           details: null,
           status: {
-            id: request.fulfillment.label.shipment_number,
+            id: request.fulfillment.label.shipmentNumber,
             code: err?.code || 500,
             message: err?.message || err?.msg || JSON.stringify(err, null, 2)
           }
@@ -325,21 +325,21 @@ export namespace DHL
       majorRelease: 3,
       minorRelease: 1
     },
-    shipmentNumber: requests.map(request => request.label.shipment_number)
+    shipmentNumber: requests.map(request => request.label.shipmentNumber)
   });
 
-  const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map:{[k:string]:FlatAggregatedFulfillment}, response: any, err?:any): FlatAggregatedFulfillment[] => { 
+  const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map: {[k: string]: FlatAggregatedFulfillment}, response: any, err?: any): FlatAggregatedFulfillment[] => {
     if (err) {
       return Object.values(fulfillment_map).map(fulfillment => {
         fulfillment.label.status = {
-          id: fulfillment.label.shipment_number,
+          id: fulfillment.label.shipmentNumber,
           code: err.code || err.statusCode || 500,
           message: err.message || err.statusText || JSON.stringify(err)
-        }
+        };
         return fulfillment;
       });
     }
-    
+
     return response.DeletionState.map(state => {
       const fulfillment = fulfillment_map[state.shipmentNumber];
       fulfillment.label.state = state.Status.statusCode == 0 ? State.Cancelled : fulfillment.label.state;
@@ -347,10 +347,10 @@ export namespace DHL
         id: state.shipmentNumber,
         code: state.Status.statusCode,
         message: state.Status.statusText
-      }
+      };
       return fulfillment;
     });
-  }
+  };
 
   class DHLStub extends Stub {
     protected static _clients: { [id: string]: soap.Client } = {};
@@ -478,7 +478,7 @@ export namespace DHL
       const promises = request.map(async item => {
         try {
           const options = JSON.parse(item?.options?.value?.toString() || null);
-          const tracks = item.shipment_numbers.map(shipment_number => {
+          const tracks = item.shipmentNumbers.map(shipmentNumber => {
             const config = JSON.parse(item?.fulfillment?.courier?.configuration?.value?.toString() || null)?.tracking;
             const client = {
               appname: config?.appname || process.env.DHL_TRACKING_APPNAME || this.cfg.get('stub:DHL:Tracking:appname') || 'zt12345',
@@ -499,7 +499,7 @@ export namespace DHL
             const attributes = {
               appname: client.appname,
               password: client.password,
-              'piece-code': shipment_number,
+              'piece-code': shipmentNumber,
               'language-code': options?.['language-code'] || 'de',
               request: options?.request || 'd-get-piece-detail'
             };
@@ -517,7 +517,7 @@ export namespace DHL
             fulfillment: item.fulfillment,
             tracks: await Promise.all(await Promise.all(tracks)),
             status: {
-              id: item.fulfillment_id,
+              id: item.fulfillmentId,
               code: 200,
               message: 'OK'
             }
@@ -525,12 +525,12 @@ export namespace DHL
 
         } catch (err) {
           this.logger?.error(`${this.constructor.name}: ${err}`);
-          item.fulfillment.label.state = State.Invalid
+          item.fulfillment.label.state = State.Invalid;
           return {
             fulfillment: item.fulfillment,
             tracks: null,
             status: {
-              id: item.fulfillment_id,
+              id: item.fulfillmentId,
               code: 500,
               message: JSON.stringify(err)
             }
@@ -541,14 +541,14 @@ export namespace DHL
       return await Promise.all(promises);
     };
 
-    async cancel (request:FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+    async cancel (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       request = request.filter(request => request?.courier?.id == this.courier.id);
       if (request.length == 0) return [];
-      const fulfillment_map: { [k:string]:FlatAggregatedFulfillment } = {};
-      request.forEach(a => fulfillment_map[a.label.shipment_number] = a);
+      const fulfillment_map: { [k: string]: FlatAggregatedFulfillment } = {};
+      request.forEach(a => fulfillment_map[a.label.shipmentNumber] = a);
       const dhl_cancel_request = AggregatedFulfillment2DHLShipmentCancelRequest(request);
       const client = await this.registerSoapClient();
-      return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject:(v:FlatAggregatedFulfillment[])=>void): void => {
+      return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject: (v: FlatAggregatedFulfillment[]) => void): void => {
         client.GVAPI_2_0_de.GKVAPISOAP11port0.deleteShipmentOrder(dhl_cancel_request,
           (err: any, result: any, rawResponse: any, rawRequest: any): any => {
             if (err) {
@@ -569,7 +569,7 @@ export namespace DHL
     };
 
     async getZoneFor(address: Address): Promise<string> {
-      return address?.country?.country_code;
+      return address?.country?.countryCode;
     }
   };
 

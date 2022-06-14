@@ -12,7 +12,7 @@ import {
   FulfillmentCourierResourceService,
   FulfillmentProductResourceService
 } from './services/';
-import { RedisClient, createClient } from 'redis';
+import { RedisClientType as RedisClient, createClient } from 'redis';
 import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
 import { Logger } from 'winston';
 
@@ -70,6 +70,17 @@ export class Worker {
     redisConfig.db = this.cfg.get('redis:db-indexes:db-subject');
     this.redisClient = createClient(redisConfig);
 
+    const fulfillmentCourierService = new FulfillmentCourierResourceService(
+      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
+    );
+    const fulfillmentProductService = new FulfillmentProductResourceService(
+      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
+    );
+    const fulfillmentService = new FulfillmentResourceService(
+      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
+    );
+    this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
+
     const that = this;
     const fulfillmentServiceEventListener = async (msg: any, context: any, config: any, eventName: string) => {
       if (eventName == CREATE_FULFILLMENTS) {
@@ -98,7 +109,7 @@ export class Worker {
       }
       else if (eventName == CANCEL_FULFILLMENTS) {
         await fulfillmentService.track({ request: msg }, context).then(
-          () => that.logger.info("Event trackFulfillments done."),
+          () => that.logger.info('Event trackFulfillments done.'),
           err => that.logger.error(`Event trackFulfillments failed: ${err}`)
         );
       }
@@ -128,17 +139,6 @@ export class Worker {
       }
       this.topics.set(topicType, topic);
     }
-
-    const fulfillmentCourierService = new FulfillmentCourierResourceService(
-      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
-    );
-    const fulfillmentProductService = new FulfillmentProductResourceService(
-      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
-    );
-    const fulfillmentService = new FulfillmentResourceService(
-      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
-    );
-    this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
 
     const serviceNamesCfg = cfg.get('serviceNames');
     await this.server.bind(serviceNamesCfg.fulfillment, fulfillmentService);
@@ -173,6 +173,7 @@ if (require.main == module) {
   const service = new Worker();
   const logger = service.logger;
   service.start().then().catch((err) => {
+    console.log(err);
     logger.error('startup error', err);
     process.exit(1);
   });

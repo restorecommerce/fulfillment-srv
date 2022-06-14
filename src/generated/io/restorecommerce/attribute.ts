@@ -1,6 +1,6 @@
 /* eslint-disable */
-import { FileDescriptorProto } from "ts-proto-descriptors/google/protobuf/descriptor";
-import { Writer, Reader } from "protobufjs/minimal";
+import * as Long from "long";
+import * as _m0 from "protobufjs/minimal";
 
 export const protobufPackage = "io.restorecommerce.attribute";
 
@@ -11,13 +11,18 @@ export interface Attribute {
 }
 
 export interface AttributeObj {
-  attribute?: Attribute;
+  attribute: Attribute;
 }
 
-const baseAttribute: object = { id: "", value: "" };
+function createBaseAttribute(): Attribute {
+  return { id: "", value: "", attribute: [] };
+}
 
 export const Attribute = {
-  encode(message: Attribute, writer: Writer = Writer.create()): Writer {
+  encode(
+    message: Attribute,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
     if (message.id !== "") {
       writer.uint32(10).string(message.id);
     }
@@ -30,11 +35,10 @@ export const Attribute = {
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): Attribute {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): Attribute {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(baseAttribute) as Attribute;
-    message.attribute = [];
+    const message = createBaseAttribute();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -56,45 +60,13 @@ export const Attribute = {
   },
 
   fromJSON(object: any): Attribute {
-    const message = globalThis.Object.create(baseAttribute) as Attribute;
-    message.attribute = [];
-    if (object.id !== undefined && object.id !== null) {
-      message.id = String(object.id);
-    } else {
-      message.id = "";
-    }
-    if (object.value !== undefined && object.value !== null) {
-      message.value = String(object.value);
-    } else {
-      message.value = "";
-    }
-    if (object.attribute !== undefined && object.attribute !== null) {
-      for (const e of object.attribute) {
-        message.attribute.push(Attribute.fromJSON(e));
-      }
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<Attribute>): Attribute {
-    const message = { ...baseAttribute } as Attribute;
-    message.attribute = [];
-    if (object.id !== undefined && object.id !== null) {
-      message.id = object.id;
-    } else {
-      message.id = "";
-    }
-    if (object.value !== undefined && object.value !== null) {
-      message.value = object.value;
-    } else {
-      message.value = "";
-    }
-    if (object.attribute !== undefined && object.attribute !== null) {
-      for (const e of object.attribute) {
-        message.attribute.push(Attribute.fromPartial(e));
-      }
-    }
-    return message;
+    return {
+      id: isSet(object.id) ? String(object.id) : "",
+      value: isSet(object.value) ? String(object.value) : "",
+      attribute: Array.isArray(object?.attribute)
+        ? object.attribute.map((e: any) => Attribute.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: Attribute): unknown {
@@ -110,22 +82,38 @@ export const Attribute = {
     }
     return obj;
   },
+
+  fromPartial<I extends Exact<DeepPartial<Attribute>, I>>(
+    object: I
+  ): Attribute {
+    const message = createBaseAttribute();
+    message.id = object.id ?? "";
+    message.value = object.value ?? "";
+    message.attribute =
+      object.attribute?.map((e) => Attribute.fromPartial(e)) || [];
+    return message;
+  },
 };
 
-const baseAttributeObj: object = {};
+function createBaseAttributeObj(): AttributeObj {
+  return { attribute: undefined };
+}
 
 export const AttributeObj = {
-  encode(message: AttributeObj, writer: Writer = Writer.create()): Writer {
+  encode(
+    message: AttributeObj,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
     if (message.attribute !== undefined) {
       Attribute.encode(message.attribute, writer.uint32(10).fork()).ldelim();
     }
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): AttributeObj {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): AttributeObj {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(baseAttributeObj) as AttributeObj;
+    const message = createBaseAttributeObj();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -141,23 +129,11 @@ export const AttributeObj = {
   },
 
   fromJSON(object: any): AttributeObj {
-    const message = globalThis.Object.create(baseAttributeObj) as AttributeObj;
-    if (object.attribute !== undefined && object.attribute !== null) {
-      message.attribute = Attribute.fromJSON(object.attribute);
-    } else {
-      message.attribute = undefined;
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<AttributeObj>): AttributeObj {
-    const message = { ...baseAttributeObj } as AttributeObj;
-    if (object.attribute !== undefined && object.attribute !== null) {
-      message.attribute = Attribute.fromPartial(object.attribute);
-    } else {
-      message.attribute = undefined;
-    }
-    return message;
+    return {
+      attribute: isSet(object.attribute)
+        ? Attribute.fromJSON(object.attribute)
+        : undefined,
+    };
   },
 
   toJSON(message: AttributeObj): unknown {
@@ -168,89 +144,28 @@ export const AttributeObj = {
         : undefined);
     return obj;
   },
-};
 
-export interface ProtoMetadata {
-  fileDescriptor: FileDescriptorProto;
-  references: { [key: string]: any };
-  dependencies?: ProtoMetadata[];
-}
-
-export const protoMetadata: ProtoMetadata = {
-  fileDescriptor: FileDescriptorProto.fromPartial({
-    dependency: [],
-    publicDependency: [],
-    weakDependency: [],
-    messageType: [
-      {
-        field: [
-          { name: "id", number: 1, label: 1, type: 9, jsonName: "id" },
-          { name: "value", number: 2, label: 1, type: 9, jsonName: "value" },
-          {
-            name: "attribute",
-            number: 3,
-            label: 3,
-            type: 11,
-            typeName: ".io.restorecommerce.attribute.Attribute",
-            jsonName: "attribute",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "Attribute",
-      },
-      {
-        field: [
-          {
-            name: "attribute",
-            number: 1,
-            label: 1,
-            type: 11,
-            typeName: ".io.restorecommerce.attribute.Attribute",
-            jsonName: "attribute",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "AttributeObj",
-      },
-    ],
-    enumType: [],
-    service: [],
-    extension: [],
-    name: "io/restorecommerce/attribute.proto",
-    package: "io.restorecommerce.attribute",
-    sourceCodeInfo: { location: [] },
-    syntax: "proto3",
-  }),
-  references: {
-    ".io.restorecommerce.attribute.Attribute": Attribute,
-    ".io.restorecommerce.attribute.AttributeObj": AttributeObj,
+  fromPartial<I extends Exact<DeepPartial<AttributeObj>, I>>(
+    object: I
+  ): AttributeObj {
+    const message = createBaseAttributeObj();
+    message.attribute =
+      object.attribute !== undefined && object.attribute !== null
+        ? Attribute.fromPartial(object.attribute)
+        : undefined;
+    return message;
   },
-  dependencies: [],
 };
 
-declare var self: any | undefined;
-declare var window: any | undefined;
-var globalThis: any = (() => {
-  if (typeof globalThis !== "undefined") return globalThis;
-  if (typeof self !== "undefined") return self;
-  if (typeof window !== "undefined") return window;
-  if (typeof global !== "undefined") return global;
-  throw "Unable to locate global object";
-})();
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-type Builtin = Date | Function | Uint8Array | string | number | undefined;
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -260,3 +175,22 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
+
+// If you get a compile-error about 'Constructor<Long> and ... have no overlap',
+// add '--ts_proto_opt=esModuleInterop=true' as a flag when calling 'protoc'.
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
+}

@@ -10,36 +10,39 @@ import {
   DeleteRequest,
 } from "../../io/restorecommerce/resource_base";
 
-export const protobufPackage = "io.restorecommerce.country";
+export const protobufPackage = "io.restorecommerce.contact_point";
 
 export interface Deleted {
   id: string;
 }
 
-export interface CountryList {
-  items: Country[];
+export interface ContactPointList {
+  items: ContactPoint[];
   totalCount: number;
   subject: Subject;
 }
 
-export interface CountryListResponse {
-  items: CountryResponse[];
+export interface ContactPointListResponse {
+  items: ContactPointResponse[];
   totalCount: number;
   operationStatus: OperationStatus;
 }
 
-export interface CountryResponse {
-  payload: Country;
+export interface ContactPointResponse {
+  payload: ContactPoint;
   status: Status;
 }
 
-export interface Country {
+export interface ContactPoint {
   id: string;
   meta: Meta;
-  name: string;
-  countryCode: string;
-  geographicalName: string;
-  economicAreas: string[];
+  physicalAddressId: string;
+  website: string;
+  email: string;
+  contactPointTypeId: string;
+  telephone: string;
+  timezoneId: string;
+  localeId: string;
 }
 
 function createBaseDeleted(): Deleted {
@@ -94,17 +97,17 @@ export const Deleted = {
   },
 };
 
-function createBaseCountryList(): CountryList {
+function createBaseContactPointList(): ContactPointList {
   return { items: [], totalCount: 0, subject: undefined };
 }
 
-export const CountryList = {
+export const ContactPointList = {
   encode(
-    message: CountryList,
+    message: ContactPointList,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     for (const v of message.items) {
-      Country.encode(v!, writer.uint32(10).fork()).ldelim();
+      ContactPoint.encode(v!, writer.uint32(10).fork()).ldelim();
     }
     if (message.totalCount !== 0) {
       writer.uint32(16).uint32(message.totalCount);
@@ -115,15 +118,15 @@ export const CountryList = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): CountryList {
+  decode(input: _m0.Reader | Uint8Array, length?: number): ContactPointList {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountryList();
+    const message = createBaseContactPointList();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.items.push(Country.decode(reader, reader.uint32()));
+          message.items.push(ContactPoint.decode(reader, reader.uint32()));
           break;
         case 2:
           message.totalCount = reader.uint32();
@@ -139,10 +142,10 @@ export const CountryList = {
     return message;
   },
 
-  fromJSON(object: any): CountryList {
+  fromJSON(object: any): ContactPointList {
     return {
       items: Array.isArray(object?.items)
-        ? object.items.map((e: any) => Country.fromJSON(e))
+        ? object.items.map((e: any) => ContactPoint.fromJSON(e))
         : [],
       totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
       subject: isSet(object.subject)
@@ -151,10 +154,12 @@ export const CountryList = {
     };
   },
 
-  toJSON(message: CountryList): unknown {
+  toJSON(message: ContactPointList): unknown {
     const obj: any = {};
     if (message.items) {
-      obj.items = message.items.map((e) => (e ? Country.toJSON(e) : undefined));
+      obj.items = message.items.map((e) =>
+        e ? ContactPoint.toJSON(e) : undefined
+      );
     } else {
       obj.items = [];
     }
@@ -167,11 +172,11 @@ export const CountryList = {
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<CountryList>, I>>(
+  fromPartial<I extends Exact<DeepPartial<ContactPointList>, I>>(
     object: I
-  ): CountryList {
-    const message = createBaseCountryList();
-    message.items = object.items?.map((e) => Country.fromPartial(e)) || [];
+  ): ContactPointList {
+    const message = createBaseContactPointList();
+    message.items = object.items?.map((e) => ContactPoint.fromPartial(e)) || [];
     message.totalCount = object.totalCount ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
@@ -181,17 +186,17 @@ export const CountryList = {
   },
 };
 
-function createBaseCountryListResponse(): CountryListResponse {
+function createBaseContactPointListResponse(): ContactPointListResponse {
   return { items: [], totalCount: 0, operationStatus: undefined };
 }
 
-export const CountryListResponse = {
+export const ContactPointListResponse = {
   encode(
-    message: CountryListResponse,
+    message: ContactPointListResponse,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     for (const v of message.items) {
-      CountryResponse.encode(v!, writer.uint32(10).fork()).ldelim();
+      ContactPointResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
     if (message.totalCount !== 0) {
       writer.uint32(16).uint32(message.totalCount);
@@ -205,15 +210,20 @@ export const CountryListResponse = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): CountryListResponse {
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ContactPointListResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountryListResponse();
+    const message = createBaseContactPointListResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.items.push(CountryResponse.decode(reader, reader.uint32()));
+          message.items.push(
+            ContactPointResponse.decode(reader, reader.uint32())
+          );
           break;
         case 2:
           message.totalCount = reader.uint32();
@@ -232,10 +242,10 @@ export const CountryListResponse = {
     return message;
   },
 
-  fromJSON(object: any): CountryListResponse {
+  fromJSON(object: any): ContactPointListResponse {
     return {
       items: Array.isArray(object?.items)
-        ? object.items.map((e: any) => CountryResponse.fromJSON(e))
+        ? object.items.map((e: any) => ContactPointResponse.fromJSON(e))
         : [],
       totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
       operationStatus: isSet(object.operationStatus)
@@ -244,11 +254,11 @@ export const CountryListResponse = {
     };
   },
 
-  toJSON(message: CountryListResponse): unknown {
+  toJSON(message: ContactPointListResponse): unknown {
     const obj: any = {};
     if (message.items) {
       obj.items = message.items.map((e) =>
-        e ? CountryResponse.toJSON(e) : undefined
+        e ? ContactPointResponse.toJSON(e) : undefined
       );
     } else {
       obj.items = [];
@@ -262,12 +272,12 @@ export const CountryListResponse = {
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<CountryListResponse>, I>>(
+  fromPartial<I extends Exact<DeepPartial<ContactPointListResponse>, I>>(
     object: I
-  ): CountryListResponse {
-    const message = createBaseCountryListResponse();
+  ): ContactPointListResponse {
+    const message = createBaseContactPointListResponse();
     message.items =
-      object.items?.map((e) => CountryResponse.fromPartial(e)) || [];
+      object.items?.map((e) => ContactPointResponse.fromPartial(e)) || [];
     message.totalCount = object.totalCount ?? 0;
     message.operationStatus =
       object.operationStatus !== undefined && object.operationStatus !== null
@@ -277,17 +287,17 @@ export const CountryListResponse = {
   },
 };
 
-function createBaseCountryResponse(): CountryResponse {
+function createBaseContactPointResponse(): ContactPointResponse {
   return { payload: undefined, status: undefined };
 }
 
-export const CountryResponse = {
+export const ContactPointResponse = {
   encode(
-    message: CountryResponse,
+    message: ContactPointResponse,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.payload !== undefined) {
-      Country.encode(message.payload, writer.uint32(10).fork()).ldelim();
+      ContactPoint.encode(message.payload, writer.uint32(10).fork()).ldelim();
     }
     if (message.status !== undefined) {
       Status.encode(message.status, writer.uint32(18).fork()).ldelim();
@@ -295,15 +305,18 @@ export const CountryResponse = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): CountryResponse {
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ContactPointResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountryResponse();
+    const message = createBaseContactPointResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.payload = Country.decode(reader, reader.uint32());
+          message.payload = ContactPoint.decode(reader, reader.uint32());
           break;
         case 2:
           message.status = Status.decode(reader, reader.uint32());
@@ -316,33 +329,33 @@ export const CountryResponse = {
     return message;
   },
 
-  fromJSON(object: any): CountryResponse {
+  fromJSON(object: any): ContactPointResponse {
     return {
       payload: isSet(object.payload)
-        ? Country.fromJSON(object.payload)
+        ? ContactPoint.fromJSON(object.payload)
         : undefined,
       status: isSet(object.status) ? Status.fromJSON(object.status) : undefined,
     };
   },
 
-  toJSON(message: CountryResponse): unknown {
+  toJSON(message: ContactPointResponse): unknown {
     const obj: any = {};
     message.payload !== undefined &&
       (obj.payload = message.payload
-        ? Country.toJSON(message.payload)
+        ? ContactPoint.toJSON(message.payload)
         : undefined);
     message.status !== undefined &&
       (obj.status = message.status ? Status.toJSON(message.status) : undefined);
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<CountryResponse>, I>>(
+  fromPartial<I extends Exact<DeepPartial<ContactPointResponse>, I>>(
     object: I
-  ): CountryResponse {
-    const message = createBaseCountryResponse();
+  ): ContactPointResponse {
+    const message = createBaseContactPointResponse();
     message.payload =
       object.payload !== undefined && object.payload !== null
-        ? Country.fromPartial(object.payload)
+        ? ContactPoint.fromPartial(object.payload)
         : undefined;
     message.status =
       object.status !== undefined && object.status !== null
@@ -352,20 +365,23 @@ export const CountryResponse = {
   },
 };
 
-function createBaseCountry(): Country {
+function createBaseContactPoint(): ContactPoint {
   return {
     id: "",
     meta: undefined,
-    name: "",
-    countryCode: "",
-    geographicalName: "",
-    economicAreas: [],
+    physicalAddressId: "",
+    website: "",
+    email: "",
+    contactPointTypeId: "",
+    telephone: "",
+    timezoneId: "",
+    localeId: "",
   };
 }
 
-export const Country = {
+export const ContactPoint = {
   encode(
-    message: Country,
+    message: ContactPoint,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.id !== "") {
@@ -374,25 +390,34 @@ export const Country = {
     if (message.meta !== undefined) {
       Meta.encode(message.meta, writer.uint32(18).fork()).ldelim();
     }
-    if (message.name !== "") {
-      writer.uint32(26).string(message.name);
+    if (message.physicalAddressId !== "") {
+      writer.uint32(26).string(message.physicalAddressId);
     }
-    if (message.countryCode !== "") {
-      writer.uint32(34).string(message.countryCode);
+    if (message.website !== "") {
+      writer.uint32(34).string(message.website);
     }
-    if (message.geographicalName !== "") {
-      writer.uint32(42).string(message.geographicalName);
+    if (message.email !== "") {
+      writer.uint32(42).string(message.email);
     }
-    for (const v of message.economicAreas) {
-      writer.uint32(50).string(v!);
+    if (message.contactPointTypeId !== "") {
+      writer.uint32(50).string(message.contactPointTypeId);
+    }
+    if (message.telephone !== "") {
+      writer.uint32(66).string(message.telephone);
+    }
+    if (message.timezoneId !== "") {
+      writer.uint32(74).string(message.timezoneId);
+    }
+    if (message.localeId !== "") {
+      writer.uint32(82).string(message.localeId);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): Country {
+  decode(input: _m0.Reader | Uint8Array, length?: number): ContactPoint {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountry();
+    const message = createBaseContactPoint();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -403,16 +428,25 @@ export const Country = {
           message.meta = Meta.decode(reader, reader.uint32());
           break;
         case 3:
-          message.name = reader.string();
+          message.physicalAddressId = reader.string();
           break;
         case 4:
-          message.countryCode = reader.string();
+          message.website = reader.string();
           break;
         case 5:
-          message.geographicalName = reader.string();
+          message.email = reader.string();
           break;
         case 6:
-          message.economicAreas.push(reader.string());
+          message.contactPointTypeId = reader.string();
+          break;
+        case 8:
+          message.telephone = reader.string();
+          break;
+        case 9:
+          message.timezoneId = reader.string();
+          break;
+        case 10:
+          message.localeId = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -422,61 +456,67 @@ export const Country = {
     return message;
   },
 
-  fromJSON(object: any): Country {
+  fromJSON(object: any): ContactPoint {
     return {
       id: isSet(object.id) ? String(object.id) : "",
       meta: isSet(object.meta) ? Meta.fromJSON(object.meta) : undefined,
-      name: isSet(object.name) ? String(object.name) : "",
-      countryCode: isSet(object.countryCode) ? String(object.countryCode) : "",
-      geographicalName: isSet(object.geographicalName)
-        ? String(object.geographicalName)
+      physicalAddressId: isSet(object.physicalAddressId)
+        ? String(object.physicalAddressId)
         : "",
-      economicAreas: Array.isArray(object?.economicAreas)
-        ? object.economicAreas.map((e: any) => String(e))
-        : [],
+      website: isSet(object.website) ? String(object.website) : "",
+      email: isSet(object.email) ? String(object.email) : "",
+      contactPointTypeId: isSet(object.contactPointTypeId)
+        ? String(object.contactPointTypeId)
+        : "",
+      telephone: isSet(object.telephone) ? String(object.telephone) : "",
+      timezoneId: isSet(object.timezoneId) ? String(object.timezoneId) : "",
+      localeId: isSet(object.localeId) ? String(object.localeId) : "",
     };
   },
 
-  toJSON(message: Country): unknown {
+  toJSON(message: ContactPoint): unknown {
     const obj: any = {};
     message.id !== undefined && (obj.id = message.id);
     message.meta !== undefined &&
       (obj.meta = message.meta ? Meta.toJSON(message.meta) : undefined);
-    message.name !== undefined && (obj.name = message.name);
-    message.countryCode !== undefined &&
-      (obj.countryCode = message.countryCode);
-    message.geographicalName !== undefined &&
-      (obj.geographicalName = message.geographicalName);
-    if (message.economicAreas) {
-      obj.economicAreas = message.economicAreas.map((e) => e);
-    } else {
-      obj.economicAreas = [];
-    }
+    message.physicalAddressId !== undefined &&
+      (obj.physicalAddressId = message.physicalAddressId);
+    message.website !== undefined && (obj.website = message.website);
+    message.email !== undefined && (obj.email = message.email);
+    message.contactPointTypeId !== undefined &&
+      (obj.contactPointTypeId = message.contactPointTypeId);
+    message.telephone !== undefined && (obj.telephone = message.telephone);
+    message.timezoneId !== undefined && (obj.timezoneId = message.timezoneId);
+    message.localeId !== undefined && (obj.localeId = message.localeId);
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<Country>, I>>(object: I): Country {
-    const message = createBaseCountry();
+  fromPartial<I extends Exact<DeepPartial<ContactPoint>, I>>(
+    object: I
+  ): ContactPoint {
+    const message = createBaseContactPoint();
     message.id = object.id ?? "";
     message.meta =
       object.meta !== undefined && object.meta !== null
         ? Meta.fromPartial(object.meta)
         : undefined;
-    message.name = object.name ?? "";
-    message.countryCode = object.countryCode ?? "";
-    message.geographicalName = object.geographicalName ?? "";
-    message.economicAreas = object.economicAreas?.map((e) => e) || [];
+    message.physicalAddressId = object.physicalAddressId ?? "";
+    message.website = object.website ?? "";
+    message.email = object.email ?? "";
+    message.contactPointTypeId = object.contactPointTypeId ?? "";
+    message.telephone = object.telephone ?? "";
+    message.timezoneId = object.timezoneId ?? "";
+    message.localeId = object.localeId ?? "";
     return message;
   },
 };
 
-/** Microservice definition. */
 export interface Service {
-  Read(request: ReadRequest): Promise<CountryListResponse>;
-  Create(request: CountryList): Promise<CountryListResponse>;
+  Read(request: ReadRequest): Promise<ContactPointListResponse>;
+  Create(request: ContactPointList): Promise<ContactPointListResponse>;
   Delete(request: DeleteRequest): Promise<DeleteResponse>;
-  Update(request: CountryList): Promise<CountryListResponse>;
-  Upsert(request: CountryList): Promise<CountryListResponse>;
+  Update(request: ContactPointList): Promise<ContactPointListResponse>;
+  Upsert(request: ContactPointList): Promise<ContactPointListResponse>;
 }
 
 type Builtin =

@@ -406,6 +406,7 @@
           "grpc-health-v1": "grpc.health.v1.Health"
         },
         "protos": [
+          "io/restorecommerce/address.proto",
           "io/restorecommerce/fulfillment.proto",
           "io/restorecommerce/fulfillment_courier.proto",
           "io/restorecommerce/fulfillment_product.proto",
