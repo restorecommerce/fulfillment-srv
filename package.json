@@ -62,6 +62,7 @@
   "scripts": {
     "start": "npm run createtopics && node lib/start.js",
     "dev": "cross-env NODE_ENV=development npm run createtopics && nodemon --watch './src/**/*.ts' --exec 'ts-node' src/worker.ts",
+    "dev:nocluster": "ts-node src/worker.ts",
     "lint": "eslint src --ext .ts --fix",
     "createtopics": "node setupTopics io.restorecommerce.fulfillment.resource io.restorecommerce.command io.restorecommerce.jobs io.restorecommerce.fulfillment_method.resource io.restorecommerce.fulfillment_courier.resource",
     "build:tsc": "tsc -d",
