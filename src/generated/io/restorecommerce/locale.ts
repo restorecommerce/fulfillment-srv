@@ -10,36 +10,34 @@ import {
   DeleteRequest,
 } from "../../io/restorecommerce/resource_base";
 
-export const protobufPackage = "io.restorecommerce.country";
+export const protobufPackage = "io.restorecommerce.locale";
 
 export interface Deleted {
   id: string;
 }
 
-export interface CountryList {
-  items: Country[];
+export interface LocaleList {
+  items: Locale[];
   total_count: number;
   subject: Subject;
 }
 
-export interface CountryListResponse {
-  items: CountryResponse[];
+export interface LocaleListResponse {
+  items: LocaleResponse[];
   total_count: number;
   operation_status: OperationStatus;
 }
 
-export interface CountryResponse {
-  payload: Country;
+export interface LocaleResponse {
+  payload: Locale;
   status: Status;
 }
 
-export interface Country {
+export interface Locale {
   id: string;
   meta: Meta;
-  name: string;
-  country_code: string;
-  geographical_name: string;
-  economic_areas: string[];
+  value: string;
+  description: string;
 }
 
 function createBaseDeleted(): Deleted {
@@ -94,17 +92,17 @@ export const Deleted = {
   },
 };
 
-function createBaseCountryList(): CountryList {
+function createBaseLocaleList(): LocaleList {
   return { items: [], total_count: 0, subject: undefined };
 }
 
-export const CountryList = {
+export const LocaleList = {
   encode(
-    message: CountryList,
+    message: LocaleList,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     for (const v of message.items) {
-      Country.encode(v!, writer.uint32(10).fork()).ldelim();
+      Locale.encode(v!, writer.uint32(10).fork()).ldelim();
     }
     if (message.total_count !== 0) {
       writer.uint32(16).uint32(message.total_count);
@@ -115,15 +113,15 @@ export const CountryList = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): CountryList {
+  decode(input: _m0.Reader | Uint8Array, length?: number): LocaleList {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountryList();
+    const message = createBaseLocaleList();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.items.push(Country.decode(reader, reader.uint32()));
+          message.items.push(Locale.decode(reader, reader.uint32()));
           break;
         case 2:
           message.total_count = reader.uint32();
@@ -139,10 +137,10 @@ export const CountryList = {
     return message;
   },
 
-  fromJSON(object: any): CountryList {
+  fromJSON(object: any): LocaleList {
     return {
       items: Array.isArray(object?.items)
-        ? object.items.map((e: any) => Country.fromJSON(e))
+        ? object.items.map((e: any) => Locale.fromJSON(e))
         : [],
       total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
@@ -151,10 +149,10 @@ export const CountryList = {
     };
   },
 
-  toJSON(message: CountryList): unknown {
+  toJSON(message: LocaleList): unknown {
     const obj: any = {};
     if (message.items) {
-      obj.items = message.items.map((e) => (e ? Country.toJSON(e) : undefined));
+      obj.items = message.items.map((e) => (e ? Locale.toJSON(e) : undefined));
     } else {
       obj.items = [];
     }
@@ -167,11 +165,11 @@ export const CountryList = {
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<CountryList>, I>>(
+  fromPartial<I extends Exact<DeepPartial<LocaleList>, I>>(
     object: I
-  ): CountryList {
-    const message = createBaseCountryList();
-    message.items = object.items?.map((e) => Country.fromPartial(e)) || [];
+  ): LocaleList {
+    const message = createBaseLocaleList();
+    message.items = object.items?.map((e) => Locale.fromPartial(e)) || [];
     message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
@@ -181,17 +179,17 @@ export const CountryList = {
   },
 };
 
-function createBaseCountryListResponse(): CountryListResponse {
+function createBaseLocaleListResponse(): LocaleListResponse {
   return { items: [], total_count: 0, operation_status: undefined };
 }
 
-export const CountryListResponse = {
+export const LocaleListResponse = {
   encode(
-    message: CountryListResponse,
+    message: LocaleListResponse,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     for (const v of message.items) {
-      CountryResponse.encode(v!, writer.uint32(10).fork()).ldelim();
+      LocaleResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
     if (message.total_count !== 0) {
       writer.uint32(16).uint32(message.total_count);
@@ -205,15 +203,15 @@ export const CountryListResponse = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): CountryListResponse {
+  decode(input: _m0.Reader | Uint8Array, length?: number): LocaleListResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountryListResponse();
+    const message = createBaseLocaleListResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.items.push(CountryResponse.decode(reader, reader.uint32()));
+          message.items.push(LocaleResponse.decode(reader, reader.uint32()));
           break;
         case 2:
           message.total_count = reader.uint32();
@@ -232,10 +230,10 @@ export const CountryListResponse = {
     return message;
   },
 
-  fromJSON(object: any): CountryListResponse {
+  fromJSON(object: any): LocaleListResponse {
     return {
       items: Array.isArray(object?.items)
-        ? object.items.map((e: any) => CountryResponse.fromJSON(e))
+        ? object.items.map((e: any) => LocaleResponse.fromJSON(e))
         : [],
       total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       operation_status: isSet(object.operation_status)
@@ -244,11 +242,11 @@ export const CountryListResponse = {
     };
   },
 
-  toJSON(message: CountryListResponse): unknown {
+  toJSON(message: LocaleListResponse): unknown {
     const obj: any = {};
     if (message.items) {
       obj.items = message.items.map((e) =>
-        e ? CountryResponse.toJSON(e) : undefined
+        e ? LocaleResponse.toJSON(e) : undefined
       );
     } else {
       obj.items = [];
@@ -262,12 +260,12 @@ export const CountryListResponse = {
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<CountryListResponse>, I>>(
+  fromPartial<I extends Exact<DeepPartial<LocaleListResponse>, I>>(
     object: I
-  ): CountryListResponse {
-    const message = createBaseCountryListResponse();
+  ): LocaleListResponse {
+    const message = createBaseLocaleListResponse();
     message.items =
-      object.items?.map((e) => CountryResponse.fromPartial(e)) || [];
+      object.items?.map((e) => LocaleResponse.fromPartial(e)) || [];
     message.total_count = object.total_count ?? 0;
     message.operation_status =
       object.operation_status !== undefined && object.operation_status !== null
@@ -277,17 +275,17 @@ export const CountryListResponse = {
   },
 };
 
-function createBaseCountryResponse(): CountryResponse {
+function createBaseLocaleResponse(): LocaleResponse {
   return { payload: undefined, status: undefined };
 }
 
-export const CountryResponse = {
+export const LocaleResponse = {
   encode(
-    message: CountryResponse,
+    message: LocaleResponse,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.payload !== undefined) {
-      Country.encode(message.payload, writer.uint32(10).fork()).ldelim();
+      Locale.encode(message.payload, writer.uint32(10).fork()).ldelim();
     }
     if (message.status !== undefined) {
       Status.encode(message.status, writer.uint32(18).fork()).ldelim();
@@ -295,15 +293,15 @@ export const CountryResponse = {
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): CountryResponse {
+  decode(input: _m0.Reader | Uint8Array, length?: number): LocaleResponse {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountryResponse();
+    const message = createBaseLocaleResponse();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.payload = Country.decode(reader, reader.uint32());
+          message.payload = Locale.decode(reader, reader.uint32());
           break;
         case 2:
           message.status = Status.decode(reader, reader.uint32());
@@ -316,33 +314,33 @@ export const CountryResponse = {
     return message;
   },
 
-  fromJSON(object: any): CountryResponse {
+  fromJSON(object: any): LocaleResponse {
     return {
       payload: isSet(object.payload)
-        ? Country.fromJSON(object.payload)
+        ? Locale.fromJSON(object.payload)
         : undefined,
       status: isSet(object.status) ? Status.fromJSON(object.status) : undefined,
     };
   },
 
-  toJSON(message: CountryResponse): unknown {
+  toJSON(message: LocaleResponse): unknown {
     const obj: any = {};
     message.payload !== undefined &&
       (obj.payload = message.payload
-        ? Country.toJSON(message.payload)
+        ? Locale.toJSON(message.payload)
         : undefined);
     message.status !== undefined &&
       (obj.status = message.status ? Status.toJSON(message.status) : undefined);
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<CountryResponse>, I>>(
+  fromPartial<I extends Exact<DeepPartial<LocaleResponse>, I>>(
     object: I
-  ): CountryResponse {
-    const message = createBaseCountryResponse();
+  ): LocaleResponse {
+    const message = createBaseLocaleResponse();
     message.payload =
       object.payload !== undefined && object.payload !== null
-        ? Country.fromPartial(object.payload)
+        ? Locale.fromPartial(object.payload)
         : undefined;
     message.status =
       object.status !== undefined && object.status !== null
@@ -352,20 +350,13 @@ export const CountryResponse = {
   },
 };
 
-function createBaseCountry(): Country {
-  return {
-    id: "",
-    meta: undefined,
-    name: "",
-    country_code: "",
-    geographical_name: "",
-    economic_areas: [],
-  };
+function createBaseLocale(): Locale {
+  return { id: "", meta: undefined, value: "", description: "" };
 }
 
-export const Country = {
+export const Locale = {
   encode(
-    message: Country,
+    message: Locale,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.id !== "") {
@@ -374,25 +365,19 @@ export const Country = {
     if (message.meta !== undefined) {
       Meta.encode(message.meta, writer.uint32(18).fork()).ldelim();
     }
-    if (message.name !== "") {
-      writer.uint32(26).string(message.name);
+    if (message.value !== "") {
+      writer.uint32(26).string(message.value);
     }
-    if (message.country_code !== "") {
-      writer.uint32(34).string(message.country_code);
-    }
-    if (message.geographical_name !== "") {
-      writer.uint32(42).string(message.geographical_name);
-    }
-    for (const v of message.economic_areas) {
-      writer.uint32(50).string(v!);
+    if (message.description !== "") {
+      writer.uint32(34).string(message.description);
     }
     return writer;
   },
 
-  decode(input: _m0.Reader | Uint8Array, length?: number): Country {
+  decode(input: _m0.Reader | Uint8Array, length?: number): Locale {
     const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = createBaseCountry();
+    const message = createBaseLocale();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -403,16 +388,10 @@ export const Country = {
           message.meta = Meta.decode(reader, reader.uint32());
           break;
         case 3:
-          message.name = reader.string();
+          message.value = reader.string();
           break;
         case 4:
-          message.country_code = reader.string();
-          break;
-        case 5:
-          message.geographical_name = reader.string();
-          break;
-        case 6:
-          message.economic_areas.push(reader.string());
+          message.description = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -422,63 +401,46 @@ export const Country = {
     return message;
   },
 
-  fromJSON(object: any): Country {
+  fromJSON(object: any): Locale {
     return {
       id: isSet(object.id) ? String(object.id) : "",
       meta: isSet(object.meta) ? Meta.fromJSON(object.meta) : undefined,
-      name: isSet(object.name) ? String(object.name) : "",
-      country_code: isSet(object.country_code)
-        ? String(object.country_code)
-        : "",
-      geographical_name: isSet(object.geographical_name)
-        ? String(object.geographical_name)
-        : "",
-      economic_areas: Array.isArray(object?.economic_areas)
-        ? object.economic_areas.map((e: any) => String(e))
-        : [],
+      value: isSet(object.value) ? String(object.value) : "",
+      description: isSet(object.description) ? String(object.description) : "",
     };
   },
 
-  toJSON(message: Country): unknown {
+  toJSON(message: Locale): unknown {
     const obj: any = {};
     message.id !== undefined && (obj.id = message.id);
     message.meta !== undefined &&
       (obj.meta = message.meta ? Meta.toJSON(message.meta) : undefined);
-    message.name !== undefined && (obj.name = message.name);
-    message.country_code !== undefined &&
-      (obj.country_code = message.country_code);
-    message.geographical_name !== undefined &&
-      (obj.geographical_name = message.geographical_name);
-    if (message.economic_areas) {
-      obj.economic_areas = message.economic_areas.map((e) => e);
-    } else {
-      obj.economic_areas = [];
-    }
+    message.value !== undefined && (obj.value = message.value);
+    message.description !== undefined &&
+      (obj.description = message.description);
     return obj;
   },
 
-  fromPartial<I extends Exact<DeepPartial<Country>, I>>(object: I): Country {
-    const message = createBaseCountry();
+  fromPartial<I extends Exact<DeepPartial<Locale>, I>>(object: I): Locale {
+    const message = createBaseLocale();
     message.id = object.id ?? "";
     message.meta =
       object.meta !== undefined && object.meta !== null
         ? Meta.fromPartial(object.meta)
         : undefined;
-    message.name = object.name ?? "";
-    message.country_code = object.country_code ?? "";
-    message.geographical_name = object.geographical_name ?? "";
-    message.economic_areas = object.economic_areas?.map((e) => e) || [];
+    message.value = object.value ?? "";
+    message.description = object.description ?? "";
     return message;
   },
 };
 
 /** Microservice definition. */
 export interface Service {
-  Read(request: ReadRequest): Promise<CountryListResponse>;
-  Create(request: CountryList): Promise<CountryListResponse>;
+  Read(request: ReadRequest): Promise<LocaleListResponse>;
+  Create(request: LocaleList): Promise<LocaleListResponse>;
   Delete(request: DeleteRequest): Promise<DeleteResponse>;
-  Update(request: CountryList): Promise<CountryListResponse>;
-  Upsert(request: CountryList): Promise<CountryListResponse>;
+  Update(request: LocaleList): Promise<LocaleListResponse>;
+  Upsert(request: LocaleList): Promise<LocaleListResponse>;
 }
 
 type Builtin =

@@ -1,11 +1,7 @@
 /* eslint-disable */
-import { FileDescriptorProto } from "ts-proto-descriptors/google/protobuf/descriptor";
-import {
-  protoMetadata as protoMetadata1,
-  Attribute,
-  AttributeObj,
-} from "../../io/restorecommerce/attribute";
-import { Writer, Reader } from "protobufjs/minimal";
+import * as Long from "long";
+import * as _m0 from "protobufjs/minimal";
+import { Attribute, AttributeObj } from "../../io/restorecommerce/attribute";
 
 export const protobufPackage = "io.restorecommerce.meta";
 
@@ -20,10 +16,12 @@ export interface Meta {
   acl: AttributeObj[];
 }
 
-const baseMeta: object = { created: 0, modified: 0, modified_by: "" };
+function createBaseMeta(): Meta {
+  return { created: 0, modified: 0, modified_by: "", owner: [], acl: [] };
+}
 
 export const Meta = {
-  encode(message: Meta, writer: Writer = Writer.create()): Writer {
+  encode(message: Meta, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.created !== 0) {
       writer.uint32(9).double(message.created);
     }
@@ -42,12 +40,10 @@ export const Meta = {
     return writer;
   },
 
-  decode(input: Reader | Uint8Array, length?: number): Meta {
-    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+  decode(input: _m0.Reader | Uint8Array, length?: number): Meta {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
     let end = length === undefined ? reader.len : reader.pos + length;
-    const message = globalThis.Object.create(baseMeta) as Meta;
-    message.owner = [];
-    message.acl = [];
+    const message = createBaseMeta();
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -75,67 +71,17 @@ export const Meta = {
   },
 
   fromJSON(object: any): Meta {
-    const message = globalThis.Object.create(baseMeta) as Meta;
-    message.owner = [];
-    message.acl = [];
-    if (object.created !== undefined && object.created !== null) {
-      message.created = Number(object.created);
-    } else {
-      message.created = 0;
-    }
-    if (object.modified !== undefined && object.modified !== null) {
-      message.modified = Number(object.modified);
-    } else {
-      message.modified = 0;
-    }
-    if (object.modified_by !== undefined && object.modified_by !== null) {
-      message.modified_by = String(object.modified_by);
-    } else {
-      message.modified_by = "";
-    }
-    if (object.owner !== undefined && object.owner !== null) {
-      for (const e of object.owner) {
-        message.owner.push(Attribute.fromJSON(e));
-      }
-    }
-    if (object.acl !== undefined && object.acl !== null) {
-      for (const e of object.acl) {
-        message.acl.push(AttributeObj.fromJSON(e));
-      }
-    }
-    return message;
-  },
-
-  fromPartial(object: DeepPartial<Meta>): Meta {
-    const message = { ...baseMeta } as Meta;
-    message.owner = [];
-    message.acl = [];
-    if (object.created !== undefined && object.created !== null) {
-      message.created = object.created;
-    } else {
-      message.created = 0;
-    }
-    if (object.modified !== undefined && object.modified !== null) {
-      message.modified = object.modified;
-    } else {
-      message.modified = 0;
-    }
-    if (object.modified_by !== undefined && object.modified_by !== null) {
-      message.modified_by = object.modified_by;
-    } else {
-      message.modified_by = "";
-    }
-    if (object.owner !== undefined && object.owner !== null) {
-      for (const e of object.owner) {
-        message.owner.push(Attribute.fromPartial(e));
-      }
-    }
-    if (object.acl !== undefined && object.acl !== null) {
-      for (const e of object.acl) {
-        message.acl.push(AttributeObj.fromPartial(e));
-      }
-    }
-    return message;
+    return {
+      created: isSet(object.created) ? Number(object.created) : 0,
+      modified: isSet(object.modified) ? Number(object.modified) : 0,
+      modified_by: isSet(object.modified_by) ? String(object.modified_by) : "",
+      owner: Array.isArray(object?.owner)
+        ? object.owner.map((e: any) => Attribute.fromJSON(e))
+        : [],
+      acl: Array.isArray(object?.acl)
+        ? object.acl.map((e: any) => AttributeObj.fromJSON(e))
+        : [],
+    };
   },
 
   toJSON(message: Meta): unknown {
@@ -160,114 +106,27 @@ export const Meta = {
     }
     return obj;
   },
+
+  fromPartial<I extends Exact<DeepPartial<Meta>, I>>(object: I): Meta {
+    const message = createBaseMeta();
+    message.created = object.created ?? 0;
+    message.modified = object.modified ?? 0;
+    message.modified_by = object.modified_by ?? "";
+    message.owner = object.owner?.map((e) => Attribute.fromPartial(e)) || [];
+    message.acl = object.acl?.map((e) => AttributeObj.fromPartial(e)) || [];
+    return message;
+  },
 };
 
-export interface ProtoMetadata {
-  fileDescriptor: FileDescriptorProto;
-  references: { [key: string]: any };
-  dependencies?: ProtoMetadata[];
-}
+type Builtin =
+  | Date
+  | Function
+  | Uint8Array
+  | string
+  | number
+  | boolean
+  | undefined;
 
-export const protoMetadata: ProtoMetadata = {
-  fileDescriptor: FileDescriptorProto.fromPartial({
-    dependency: ["io/restorecommerce/attribute.proto"],
-    publicDependency: [],
-    weakDependency: [],
-    messageType: [
-      {
-        field: [
-          {
-            name: "created",
-            number: 1,
-            label: 1,
-            type: 1,
-            jsonName: "created",
-          },
-          {
-            name: "modified",
-            number: 2,
-            label: 1,
-            type: 1,
-            jsonName: "modified",
-          },
-          {
-            name: "modified_by",
-            number: 3,
-            label: 1,
-            type: 9,
-            jsonName: "modifiedBy",
-          },
-          {
-            name: "owner",
-            number: 4,
-            label: 3,
-            type: 11,
-            typeName: ".io.restorecommerce.attribute.Attribute",
-            jsonName: "owner",
-          },
-          {
-            name: "acl",
-            number: 5,
-            label: 3,
-            type: 11,
-            typeName: ".io.restorecommerce.attribute.AttributeObj",
-            jsonName: "acl",
-          },
-        ],
-        extension: [],
-        nestedType: [],
-        enumType: [],
-        extensionRange: [],
-        oneofDecl: [],
-        reservedRange: [],
-        reservedName: [],
-        name: "Meta",
-      },
-    ],
-    enumType: [],
-    service: [],
-    extension: [],
-    name: "io/restorecommerce/meta.proto",
-    package: "io.restorecommerce.meta",
-    sourceCodeInfo: {
-      location: [
-        {
-          path: [4, 0, 2, 0],
-          span: [9, 4, 23],
-          leadingDetachedComments: [],
-          trailingComments: " timestamp\n",
-        },
-        {
-          path: [4, 0, 2, 1],
-          span: [10, 4, 24],
-          leadingDetachedComments: [],
-          trailingComments: " timestamp\n",
-        },
-        {
-          path: [4, 0, 2, 2],
-          span: [11, 4, 27],
-          leadingDetachedComments: [],
-          trailingComments: " ID from last User who modified it\n",
-        },
-      ],
-    },
-    syntax: "proto3",
-  }),
-  references: { ".io.restorecommerce.meta.Meta": Meta },
-  dependencies: [protoMetadata1],
-};
-
-declare var self: any | undefined;
-declare var window: any | undefined;
-var globalThis: any = (() => {
-  if (typeof globalThis !== "undefined") return globalThis;
-  if (typeof self !== "undefined") return self;
-  if (typeof window !== "undefined") return window;
-  if (typeof global !== "undefined") return global;
-  throw "Unable to locate global object";
-})();
-
-type Builtin = Date | Function | Uint8Array | string | number | undefined;
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Array<infer U>
@@ -277,3 +136,22 @@ export type DeepPartial<T> = T extends Builtin
   : T extends {}
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : Partial<T>;
+
+type KeysOfUnion<T> = T extends T ? keyof T : never;
+export type Exact<P, I extends P> = P extends Builtin
+  ? P
+  : P & { [K in keyof P]: Exact<P[K], I[K]> } & Record<
+        Exclude<keyof I, KeysOfUnion<P>>,
+        never
+      >;
+
+// If you get a compile-error about 'Constructor<Long> and ... have no overlap',
+// add '--ts_proto_opt=esModuleInterop=true' as a flag when calling 'protoc'.
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}
+
+function isSet(value: any): boolean {
+  return value !== null && value !== undefined;
+}

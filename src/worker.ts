@@ -12,7 +12,7 @@ import {
   FulfillmentCourierResourceService,
   FulfillmentProductResourceService
 } from './services/';
-import { RedisClient, createClient } from 'redis';
+import { RedisClientType as RedisClient, createClient } from 'redis';
 import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
 import { Logger } from 'winston';
 
@@ -98,7 +98,7 @@ export class Worker {
       }
       else if (eventName == CANCEL_FULFILLMENTS) {
         await fulfillmentService.track({ request: msg }, context).then(
-          () => that.logger.info("Event trackFulfillments done."),
+          () => that.logger.info('Event trackFulfillments done.'),
           err => that.logger.error(`Event trackFulfillments failed: ${err}`)
         );
       }
@@ -173,6 +173,7 @@ if (require.main == module) {
   const service = new Worker();
   const logger = service.logger;
   service.start().then().catch((err) => {
+    console.log(err);
     logger.error('startup error', err);
     process.exit(1);
   });

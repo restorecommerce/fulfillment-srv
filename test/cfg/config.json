@@ -105,6 +105,13 @@
           "localhost:29092"
         ]
       },
+      "fulfillmentCourierCreated": {
+        "protos": [
+          "io/restorecommerce/fulfillment_courier.proto"
+        ],
+        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
+      },
       "fulfillmentCreated": {
         "protos": [
           "io/restorecommerce/fulfillment.proto"
@@ -268,11 +275,11 @@
             "queuedJob"
           ]
         },
-        "fulfillment_product.resource": {
-          "topic": "io.restorecommerce.fulfillment_product.resource"
-        },
         "fulfillment_courier.resource": {
           "topic": "io.restorecommerce.fulfillment_courier.resource"
+        },
+        "fulfillment_product.resource": {
+          "topic": "io.restorecommerce.fulfillment_product.resource"
         },
         "fulfillment.resource": {
           "topic": "io.restorecommerce.fulfillment.resource",
@@ -436,8 +443,8 @@
       "ordering": {
         "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.1.4.wsdl",
         "endpoint": "https://cig.dhl.de/services/sandbox/soap",
-        "username": "",
-        "password": "",
+        "username": null,
+        "password": null,
         "wsdl_header": {
           "Authentification": {
             "user": "2222222222_01",
