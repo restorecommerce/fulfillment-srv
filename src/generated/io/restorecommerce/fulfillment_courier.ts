@@ -19,14 +19,14 @@ export interface FulfillmentCourier {
   description: string;
   logo: string;
   website: string;
-  stubType: string;
+  stub_type: string;
   configuration: Any;
   meta: Meta;
 }
 
 export interface FulfillmentCourierList {
   items: FulfillmentCourier[];
-  totalCount: number;
+  total_count: number;
   subject: Subject;
 }
 
@@ -37,8 +37,8 @@ export interface FulfillmentCourierResponse {
 
 export interface FulfillmentCourierResponseList {
   items: FulfillmentCourierResponse[];
-  totalCount: number;
-  operationStatus: OperationStatus;
+  total_count: number;
+  operation_status: OperationStatus;
 }
 
 export interface Deleted {
@@ -52,7 +52,7 @@ function createBaseFulfillmentCourier(): FulfillmentCourier {
     description: "",
     logo: "",
     website: "",
-    stubType: "",
+    stub_type: "",
     configuration: undefined,
     meta: undefined,
   };
@@ -78,8 +78,8 @@ export const FulfillmentCourier = {
     if (message.website !== "") {
       writer.uint32(58).string(message.website);
     }
-    if (message.stubType !== "") {
-      writer.uint32(66).string(message.stubType);
+    if (message.stub_type !== "") {
+      writer.uint32(66).string(message.stub_type);
     }
     if (message.configuration !== undefined) {
       Any.encode(message.configuration, writer.uint32(82).fork()).ldelim();
@@ -113,7 +113,7 @@ export const FulfillmentCourier = {
           message.website = reader.string();
           break;
         case 8:
-          message.stubType = reader.string();
+          message.stub_type = reader.string();
           break;
         case 10:
           message.configuration = Any.decode(reader, reader.uint32());
@@ -136,7 +136,7 @@ export const FulfillmentCourier = {
       description: isSet(object.description) ? String(object.description) : "",
       logo: isSet(object.logo) ? String(object.logo) : "",
       website: isSet(object.website) ? String(object.website) : "",
-      stubType: isSet(object.stubType) ? String(object.stubType) : "",
+      stub_type: isSet(object.stub_type) ? String(object.stub_type) : "",
       configuration: isSet(object.configuration)
         ? Any.fromJSON(object.configuration)
         : undefined,
@@ -152,7 +152,7 @@ export const FulfillmentCourier = {
       (obj.description = message.description);
     message.logo !== undefined && (obj.logo = message.logo);
     message.website !== undefined && (obj.website = message.website);
-    message.stubType !== undefined && (obj.stubType = message.stubType);
+    message.stub_type !== undefined && (obj.stub_type = message.stub_type);
     message.configuration !== undefined &&
       (obj.configuration = message.configuration
         ? Any.toJSON(message.configuration)
@@ -171,7 +171,7 @@ export const FulfillmentCourier = {
     message.description = object.description ?? "";
     message.logo = object.logo ?? "";
     message.website = object.website ?? "";
-    message.stubType = object.stubType ?? "";
+    message.stub_type = object.stub_type ?? "";
     message.configuration =
       object.configuration !== undefined && object.configuration !== null
         ? Any.fromPartial(object.configuration)
@@ -185,7 +185,7 @@ export const FulfillmentCourier = {
 };
 
 function createBaseFulfillmentCourierList(): FulfillmentCourierList {
-  return { items: [], totalCount: 0, subject: undefined };
+  return { items: [], total_count: 0, subject: undefined };
 }
 
 export const FulfillmentCourierList = {
@@ -196,8 +196,8 @@ export const FulfillmentCourierList = {
     for (const v of message.items) {
       FulfillmentCourier.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(26).fork()).ldelim();
@@ -221,7 +221,7 @@ export const FulfillmentCourierList = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -239,7 +239,7 @@ export const FulfillmentCourierList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => FulfillmentCourier.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
         : undefined,
@@ -255,8 +255,8 @@ export const FulfillmentCourierList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
     message.subject !== undefined &&
       (obj.subject = message.subject
         ? Subject.toJSON(message.subject)
@@ -270,7 +270,7 @@ export const FulfillmentCourierList = {
     const message = createBaseFulfillmentCourierList();
     message.items =
       object.items?.map((e) => FulfillmentCourier.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
+    message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
         ? Subject.fromPartial(object.subject)
@@ -361,7 +361,7 @@ export const FulfillmentCourierResponse = {
 };
 
 function createBaseFulfillmentCourierResponseList(): FulfillmentCourierResponseList {
-  return { items: [], totalCount: 0, operationStatus: undefined };
+  return { items: [], total_count: 0, operation_status: undefined };
 }
 
 export const FulfillmentCourierResponseList = {
@@ -372,12 +372,12 @@ export const FulfillmentCourierResponseList = {
     for (const v of message.items) {
       FulfillmentCourierResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(26).fork()
       ).ldelim();
     }
@@ -400,10 +400,10 @@ export const FulfillmentCourierResponseList = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -421,9 +421,9 @@ export const FulfillmentCourierResponseList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => FulfillmentCourierResponse.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -437,11 +437,11 @@ export const FulfillmentCourierResponseList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -452,10 +452,10 @@ export const FulfillmentCourierResponseList = {
     const message = createBaseFulfillmentCourierResponseList();
     message.items =
       object.items?.map((e) => FulfillmentCourierResponse.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.total_count = object.total_count ?? 0;
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },

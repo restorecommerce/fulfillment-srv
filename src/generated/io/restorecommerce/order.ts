@@ -14,14 +14,14 @@ export const protobufPackage = "io.restorecommerce.order";
 
 export interface OrderList {
   items: Order[];
-  totalCount: number;
+  total_count: number;
   subject: Subject;
 }
 
 export interface OrderListResponse {
   items: OrderResponse[];
-  totalCount: number;
-  operationStatus: OperationStatus;
+  total_count: number;
+  operation_status: OperationStatus;
 }
 
 export interface OrderResponse {
@@ -35,40 +35,40 @@ export interface Order {
   name: string;
   description: string;
   status: string;
-  customerReference: string;
+  customer_reference: string;
   items: Items[];
   /** sum of all the quantity_price will be total_price */
-  totalPrice: number;
+  total_price: number;
   /** shipping address */
-  shippingContactPointId: string;
-  billingContactPointId: string;
-  totalWeightInKg: number;
+  shipping_contact_point_id: string;
+  billing_contact_point_id: string;
+  total_weight_in_kg: number;
 }
 
 export interface Items {
-  quantityPrice: number;
+  quantity_price: number;
   item: Item;
 }
 
 export interface Item {
   /** below identifier is id of product, variant or bundle */
-  productVariantBundleId: string;
-  productName: string;
-  productDescription: string;
-  manufacturerName: string;
-  manufacturerDescription: string;
-  prototypeName: string;
-  prototypeDescription: string;
+  product_variant_bundle_id: string;
+  product_name: string;
+  product_description: string;
+  manufacturer_name: string;
+  manufacturer_description: string;
+  prototype_name: string;
+  prototype_description: string;
   quantity: number;
   vat: number;
   price: number;
-  itemType: string;
-  taricCode: number;
-  stockKeepingUnit: string;
-  weightInKg: number;
-  lengthInCm: number;
-  widthInCm: number;
-  heightInCm: number;
+  item_type: string;
+  taric_code: number;
+  stock_keeping_unit: string;
+  weight_in_kg: number;
+  length_in_cm: number;
+  width_in_cm: number;
+  height_in_cm: number;
 }
 
 export interface Deleted {
@@ -76,26 +76,26 @@ export interface Deleted {
 }
 
 export interface OrderDataList {
-  orderData: OrderData[];
+  order_data: OrderData[];
   meta: Meta;
 }
 
 export interface OrderData {
-  orderId: string;
+  order_id: string;
   shipments: Shipments[];
 }
 
 export interface Shipments {
-  totalWeightInKg: number;
+  total_weight_in_kg: number;
   /** below properties are used for international packaging */
-  individualWeightInKg: number;
+  individual_weight_in_kg: number;
   /** number of items */
   amount: number;
-  exportType: string;
-  exportDescription: string;
-  customsTariffNumber: string;
-  invoiceNumber: string;
-  customsValue: number;
+  export_type: string;
+  export_description: string;
+  customs_tariff_number: string;
+  invoice_number: string;
+  customs_value: number;
 }
 
 export interface FulfillmentResults {
@@ -118,7 +118,7 @@ export interface ErrorList {
 }
 
 function createBaseOrderList(): OrderList {
-  return { items: [], totalCount: 0, subject: undefined };
+  return { items: [], total_count: 0, subject: undefined };
 }
 
 export const OrderList = {
@@ -129,8 +129,8 @@ export const OrderList = {
     for (const v of message.items) {
       Order.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(26).fork()).ldelim();
@@ -149,7 +149,7 @@ export const OrderList = {
           message.items.push(Order.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -167,7 +167,7 @@ export const OrderList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => Order.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
         : undefined,
@@ -181,8 +181,8 @@ export const OrderList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
     message.subject !== undefined &&
       (obj.subject = message.subject
         ? Subject.toJSON(message.subject)
@@ -195,7 +195,7 @@ export const OrderList = {
   ): OrderList {
     const message = createBaseOrderList();
     message.items = object.items?.map((e) => Order.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
+    message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
         ? Subject.fromPartial(object.subject)
@@ -205,7 +205,7 @@ export const OrderList = {
 };
 
 function createBaseOrderListResponse(): OrderListResponse {
-  return { items: [], totalCount: 0, operationStatus: undefined };
+  return { items: [], total_count: 0, operation_status: undefined };
 }
 
 export const OrderListResponse = {
@@ -216,12 +216,12 @@ export const OrderListResponse = {
     for (const v of message.items) {
       OrderResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(26).fork()
       ).ldelim();
     }
@@ -239,10 +239,10 @@ export const OrderListResponse = {
           message.items.push(OrderResponse.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -260,9 +260,9 @@ export const OrderListResponse = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => OrderResponse.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -276,11 +276,11 @@ export const OrderListResponse = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -291,10 +291,10 @@ export const OrderListResponse = {
     const message = createBaseOrderListResponse();
     message.items =
       object.items?.map((e) => OrderResponse.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.total_count = object.total_count ?? 0;
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },
@@ -382,12 +382,12 @@ function createBaseOrder(): Order {
     name: "",
     description: "",
     status: "",
-    customerReference: "",
+    customer_reference: "",
     items: [],
-    totalPrice: 0,
-    shippingContactPointId: "",
-    billingContactPointId: "",
-    totalWeightInKg: 0,
+    total_price: 0,
+    shipping_contact_point_id: "",
+    billing_contact_point_id: "",
+    total_weight_in_kg: 0,
   };
 }
 
@@ -408,23 +408,23 @@ export const Order = {
     if (message.status !== "") {
       writer.uint32(42).string(message.status);
     }
-    if (message.customerReference !== "") {
-      writer.uint32(50).string(message.customerReference);
+    if (message.customer_reference !== "") {
+      writer.uint32(50).string(message.customer_reference);
     }
     for (const v of message.items) {
       Items.encode(v!, writer.uint32(58).fork()).ldelim();
     }
-    if (message.totalPrice !== 0) {
-      writer.uint32(65).double(message.totalPrice);
+    if (message.total_price !== 0) {
+      writer.uint32(65).double(message.total_price);
     }
-    if (message.shippingContactPointId !== "") {
-      writer.uint32(74).string(message.shippingContactPointId);
+    if (message.shipping_contact_point_id !== "") {
+      writer.uint32(74).string(message.shipping_contact_point_id);
     }
-    if (message.billingContactPointId !== "") {
-      writer.uint32(82).string(message.billingContactPointId);
+    if (message.billing_contact_point_id !== "") {
+      writer.uint32(82).string(message.billing_contact_point_id);
     }
-    if (message.totalWeightInKg !== 0) {
-      writer.uint32(89).double(message.totalWeightInKg);
+    if (message.total_weight_in_kg !== 0) {
+      writer.uint32(89).double(message.total_weight_in_kg);
     }
     return writer;
   },
@@ -452,22 +452,22 @@ export const Order = {
           message.status = reader.string();
           break;
         case 6:
-          message.customerReference = reader.string();
+          message.customer_reference = reader.string();
           break;
         case 7:
           message.items.push(Items.decode(reader, reader.uint32()));
           break;
         case 8:
-          message.totalPrice = reader.double();
+          message.total_price = reader.double();
           break;
         case 9:
-          message.shippingContactPointId = reader.string();
+          message.shipping_contact_point_id = reader.string();
           break;
         case 10:
-          message.billingContactPointId = reader.string();
+          message.billing_contact_point_id = reader.string();
           break;
         case 11:
-          message.totalWeightInKg = reader.double();
+          message.total_weight_in_kg = reader.double();
           break;
         default:
           reader.skipType(tag & 7);
@@ -484,21 +484,21 @@ export const Order = {
       name: isSet(object.name) ? String(object.name) : "",
       description: isSet(object.description) ? String(object.description) : "",
       status: isSet(object.status) ? String(object.status) : "",
-      customerReference: isSet(object.customerReference)
-        ? String(object.customerReference)
+      customer_reference: isSet(object.customer_reference)
+        ? String(object.customer_reference)
         : "",
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => Items.fromJSON(e))
         : [],
-      totalPrice: isSet(object.totalPrice) ? Number(object.totalPrice) : 0,
-      shippingContactPointId: isSet(object.shippingContactPointId)
-        ? String(object.shippingContactPointId)
+      total_price: isSet(object.total_price) ? Number(object.total_price) : 0,
+      shipping_contact_point_id: isSet(object.shipping_contact_point_id)
+        ? String(object.shipping_contact_point_id)
         : "",
-      billingContactPointId: isSet(object.billingContactPointId)
-        ? String(object.billingContactPointId)
+      billing_contact_point_id: isSet(object.billing_contact_point_id)
+        ? String(object.billing_contact_point_id)
         : "",
-      totalWeightInKg: isSet(object.totalWeightInKg)
-        ? Number(object.totalWeightInKg)
+      total_weight_in_kg: isSet(object.total_weight_in_kg)
+        ? Number(object.total_weight_in_kg)
         : 0,
     };
   },
@@ -512,20 +512,21 @@ export const Order = {
     message.description !== undefined &&
       (obj.description = message.description);
     message.status !== undefined && (obj.status = message.status);
-    message.customerReference !== undefined &&
-      (obj.customerReference = message.customerReference);
+    message.customer_reference !== undefined &&
+      (obj.customer_reference = message.customer_reference);
     if (message.items) {
       obj.items = message.items.map((e) => (e ? Items.toJSON(e) : undefined));
     } else {
       obj.items = [];
     }
-    message.totalPrice !== undefined && (obj.totalPrice = message.totalPrice);
-    message.shippingContactPointId !== undefined &&
-      (obj.shippingContactPointId = message.shippingContactPointId);
-    message.billingContactPointId !== undefined &&
-      (obj.billingContactPointId = message.billingContactPointId);
-    message.totalWeightInKg !== undefined &&
-      (obj.totalWeightInKg = message.totalWeightInKg);
+    message.total_price !== undefined &&
+      (obj.total_price = message.total_price);
+    message.shipping_contact_point_id !== undefined &&
+      (obj.shipping_contact_point_id = message.shipping_contact_point_id);
+    message.billing_contact_point_id !== undefined &&
+      (obj.billing_contact_point_id = message.billing_contact_point_id);
+    message.total_weight_in_kg !== undefined &&
+      (obj.total_weight_in_kg = message.total_weight_in_kg);
     return obj;
   },
 
@@ -539,24 +540,24 @@ export const Order = {
     message.name = object.name ?? "";
     message.description = object.description ?? "";
     message.status = object.status ?? "";
-    message.customerReference = object.customerReference ?? "";
+    message.customer_reference = object.customer_reference ?? "";
     message.items = object.items?.map((e) => Items.fromPartial(e)) || [];
-    message.totalPrice = object.totalPrice ?? 0;
-    message.shippingContactPointId = object.shippingContactPointId ?? "";
-    message.billingContactPointId = object.billingContactPointId ?? "";
-    message.totalWeightInKg = object.totalWeightInKg ?? 0;
+    message.total_price = object.total_price ?? 0;
+    message.shipping_contact_point_id = object.shipping_contact_point_id ?? "";
+    message.billing_contact_point_id = object.billing_contact_point_id ?? "";
+    message.total_weight_in_kg = object.total_weight_in_kg ?? 0;
     return message;
   },
 };
 
 function createBaseItems(): Items {
-  return { quantityPrice: 0, item: undefined };
+  return { quantity_price: 0, item: undefined };
 }
 
 export const Items = {
   encode(message: Items, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.quantityPrice !== 0) {
-      writer.uint32(9).double(message.quantityPrice);
+    if (message.quantity_price !== 0) {
+      writer.uint32(9).double(message.quantity_price);
     }
     if (message.item !== undefined) {
       Item.encode(message.item, writer.uint32(18).fork()).ldelim();
@@ -572,7 +573,7 @@ export const Items = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.quantityPrice = reader.double();
+          message.quantity_price = reader.double();
           break;
         case 2:
           message.item = Item.decode(reader, reader.uint32());
@@ -587,8 +588,8 @@ export const Items = {
 
   fromJSON(object: any): Items {
     return {
-      quantityPrice: isSet(object.quantityPrice)
-        ? Number(object.quantityPrice)
+      quantity_price: isSet(object.quantity_price)
+        ? Number(object.quantity_price)
         : 0,
       item: isSet(object.item) ? Item.fromJSON(object.item) : undefined,
     };
@@ -596,8 +597,8 @@ export const Items = {
 
   toJSON(message: Items): unknown {
     const obj: any = {};
-    message.quantityPrice !== undefined &&
-      (obj.quantityPrice = message.quantityPrice);
+    message.quantity_price !== undefined &&
+      (obj.quantity_price = message.quantity_price);
     message.item !== undefined &&
       (obj.item = message.item ? Item.toJSON(message.item) : undefined);
     return obj;
@@ -605,7 +606,7 @@ export const Items = {
 
   fromPartial<I extends Exact<DeepPartial<Items>, I>>(object: I): Items {
     const message = createBaseItems();
-    message.quantityPrice = object.quantityPrice ?? 0;
+    message.quantity_price = object.quantity_price ?? 0;
     message.item =
       object.item !== undefined && object.item !== null
         ? Item.fromPartial(object.item)
@@ -616,48 +617,48 @@ export const Items = {
 
 function createBaseItem(): Item {
   return {
-    productVariantBundleId: "",
-    productName: "",
-    productDescription: "",
-    manufacturerName: "",
-    manufacturerDescription: "",
-    prototypeName: "",
-    prototypeDescription: "",
+    product_variant_bundle_id: "",
+    product_name: "",
+    product_description: "",
+    manufacturer_name: "",
+    manufacturer_description: "",
+    prototype_name: "",
+    prototype_description: "",
     quantity: 0,
     vat: 0,
     price: 0,
-    itemType: "",
-    taricCode: 0,
-    stockKeepingUnit: "",
-    weightInKg: 0,
-    lengthInCm: 0,
-    widthInCm: 0,
-    heightInCm: 0,
+    item_type: "",
+    taric_code: 0,
+    stock_keeping_unit: "",
+    weight_in_kg: 0,
+    length_in_cm: 0,
+    width_in_cm: 0,
+    height_in_cm: 0,
   };
 }
 
 export const Item = {
   encode(message: Item, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.productVariantBundleId !== "") {
-      writer.uint32(10).string(message.productVariantBundleId);
+    if (message.product_variant_bundle_id !== "") {
+      writer.uint32(10).string(message.product_variant_bundle_id);
     }
-    if (message.productName !== "") {
-      writer.uint32(18).string(message.productName);
+    if (message.product_name !== "") {
+      writer.uint32(18).string(message.product_name);
     }
-    if (message.productDescription !== "") {
-      writer.uint32(26).string(message.productDescription);
+    if (message.product_description !== "") {
+      writer.uint32(26).string(message.product_description);
     }
-    if (message.manufacturerName !== "") {
-      writer.uint32(34).string(message.manufacturerName);
+    if (message.manufacturer_name !== "") {
+      writer.uint32(34).string(message.manufacturer_name);
     }
-    if (message.manufacturerDescription !== "") {
-      writer.uint32(42).string(message.manufacturerDescription);
+    if (message.manufacturer_description !== "") {
+      writer.uint32(42).string(message.manufacturer_description);
     }
-    if (message.prototypeName !== "") {
-      writer.uint32(50).string(message.prototypeName);
+    if (message.prototype_name !== "") {
+      writer.uint32(50).string(message.prototype_name);
     }
-    if (message.prototypeDescription !== "") {
-      writer.uint32(58).string(message.prototypeDescription);
+    if (message.prototype_description !== "") {
+      writer.uint32(58).string(message.prototype_description);
     }
     if (message.quantity !== 0) {
       writer.uint32(64).int32(message.quantity);
@@ -668,26 +669,26 @@ export const Item = {
     if (message.price !== 0) {
       writer.uint32(81).double(message.price);
     }
-    if (message.itemType !== "") {
-      writer.uint32(90).string(message.itemType);
+    if (message.item_type !== "") {
+      writer.uint32(90).string(message.item_type);
     }
-    if (message.taricCode !== 0) {
-      writer.uint32(97).double(message.taricCode);
+    if (message.taric_code !== 0) {
+      writer.uint32(97).double(message.taric_code);
     }
-    if (message.stockKeepingUnit !== "") {
-      writer.uint32(106).string(message.stockKeepingUnit);
+    if (message.stock_keeping_unit !== "") {
+      writer.uint32(106).string(message.stock_keeping_unit);
     }
-    if (message.weightInKg !== 0) {
-      writer.uint32(113).double(message.weightInKg);
+    if (message.weight_in_kg !== 0) {
+      writer.uint32(113).double(message.weight_in_kg);
     }
-    if (message.lengthInCm !== 0) {
-      writer.uint32(120).int32(message.lengthInCm);
+    if (message.length_in_cm !== 0) {
+      writer.uint32(120).int32(message.length_in_cm);
     }
-    if (message.widthInCm !== 0) {
-      writer.uint32(128).int32(message.widthInCm);
+    if (message.width_in_cm !== 0) {
+      writer.uint32(128).int32(message.width_in_cm);
     }
-    if (message.heightInCm !== 0) {
-      writer.uint32(136).int32(message.heightInCm);
+    if (message.height_in_cm !== 0) {
+      writer.uint32(136).int32(message.height_in_cm);
     }
     return writer;
   },
@@ -700,25 +701,25 @@ export const Item = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.productVariantBundleId = reader.string();
+          message.product_variant_bundle_id = reader.string();
           break;
         case 2:
-          message.productName = reader.string();
+          message.product_name = reader.string();
           break;
         case 3:
-          message.productDescription = reader.string();
+          message.product_description = reader.string();
           break;
         case 4:
-          message.manufacturerName = reader.string();
+          message.manufacturer_name = reader.string();
           break;
         case 5:
-          message.manufacturerDescription = reader.string();
+          message.manufacturer_description = reader.string();
           break;
         case 6:
-          message.prototypeName = reader.string();
+          message.prototype_name = reader.string();
           break;
         case 7:
-          message.prototypeDescription = reader.string();
+          message.prototype_description = reader.string();
           break;
         case 8:
           message.quantity = reader.int32();
@@ -730,25 +731,25 @@ export const Item = {
           message.price = reader.double();
           break;
         case 11:
-          message.itemType = reader.string();
+          message.item_type = reader.string();
           break;
         case 12:
-          message.taricCode = reader.double();
+          message.taric_code = reader.double();
           break;
         case 13:
-          message.stockKeepingUnit = reader.string();
+          message.stock_keeping_unit = reader.string();
           break;
         case 14:
-          message.weightInKg = reader.double();
+          message.weight_in_kg = reader.double();
           break;
         case 15:
-          message.lengthInCm = reader.int32();
+          message.length_in_cm = reader.int32();
           break;
         case 16:
-          message.widthInCm = reader.int32();
+          message.width_in_cm = reader.int32();
           break;
         case 17:
-          message.heightInCm = reader.int32();
+          message.height_in_cm = reader.int32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -760,93 +761,102 @@ export const Item = {
 
   fromJSON(object: any): Item {
     return {
-      productVariantBundleId: isSet(object.productVariantBundleId)
-        ? String(object.productVariantBundleId)
+      product_variant_bundle_id: isSet(object.product_variant_bundle_id)
+        ? String(object.product_variant_bundle_id)
         : "",
-      productName: isSet(object.productName) ? String(object.productName) : "",
-      productDescription: isSet(object.productDescription)
-        ? String(object.productDescription)
+      product_name: isSet(object.product_name)
+        ? String(object.product_name)
         : "",
-      manufacturerName: isSet(object.manufacturerName)
-        ? String(object.manufacturerName)
+      product_description: isSet(object.product_description)
+        ? String(object.product_description)
         : "",
-      manufacturerDescription: isSet(object.manufacturerDescription)
-        ? String(object.manufacturerDescription)
+      manufacturer_name: isSet(object.manufacturer_name)
+        ? String(object.manufacturer_name)
         : "",
-      prototypeName: isSet(object.prototypeName)
-        ? String(object.prototypeName)
+      manufacturer_description: isSet(object.manufacturer_description)
+        ? String(object.manufacturer_description)
         : "",
-      prototypeDescription: isSet(object.prototypeDescription)
-        ? String(object.prototypeDescription)
+      prototype_name: isSet(object.prototype_name)
+        ? String(object.prototype_name)
+        : "",
+      prototype_description: isSet(object.prototype_description)
+        ? String(object.prototype_description)
         : "",
       quantity: isSet(object.quantity) ? Number(object.quantity) : 0,
       vat: isSet(object.vat) ? Number(object.vat) : 0,
       price: isSet(object.price) ? Number(object.price) : 0,
-      itemType: isSet(object.itemType) ? String(object.itemType) : "",
-      taricCode: isSet(object.taricCode) ? Number(object.taricCode) : 0,
-      stockKeepingUnit: isSet(object.stockKeepingUnit)
-        ? String(object.stockKeepingUnit)
+      item_type: isSet(object.item_type) ? String(object.item_type) : "",
+      taric_code: isSet(object.taric_code) ? Number(object.taric_code) : 0,
+      stock_keeping_unit: isSet(object.stock_keeping_unit)
+        ? String(object.stock_keeping_unit)
         : "",
-      weightInKg: isSet(object.weightInKg) ? Number(object.weightInKg) : 0,
-      lengthInCm: isSet(object.lengthInCm) ? Number(object.lengthInCm) : 0,
-      widthInCm: isSet(object.widthInCm) ? Number(object.widthInCm) : 0,
-      heightInCm: isSet(object.heightInCm) ? Number(object.heightInCm) : 0,
+      weight_in_kg: isSet(object.weight_in_kg)
+        ? Number(object.weight_in_kg)
+        : 0,
+      length_in_cm: isSet(object.length_in_cm)
+        ? Number(object.length_in_cm)
+        : 0,
+      width_in_cm: isSet(object.width_in_cm) ? Number(object.width_in_cm) : 0,
+      height_in_cm: isSet(object.height_in_cm)
+        ? Number(object.height_in_cm)
+        : 0,
     };
   },
 
   toJSON(message: Item): unknown {
     const obj: any = {};
-    message.productVariantBundleId !== undefined &&
-      (obj.productVariantBundleId = message.productVariantBundleId);
-    message.productName !== undefined &&
-      (obj.productName = message.productName);
-    message.productDescription !== undefined &&
-      (obj.productDescription = message.productDescription);
-    message.manufacturerName !== undefined &&
-      (obj.manufacturerName = message.manufacturerName);
-    message.manufacturerDescription !== undefined &&
-      (obj.manufacturerDescription = message.manufacturerDescription);
-    message.prototypeName !== undefined &&
-      (obj.prototypeName = message.prototypeName);
-    message.prototypeDescription !== undefined &&
-      (obj.prototypeDescription = message.prototypeDescription);
+    message.product_variant_bundle_id !== undefined &&
+      (obj.product_variant_bundle_id = message.product_variant_bundle_id);
+    message.product_name !== undefined &&
+      (obj.product_name = message.product_name);
+    message.product_description !== undefined &&
+      (obj.product_description = message.product_description);
+    message.manufacturer_name !== undefined &&
+      (obj.manufacturer_name = message.manufacturer_name);
+    message.manufacturer_description !== undefined &&
+      (obj.manufacturer_description = message.manufacturer_description);
+    message.prototype_name !== undefined &&
+      (obj.prototype_name = message.prototype_name);
+    message.prototype_description !== undefined &&
+      (obj.prototype_description = message.prototype_description);
     message.quantity !== undefined &&
       (obj.quantity = Math.round(message.quantity));
     message.vat !== undefined && (obj.vat = Math.round(message.vat));
     message.price !== undefined && (obj.price = message.price);
-    message.itemType !== undefined && (obj.itemType = message.itemType);
-    message.taricCode !== undefined && (obj.taricCode = message.taricCode);
-    message.stockKeepingUnit !== undefined &&
-      (obj.stockKeepingUnit = message.stockKeepingUnit);
-    message.weightInKg !== undefined && (obj.weightInKg = message.weightInKg);
-    message.lengthInCm !== undefined &&
-      (obj.lengthInCm = Math.round(message.lengthInCm));
-    message.widthInCm !== undefined &&
-      (obj.widthInCm = Math.round(message.widthInCm));
-    message.heightInCm !== undefined &&
-      (obj.heightInCm = Math.round(message.heightInCm));
+    message.item_type !== undefined && (obj.item_type = message.item_type);
+    message.taric_code !== undefined && (obj.taric_code = message.taric_code);
+    message.stock_keeping_unit !== undefined &&
+      (obj.stock_keeping_unit = message.stock_keeping_unit);
+    message.weight_in_kg !== undefined &&
+      (obj.weight_in_kg = message.weight_in_kg);
+    message.length_in_cm !== undefined &&
+      (obj.length_in_cm = Math.round(message.length_in_cm));
+    message.width_in_cm !== undefined &&
+      (obj.width_in_cm = Math.round(message.width_in_cm));
+    message.height_in_cm !== undefined &&
+      (obj.height_in_cm = Math.round(message.height_in_cm));
     return obj;
   },
 
   fromPartial<I extends Exact<DeepPartial<Item>, I>>(object: I): Item {
     const message = createBaseItem();
-    message.productVariantBundleId = object.productVariantBundleId ?? "";
-    message.productName = object.productName ?? "";
-    message.productDescription = object.productDescription ?? "";
-    message.manufacturerName = object.manufacturerName ?? "";
-    message.manufacturerDescription = object.manufacturerDescription ?? "";
-    message.prototypeName = object.prototypeName ?? "";
-    message.prototypeDescription = object.prototypeDescription ?? "";
+    message.product_variant_bundle_id = object.product_variant_bundle_id ?? "";
+    message.product_name = object.product_name ?? "";
+    message.product_description = object.product_description ?? "";
+    message.manufacturer_name = object.manufacturer_name ?? "";
+    message.manufacturer_description = object.manufacturer_description ?? "";
+    message.prototype_name = object.prototype_name ?? "";
+    message.prototype_description = object.prototype_description ?? "";
     message.quantity = object.quantity ?? 0;
     message.vat = object.vat ?? 0;
     message.price = object.price ?? 0;
-    message.itemType = object.itemType ?? "";
-    message.taricCode = object.taricCode ?? 0;
-    message.stockKeepingUnit = object.stockKeepingUnit ?? "";
-    message.weightInKg = object.weightInKg ?? 0;
-    message.lengthInCm = object.lengthInCm ?? 0;
-    message.widthInCm = object.widthInCm ?? 0;
-    message.heightInCm = object.heightInCm ?? 0;
+    message.item_type = object.item_type ?? "";
+    message.taric_code = object.taric_code ?? 0;
+    message.stock_keeping_unit = object.stock_keeping_unit ?? "";
+    message.weight_in_kg = object.weight_in_kg ?? 0;
+    message.length_in_cm = object.length_in_cm ?? 0;
+    message.width_in_cm = object.width_in_cm ?? 0;
+    message.height_in_cm = object.height_in_cm ?? 0;
     return message;
   },
 };
@@ -904,7 +914,7 @@ export const Deleted = {
 };
 
 function createBaseOrderDataList(): OrderDataList {
-  return { orderData: [], meta: undefined };
+  return { order_data: [], meta: undefined };
 }
 
 export const OrderDataList = {
@@ -912,7 +922,7 @@ export const OrderDataList = {
     message: OrderDataList,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    for (const v of message.orderData) {
+    for (const v of message.order_data) {
       OrderData.encode(v!, writer.uint32(10).fork()).ldelim();
     }
     if (message.meta !== undefined) {
@@ -929,7 +939,7 @@ export const OrderDataList = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.orderData.push(OrderData.decode(reader, reader.uint32()));
+          message.order_data.push(OrderData.decode(reader, reader.uint32()));
           break;
         case 2:
           message.meta = Meta.decode(reader, reader.uint32());
@@ -944,8 +954,8 @@ export const OrderDataList = {
 
   fromJSON(object: any): OrderDataList {
     return {
-      orderData: Array.isArray(object?.orderData)
-        ? object.orderData.map((e: any) => OrderData.fromJSON(e))
+      order_data: Array.isArray(object?.order_data)
+        ? object.order_data.map((e: any) => OrderData.fromJSON(e))
         : [],
       meta: isSet(object.meta) ? Meta.fromJSON(object.meta) : undefined,
     };
@@ -953,12 +963,12 @@ export const OrderDataList = {
 
   toJSON(message: OrderDataList): unknown {
     const obj: any = {};
-    if (message.orderData) {
-      obj.orderData = message.orderData.map((e) =>
+    if (message.order_data) {
+      obj.order_data = message.order_data.map((e) =>
         e ? OrderData.toJSON(e) : undefined
       );
     } else {
-      obj.orderData = [];
+      obj.order_data = [];
     }
     message.meta !== undefined &&
       (obj.meta = message.meta ? Meta.toJSON(message.meta) : undefined);
@@ -969,8 +979,8 @@ export const OrderDataList = {
     object: I
   ): OrderDataList {
     const message = createBaseOrderDataList();
-    message.orderData =
-      object.orderData?.map((e) => OrderData.fromPartial(e)) || [];
+    message.order_data =
+      object.order_data?.map((e) => OrderData.fromPartial(e)) || [];
     message.meta =
       object.meta !== undefined && object.meta !== null
         ? Meta.fromPartial(object.meta)
@@ -980,7 +990,7 @@ export const OrderDataList = {
 };
 
 function createBaseOrderData(): OrderData {
-  return { orderId: "", shipments: [] };
+  return { order_id: "", shipments: [] };
 }
 
 export const OrderData = {
@@ -988,8 +998,8 @@ export const OrderData = {
     message: OrderData,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.orderId !== "") {
-      writer.uint32(10).string(message.orderId);
+    if (message.order_id !== "") {
+      writer.uint32(10).string(message.order_id);
     }
     for (const v of message.shipments) {
       Shipments.encode(v!, writer.uint32(18).fork()).ldelim();
@@ -1005,7 +1015,7 @@ export const OrderData = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.orderId = reader.string();
+          message.order_id = reader.string();
           break;
         case 2:
           message.shipments.push(Shipments.decode(reader, reader.uint32()));
@@ -1020,7 +1030,7 @@ export const OrderData = {
 
   fromJSON(object: any): OrderData {
     return {
-      orderId: isSet(object.orderId) ? String(object.orderId) : "",
+      order_id: isSet(object.order_id) ? String(object.order_id) : "",
       shipments: Array.isArray(object?.shipments)
         ? object.shipments.map((e: any) => Shipments.fromJSON(e))
         : [],
@@ -1029,7 +1039,7 @@ export const OrderData = {
 
   toJSON(message: OrderData): unknown {
     const obj: any = {};
-    message.orderId !== undefined && (obj.orderId = message.orderId);
+    message.order_id !== undefined && (obj.order_id = message.order_id);
     if (message.shipments) {
       obj.shipments = message.shipments.map((e) =>
         e ? Shipments.toJSON(e) : undefined
@@ -1044,7 +1054,7 @@ export const OrderData = {
     object: I
   ): OrderData {
     const message = createBaseOrderData();
-    message.orderId = object.orderId ?? "";
+    message.order_id = object.order_id ?? "";
     message.shipments =
       object.shipments?.map((e) => Shipments.fromPartial(e)) || [];
     return message;
@@ -1053,14 +1063,14 @@ export const OrderData = {
 
 function createBaseShipments(): Shipments {
   return {
-    totalWeightInKg: 0,
-    individualWeightInKg: 0,
+    total_weight_in_kg: 0,
+    individual_weight_in_kg: 0,
     amount: 0,
-    exportType: "",
-    exportDescription: "",
-    customsTariffNumber: "",
-    invoiceNumber: "",
-    customsValue: 0,
+    export_type: "",
+    export_description: "",
+    customs_tariff_number: "",
+    invoice_number: "",
+    customs_value: 0,
   };
 }
 
@@ -1069,29 +1079,29 @@ export const Shipments = {
     message: Shipments,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.totalWeightInKg !== 0) {
-      writer.uint32(9).double(message.totalWeightInKg);
+    if (message.total_weight_in_kg !== 0) {
+      writer.uint32(9).double(message.total_weight_in_kg);
     }
-    if (message.individualWeightInKg !== 0) {
-      writer.uint32(17).double(message.individualWeightInKg);
+    if (message.individual_weight_in_kg !== 0) {
+      writer.uint32(17).double(message.individual_weight_in_kg);
     }
     if (message.amount !== 0) {
       writer.uint32(24).int32(message.amount);
     }
-    if (message.exportType !== "") {
-      writer.uint32(34).string(message.exportType);
+    if (message.export_type !== "") {
+      writer.uint32(34).string(message.export_type);
     }
-    if (message.exportDescription !== "") {
-      writer.uint32(42).string(message.exportDescription);
+    if (message.export_description !== "") {
+      writer.uint32(42).string(message.export_description);
     }
-    if (message.customsTariffNumber !== "") {
-      writer.uint32(50).string(message.customsTariffNumber);
+    if (message.customs_tariff_number !== "") {
+      writer.uint32(50).string(message.customs_tariff_number);
     }
-    if (message.invoiceNumber !== "") {
-      writer.uint32(58).string(message.invoiceNumber);
+    if (message.invoice_number !== "") {
+      writer.uint32(58).string(message.invoice_number);
     }
-    if (message.customsValue !== 0) {
-      writer.uint32(65).double(message.customsValue);
+    if (message.customs_value !== 0) {
+      writer.uint32(65).double(message.customs_value);
     }
     return writer;
   },
@@ -1104,28 +1114,28 @@ export const Shipments = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.totalWeightInKg = reader.double();
+          message.total_weight_in_kg = reader.double();
           break;
         case 2:
-          message.individualWeightInKg = reader.double();
+          message.individual_weight_in_kg = reader.double();
           break;
         case 3:
           message.amount = reader.int32();
           break;
         case 4:
-          message.exportType = reader.string();
+          message.export_type = reader.string();
           break;
         case 5:
-          message.exportDescription = reader.string();
+          message.export_description = reader.string();
           break;
         case 6:
-          message.customsTariffNumber = reader.string();
+          message.customs_tariff_number = reader.string();
           break;
         case 7:
-          message.invoiceNumber = reader.string();
+          message.invoice_number = reader.string();
           break;
         case 8:
-          message.customsValue = reader.double();
+          message.customs_value = reader.double();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1137,45 +1147,46 @@ export const Shipments = {
 
   fromJSON(object: any): Shipments {
     return {
-      totalWeightInKg: isSet(object.totalWeightInKg)
-        ? Number(object.totalWeightInKg)
+      total_weight_in_kg: isSet(object.total_weight_in_kg)
+        ? Number(object.total_weight_in_kg)
         : 0,
-      individualWeightInKg: isSet(object.individualWeightInKg)
-        ? Number(object.individualWeightInKg)
+      individual_weight_in_kg: isSet(object.individual_weight_in_kg)
+        ? Number(object.individual_weight_in_kg)
         : 0,
       amount: isSet(object.amount) ? Number(object.amount) : 0,
-      exportType: isSet(object.exportType) ? String(object.exportType) : "",
-      exportDescription: isSet(object.exportDescription)
-        ? String(object.exportDescription)
+      export_type: isSet(object.export_type) ? String(object.export_type) : "",
+      export_description: isSet(object.export_description)
+        ? String(object.export_description)
         : "",
-      customsTariffNumber: isSet(object.customsTariffNumber)
-        ? String(object.customsTariffNumber)
+      customs_tariff_number: isSet(object.customs_tariff_number)
+        ? String(object.customs_tariff_number)
         : "",
-      invoiceNumber: isSet(object.invoiceNumber)
-        ? String(object.invoiceNumber)
+      invoice_number: isSet(object.invoice_number)
+        ? String(object.invoice_number)
         : "",
-      customsValue: isSet(object.customsValue)
-        ? Number(object.customsValue)
+      customs_value: isSet(object.customs_value)
+        ? Number(object.customs_value)
         : 0,
     };
   },
 
   toJSON(message: Shipments): unknown {
     const obj: any = {};
-    message.totalWeightInKg !== undefined &&
-      (obj.totalWeightInKg = message.totalWeightInKg);
-    message.individualWeightInKg !== undefined &&
-      (obj.individualWeightInKg = message.individualWeightInKg);
+    message.total_weight_in_kg !== undefined &&
+      (obj.total_weight_in_kg = message.total_weight_in_kg);
+    message.individual_weight_in_kg !== undefined &&
+      (obj.individual_weight_in_kg = message.individual_weight_in_kg);
     message.amount !== undefined && (obj.amount = Math.round(message.amount));
-    message.exportType !== undefined && (obj.exportType = message.exportType);
-    message.exportDescription !== undefined &&
-      (obj.exportDescription = message.exportDescription);
-    message.customsTariffNumber !== undefined &&
-      (obj.customsTariffNumber = message.customsTariffNumber);
-    message.invoiceNumber !== undefined &&
-      (obj.invoiceNumber = message.invoiceNumber);
-    message.customsValue !== undefined &&
-      (obj.customsValue = message.customsValue);
+    message.export_type !== undefined &&
+      (obj.export_type = message.export_type);
+    message.export_description !== undefined &&
+      (obj.export_description = message.export_description);
+    message.customs_tariff_number !== undefined &&
+      (obj.customs_tariff_number = message.customs_tariff_number);
+    message.invoice_number !== undefined &&
+      (obj.invoice_number = message.invoice_number);
+    message.customs_value !== undefined &&
+      (obj.customs_value = message.customs_value);
     return obj;
   },
 
@@ -1183,14 +1194,14 @@ export const Shipments = {
     object: I
   ): Shipments {
     const message = createBaseShipments();
-    message.totalWeightInKg = object.totalWeightInKg ?? 0;
-    message.individualWeightInKg = object.individualWeightInKg ?? 0;
+    message.total_weight_in_kg = object.total_weight_in_kg ?? 0;
+    message.individual_weight_in_kg = object.individual_weight_in_kg ?? 0;
     message.amount = object.amount ?? 0;
-    message.exportType = object.exportType ?? "";
-    message.exportDescription = object.exportDescription ?? "";
-    message.customsTariffNumber = object.customsTariffNumber ?? "";
-    message.invoiceNumber = object.invoiceNumber ?? "";
-    message.customsValue = object.customsValue ?? 0;
+    message.export_type = object.export_type ?? "";
+    message.export_description = object.export_description ?? "";
+    message.customs_tariff_number = object.customs_tariff_number ?? "";
+    message.invoice_number = object.invoice_number ?? "";
+    message.customs_value = object.customs_value ?? 0;
     return message;
   },
 };

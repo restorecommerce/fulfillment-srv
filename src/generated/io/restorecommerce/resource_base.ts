@@ -249,9 +249,9 @@ export interface ReadRequest {
    * with highest priority.
    * Can be empty, single locale or multiple locales.
    */
-  localesLimiter: string[];
-  customQueries: string[];
-  customArguments: Any;
+  locales_limiter: string[];
+  custom_queries: string[];
+  custom_arguments: Any;
   subject: Subject;
 }
 
@@ -265,21 +265,21 @@ export interface DeleteRequest {
 
 export interface DeleteResponse {
   status: Status[];
-  operationStatus: OperationStatus;
+  operation_status: OperationStatus;
 }
 
 /** / List of resources */
 export interface ResourceList {
   items: Resource[];
-  totalCount: number;
+  total_count: number;
   subject: Subject;
 }
 
 /** ResourceList response */
 export interface ResourceListResponse {
   items: ResourceResponse[];
-  totalCount: number;
-  operationStatus: OperationStatus;
+  total_count: number;
+  operation_status: OperationStatus;
 }
 
 /** resource read response */
@@ -602,9 +602,9 @@ function createBaseReadRequest(): ReadRequest {
     filters: [],
     field: [],
     search: [],
-    localesLimiter: [],
-    customQueries: [],
-    customArguments: undefined,
+    locales_limiter: [],
+    custom_queries: [],
+    custom_arguments: undefined,
     subject: undefined,
   };
 }
@@ -632,14 +632,14 @@ export const ReadRequest = {
     for (const v of message.search) {
       writer.uint32(50).string(v!);
     }
-    for (const v of message.localesLimiter) {
+    for (const v of message.locales_limiter) {
       writer.uint32(58).string(v!);
     }
-    for (const v of message.customQueries) {
+    for (const v of message.custom_queries) {
       writer.uint32(66).string(v!);
     }
-    if (message.customArguments !== undefined) {
-      Any.encode(message.customArguments, writer.uint32(74).fork()).ldelim();
+    if (message.custom_arguments !== undefined) {
+      Any.encode(message.custom_arguments, writer.uint32(74).fork()).ldelim();
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(82).fork()).ldelim();
@@ -673,13 +673,13 @@ export const ReadRequest = {
           message.search.push(reader.string());
           break;
         case 7:
-          message.localesLimiter.push(reader.string());
+          message.locales_limiter.push(reader.string());
           break;
         case 8:
-          message.customQueries.push(reader.string());
+          message.custom_queries.push(reader.string());
           break;
         case 9:
-          message.customArguments = Any.decode(reader, reader.uint32());
+          message.custom_arguments = Any.decode(reader, reader.uint32());
           break;
         case 10:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -708,14 +708,14 @@ export const ReadRequest = {
       search: Array.isArray(object?.search)
         ? object.search.map((e: any) => String(e))
         : [],
-      localesLimiter: Array.isArray(object?.localesLimiter)
-        ? object.localesLimiter.map((e: any) => String(e))
+      locales_limiter: Array.isArray(object?.locales_limiter)
+        ? object.locales_limiter.map((e: any) => String(e))
         : [],
-      customQueries: Array.isArray(object?.customQueries)
-        ? object.customQueries.map((e: any) => String(e))
+      custom_queries: Array.isArray(object?.custom_queries)
+        ? object.custom_queries.map((e: any) => String(e))
         : [],
-      customArguments: isSet(object.customArguments)
-        ? Any.fromJSON(object.customArguments)
+      custom_arguments: isSet(object.custom_arguments)
+        ? Any.fromJSON(object.custom_arguments)
         : undefined,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
@@ -751,19 +751,19 @@ export const ReadRequest = {
     } else {
       obj.search = [];
     }
-    if (message.localesLimiter) {
-      obj.localesLimiter = message.localesLimiter.map((e) => e);
+    if (message.locales_limiter) {
+      obj.locales_limiter = message.locales_limiter.map((e) => e);
     } else {
-      obj.localesLimiter = [];
+      obj.locales_limiter = [];
     }
-    if (message.customQueries) {
-      obj.customQueries = message.customQueries.map((e) => e);
+    if (message.custom_queries) {
+      obj.custom_queries = message.custom_queries.map((e) => e);
     } else {
-      obj.customQueries = [];
+      obj.custom_queries = [];
     }
-    message.customArguments !== undefined &&
-      (obj.customArguments = message.customArguments
-        ? Any.toJSON(message.customArguments)
+    message.custom_arguments !== undefined &&
+      (obj.custom_arguments = message.custom_arguments
+        ? Any.toJSON(message.custom_arguments)
         : undefined);
     message.subject !== undefined &&
       (obj.subject = message.subject
@@ -782,11 +782,11 @@ export const ReadRequest = {
     message.filters = object.filters?.map((e) => FilterOp.fromPartial(e)) || [];
     message.field = object.field?.map((e) => FieldFilter.fromPartial(e)) || [];
     message.search = object.search?.map((e) => e) || [];
-    message.localesLimiter = object.localesLimiter?.map((e) => e) || [];
-    message.customQueries = object.customQueries?.map((e) => e) || [];
-    message.customArguments =
-      object.customArguments !== undefined && object.customArguments !== null
-        ? Any.fromPartial(object.customArguments)
+    message.locales_limiter = object.locales_limiter?.map((e) => e) || [];
+    message.custom_queries = object.custom_queries?.map((e) => e) || [];
+    message.custom_arguments =
+      object.custom_arguments !== undefined && object.custom_arguments !== null
+        ? Any.fromPartial(object.custom_arguments)
         : undefined;
     message.subject =
       object.subject !== undefined && object.subject !== null
@@ -883,7 +883,7 @@ export const DeleteRequest = {
 };
 
 function createBaseDeleteResponse(): DeleteResponse {
-  return { status: [], operationStatus: undefined };
+  return { status: [], operation_status: undefined };
 }
 
 export const DeleteResponse = {
@@ -894,9 +894,9 @@ export const DeleteResponse = {
     for (const v of message.status) {
       Status.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(18).fork()
       ).ldelim();
     }
@@ -914,7 +914,7 @@ export const DeleteResponse = {
           message.status.push(Status.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -932,8 +932,8 @@ export const DeleteResponse = {
       status: Array.isArray(object?.status)
         ? object.status.map((e: any) => Status.fromJSON(e))
         : [],
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -947,9 +947,9 @@ export const DeleteResponse = {
     } else {
       obj.status = [];
     }
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -959,16 +959,16 @@ export const DeleteResponse = {
   ): DeleteResponse {
     const message = createBaseDeleteResponse();
     message.status = object.status?.map((e) => Status.fromPartial(e)) || [];
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },
 };
 
 function createBaseResourceList(): ResourceList {
-  return { items: [], totalCount: 0, subject: undefined };
+  return { items: [], total_count: 0, subject: undefined };
 }
 
 export const ResourceList = {
@@ -979,8 +979,8 @@ export const ResourceList = {
     for (const v of message.items) {
       Resource.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(26).fork()).ldelim();
@@ -999,7 +999,7 @@ export const ResourceList = {
           message.items.push(Resource.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -1017,7 +1017,7 @@ export const ResourceList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => Resource.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
         : undefined,
@@ -1033,8 +1033,8 @@ export const ResourceList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
     message.subject !== undefined &&
       (obj.subject = message.subject
         ? Subject.toJSON(message.subject)
@@ -1047,7 +1047,7 @@ export const ResourceList = {
   ): ResourceList {
     const message = createBaseResourceList();
     message.items = object.items?.map((e) => Resource.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
+    message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
         ? Subject.fromPartial(object.subject)
@@ -1057,7 +1057,7 @@ export const ResourceList = {
 };
 
 function createBaseResourceListResponse(): ResourceListResponse {
-  return { items: [], totalCount: 0, operationStatus: undefined };
+  return { items: [], total_count: 0, operation_status: undefined };
 }
 
 export const ResourceListResponse = {
@@ -1068,12 +1068,12 @@ export const ResourceListResponse = {
     for (const v of message.items) {
       ResourceResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(26).fork()
       ).ldelim();
     }
@@ -1094,10 +1094,10 @@ export const ResourceListResponse = {
           message.items.push(ResourceResponse.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -1115,9 +1115,9 @@ export const ResourceListResponse = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => ResourceResponse.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -1131,11 +1131,11 @@ export const ResourceListResponse = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -1146,10 +1146,10 @@ export const ResourceListResponse = {
     const message = createBaseResourceListResponse();
     message.items =
       object.items?.map((e) => ResourceResponse.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.total_count = object.total_count ?? 0;
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },

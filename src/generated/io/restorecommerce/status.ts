@@ -19,7 +19,7 @@ export interface StatusObj {
 }
 
 export interface OperationStatusObj {
-  operationStatus: OperationStatus;
+  operation_status: OperationStatus;
 }
 
 export interface OperationStatus {
@@ -218,7 +218,7 @@ export const StatusObj = {
 };
 
 function createBaseOperationStatusObj(): OperationStatusObj {
-  return { operationStatus: undefined };
+  return { operation_status: undefined };
 }
 
 export const OperationStatusObj = {
@@ -226,9 +226,9 @@ export const OperationStatusObj = {
     message: OperationStatusObj,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(10).fork()
       ).ldelim();
     }
@@ -243,7 +243,7 @@ export const OperationStatusObj = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -258,17 +258,17 @@ export const OperationStatusObj = {
 
   fromJSON(object: any): OperationStatusObj {
     return {
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
 
   toJSON(message: OperationStatusObj): unknown {
     const obj: any = {};
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -277,9 +277,9 @@ export const OperationStatusObj = {
     object: I
   ): OperationStatusObj {
     const message = createBaseOperationStatusObj();
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },

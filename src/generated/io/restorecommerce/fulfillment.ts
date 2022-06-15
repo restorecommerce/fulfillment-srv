@@ -86,14 +86,14 @@ export interface Contact {
 
 export interface Branch {
   provider: string;
-  branchNumber: string;
-  postNumber: string;
+  branch_number: string;
+  post_number: string;
 }
 
 export interface Packstation {
   provider: string;
-  stationNumber: string;
-  postNumber: string;
+  station_number: string;
+  post_number: string;
 }
 
 export interface Address {
@@ -107,22 +107,22 @@ export interface Address {
 }
 
 export interface Parcel {
-  productId: string;
-  productVariantId: string;
+  product_id: string;
+  product_variant_id: string;
   items: Parcel_Item[];
-  weightInKg: number;
-  heightInCm: number;
-  widthInCm: number;
-  lengthInCm: number;
+  weight_in_kg: number;
+  height_in_cm: number;
+  width_in_cm: number;
+  length_in_cm: number;
 }
 
 export interface Parcel_Item {
-  itemId: string;
+  item_id: string;
   quantity: number;
 }
 
 export interface Order {
-  referenceId: string;
+  reference_id: string;
   parcels: Parcel[];
   sender: Address;
   receiver: Address;
@@ -134,7 +134,7 @@ export interface Label {
   pdf: string | undefined;
   png: string | undefined;
   /** filled on Order */
-  shipmentNumber: string;
+  shipment_number: string;
   /** update by Track */
   state: State;
   /** API status */
@@ -149,7 +149,7 @@ export interface FulfillmentRequest {
 
 export interface FulfillmentRequestList {
   items: FulfillmentRequest[];
-  totalCount: number;
+  total_count: number;
   subject: Subject;
 }
 
@@ -170,14 +170,14 @@ export interface FulfillmentResponse {
 
 export interface FulfillmentResponseList {
   items: FulfillmentResponse[];
-  totalCount: number;
-  operationStatus: OperationStatus;
+  total_count: number;
+  operation_status: OperationStatus;
 }
 
 export interface TrackingRequest {
-  fulfillmentId: string;
+  fulfillment_id: string;
   /** optional */
-  shipmentNumbers: string[];
+  shipment_numbers: string[];
   options: Any;
 }
 
@@ -194,7 +194,7 @@ export interface Event {
 }
 
 export interface Tracking {
-  shipmentNumber: string;
+  shipment_number: string;
   events: Event[];
   details: Any;
   status: Status;
@@ -208,7 +208,7 @@ export interface TrackingResult {
 
 export interface TrackingResultList {
   items: TrackingResult[];
-  operationStatus: OperationStatus;
+  operation_status: OperationStatus;
 }
 
 export interface CancelRequestList {
@@ -291,7 +291,7 @@ export const Contact = {
 };
 
 function createBaseBranch(): Branch {
-  return { provider: "", branchNumber: "", postNumber: "" };
+  return { provider: "", branch_number: "", post_number: "" };
 }
 
 export const Branch = {
@@ -302,11 +302,11 @@ export const Branch = {
     if (message.provider !== "") {
       writer.uint32(10).string(message.provider);
     }
-    if (message.branchNumber !== "") {
-      writer.uint32(18).string(message.branchNumber);
+    if (message.branch_number !== "") {
+      writer.uint32(18).string(message.branch_number);
     }
-    if (message.postNumber !== "") {
-      writer.uint32(26).string(message.postNumber);
+    if (message.post_number !== "") {
+      writer.uint32(26).string(message.post_number);
     }
     return writer;
   },
@@ -322,10 +322,10 @@ export const Branch = {
           message.provider = reader.string();
           break;
         case 2:
-          message.branchNumber = reader.string();
+          message.branch_number = reader.string();
           break;
         case 3:
-          message.postNumber = reader.string();
+          message.post_number = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -338,33 +338,34 @@ export const Branch = {
   fromJSON(object: any): Branch {
     return {
       provider: isSet(object.provider) ? String(object.provider) : "",
-      branchNumber: isSet(object.branchNumber)
-        ? String(object.branchNumber)
+      branch_number: isSet(object.branch_number)
+        ? String(object.branch_number)
         : "",
-      postNumber: isSet(object.postNumber) ? String(object.postNumber) : "",
+      post_number: isSet(object.post_number) ? String(object.post_number) : "",
     };
   },
 
   toJSON(message: Branch): unknown {
     const obj: any = {};
     message.provider !== undefined && (obj.provider = message.provider);
-    message.branchNumber !== undefined &&
-      (obj.branchNumber = message.branchNumber);
-    message.postNumber !== undefined && (obj.postNumber = message.postNumber);
+    message.branch_number !== undefined &&
+      (obj.branch_number = message.branch_number);
+    message.post_number !== undefined &&
+      (obj.post_number = message.post_number);
     return obj;
   },
 
   fromPartial<I extends Exact<DeepPartial<Branch>, I>>(object: I): Branch {
     const message = createBaseBranch();
     message.provider = object.provider ?? "";
-    message.branchNumber = object.branchNumber ?? "";
-    message.postNumber = object.postNumber ?? "";
+    message.branch_number = object.branch_number ?? "";
+    message.post_number = object.post_number ?? "";
     return message;
   },
 };
 
 function createBasePackstation(): Packstation {
-  return { provider: "", stationNumber: "", postNumber: "" };
+  return { provider: "", station_number: "", post_number: "" };
 }
 
 export const Packstation = {
@@ -375,11 +376,11 @@ export const Packstation = {
     if (message.provider !== "") {
       writer.uint32(10).string(message.provider);
     }
-    if (message.stationNumber !== "") {
-      writer.uint32(18).string(message.stationNumber);
+    if (message.station_number !== "") {
+      writer.uint32(18).string(message.station_number);
     }
-    if (message.postNumber !== "") {
-      writer.uint32(26).string(message.postNumber);
+    if (message.post_number !== "") {
+      writer.uint32(26).string(message.post_number);
     }
     return writer;
   },
@@ -395,10 +396,10 @@ export const Packstation = {
           message.provider = reader.string();
           break;
         case 2:
-          message.stationNumber = reader.string();
+          message.station_number = reader.string();
           break;
         case 3:
-          message.postNumber = reader.string();
+          message.post_number = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -411,19 +412,20 @@ export const Packstation = {
   fromJSON(object: any): Packstation {
     return {
       provider: isSet(object.provider) ? String(object.provider) : "",
-      stationNumber: isSet(object.stationNumber)
-        ? String(object.stationNumber)
+      station_number: isSet(object.station_number)
+        ? String(object.station_number)
         : "",
-      postNumber: isSet(object.postNumber) ? String(object.postNumber) : "",
+      post_number: isSet(object.post_number) ? String(object.post_number) : "",
     };
   },
 
   toJSON(message: Packstation): unknown {
     const obj: any = {};
     message.provider !== undefined && (obj.provider = message.provider);
-    message.stationNumber !== undefined &&
-      (obj.stationNumber = message.stationNumber);
-    message.postNumber !== undefined && (obj.postNumber = message.postNumber);
+    message.station_number !== undefined &&
+      (obj.station_number = message.station_number);
+    message.post_number !== undefined &&
+      (obj.post_number = message.post_number);
     return obj;
   },
 
@@ -432,8 +434,8 @@ export const Packstation = {
   ): Packstation {
     const message = createBasePackstation();
     message.provider = object.provider ?? "";
-    message.stationNumber = object.stationNumber ?? "";
-    message.postNumber = object.postNumber ?? "";
+    message.station_number = object.station_number ?? "";
+    message.post_number = object.post_number ?? "";
     return message;
   },
 };
@@ -599,13 +601,13 @@ export const Address = {
 
 function createBaseParcel(): Parcel {
   return {
-    productId: "",
-    productVariantId: "",
+    product_id: "",
+    product_variant_id: "",
     items: [],
-    weightInKg: 0,
-    heightInCm: 0,
-    widthInCm: 0,
-    lengthInCm: 0,
+    weight_in_kg: 0,
+    height_in_cm: 0,
+    width_in_cm: 0,
+    length_in_cm: 0,
   };
 }
 
@@ -614,26 +616,26 @@ export const Parcel = {
     message: Parcel,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.productId !== "") {
-      writer.uint32(10).string(message.productId);
+    if (message.product_id !== "") {
+      writer.uint32(10).string(message.product_id);
     }
-    if (message.productVariantId !== "") {
-      writer.uint32(18).string(message.productVariantId);
+    if (message.product_variant_id !== "") {
+      writer.uint32(18).string(message.product_variant_id);
     }
     for (const v of message.items) {
       Parcel_Item.encode(v!, writer.uint32(26).fork()).ldelim();
     }
-    if (message.weightInKg !== 0) {
-      writer.uint32(37).float(message.weightInKg);
+    if (message.weight_in_kg !== 0) {
+      writer.uint32(37).float(message.weight_in_kg);
     }
-    if (message.heightInCm !== 0) {
-      writer.uint32(45).float(message.heightInCm);
+    if (message.height_in_cm !== 0) {
+      writer.uint32(45).float(message.height_in_cm);
     }
-    if (message.widthInCm !== 0) {
-      writer.uint32(53).float(message.widthInCm);
+    if (message.width_in_cm !== 0) {
+      writer.uint32(53).float(message.width_in_cm);
     }
-    if (message.lengthInCm !== 0) {
-      writer.uint32(61).float(message.lengthInCm);
+    if (message.length_in_cm !== 0) {
+      writer.uint32(61).float(message.length_in_cm);
     }
     return writer;
   },
@@ -646,25 +648,25 @@ export const Parcel = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.productId = reader.string();
+          message.product_id = reader.string();
           break;
         case 2:
-          message.productVariantId = reader.string();
+          message.product_variant_id = reader.string();
           break;
         case 3:
           message.items.push(Parcel_Item.decode(reader, reader.uint32()));
           break;
         case 4:
-          message.weightInKg = reader.float();
+          message.weight_in_kg = reader.float();
           break;
         case 5:
-          message.heightInCm = reader.float();
+          message.height_in_cm = reader.float();
           break;
         case 6:
-          message.widthInCm = reader.float();
+          message.width_in_cm = reader.float();
           break;
         case 7:
-          message.lengthInCm = reader.float();
+          message.length_in_cm = reader.float();
           break;
         default:
           reader.skipType(tag & 7);
@@ -676,25 +678,31 @@ export const Parcel = {
 
   fromJSON(object: any): Parcel {
     return {
-      productId: isSet(object.productId) ? String(object.productId) : "",
-      productVariantId: isSet(object.productVariantId)
-        ? String(object.productVariantId)
+      product_id: isSet(object.product_id) ? String(object.product_id) : "",
+      product_variant_id: isSet(object.product_variant_id)
+        ? String(object.product_variant_id)
         : "",
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => Parcel_Item.fromJSON(e))
         : [],
-      weightInKg: isSet(object.weightInKg) ? Number(object.weightInKg) : 0,
-      heightInCm: isSet(object.heightInCm) ? Number(object.heightInCm) : 0,
-      widthInCm: isSet(object.widthInCm) ? Number(object.widthInCm) : 0,
-      lengthInCm: isSet(object.lengthInCm) ? Number(object.lengthInCm) : 0,
+      weight_in_kg: isSet(object.weight_in_kg)
+        ? Number(object.weight_in_kg)
+        : 0,
+      height_in_cm: isSet(object.height_in_cm)
+        ? Number(object.height_in_cm)
+        : 0,
+      width_in_cm: isSet(object.width_in_cm) ? Number(object.width_in_cm) : 0,
+      length_in_cm: isSet(object.length_in_cm)
+        ? Number(object.length_in_cm)
+        : 0,
     };
   },
 
   toJSON(message: Parcel): unknown {
     const obj: any = {};
-    message.productId !== undefined && (obj.productId = message.productId);
-    message.productVariantId !== undefined &&
-      (obj.productVariantId = message.productVariantId);
+    message.product_id !== undefined && (obj.product_id = message.product_id);
+    message.product_variant_id !== undefined &&
+      (obj.product_variant_id = message.product_variant_id);
     if (message.items) {
       obj.items = message.items.map((e) =>
         e ? Parcel_Item.toJSON(e) : undefined
@@ -702,28 +710,32 @@ export const Parcel = {
     } else {
       obj.items = [];
     }
-    message.weightInKg !== undefined && (obj.weightInKg = message.weightInKg);
-    message.heightInCm !== undefined && (obj.heightInCm = message.heightInCm);
-    message.widthInCm !== undefined && (obj.widthInCm = message.widthInCm);
-    message.lengthInCm !== undefined && (obj.lengthInCm = message.lengthInCm);
+    message.weight_in_kg !== undefined &&
+      (obj.weight_in_kg = message.weight_in_kg);
+    message.height_in_cm !== undefined &&
+      (obj.height_in_cm = message.height_in_cm);
+    message.width_in_cm !== undefined &&
+      (obj.width_in_cm = message.width_in_cm);
+    message.length_in_cm !== undefined &&
+      (obj.length_in_cm = message.length_in_cm);
     return obj;
   },
 
   fromPartial<I extends Exact<DeepPartial<Parcel>, I>>(object: I): Parcel {
     const message = createBaseParcel();
-    message.productId = object.productId ?? "";
-    message.productVariantId = object.productVariantId ?? "";
+    message.product_id = object.product_id ?? "";
+    message.product_variant_id = object.product_variant_id ?? "";
     message.items = object.items?.map((e) => Parcel_Item.fromPartial(e)) || [];
-    message.weightInKg = object.weightInKg ?? 0;
-    message.heightInCm = object.heightInCm ?? 0;
-    message.widthInCm = object.widthInCm ?? 0;
-    message.lengthInCm = object.lengthInCm ?? 0;
+    message.weight_in_kg = object.weight_in_kg ?? 0;
+    message.height_in_cm = object.height_in_cm ?? 0;
+    message.width_in_cm = object.width_in_cm ?? 0;
+    message.length_in_cm = object.length_in_cm ?? 0;
     return message;
   },
 };
 
 function createBaseParcel_Item(): Parcel_Item {
-  return { itemId: "", quantity: 0 };
+  return { item_id: "", quantity: 0 };
 }
 
 export const Parcel_Item = {
@@ -731,8 +743,8 @@ export const Parcel_Item = {
     message: Parcel_Item,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.itemId !== "") {
-      writer.uint32(10).string(message.itemId);
+    if (message.item_id !== "") {
+      writer.uint32(10).string(message.item_id);
     }
     if (message.quantity !== 0) {
       writer.uint32(16).int32(message.quantity);
@@ -748,7 +760,7 @@ export const Parcel_Item = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.itemId = reader.string();
+          message.item_id = reader.string();
           break;
         case 2:
           message.quantity = reader.int32();
@@ -763,14 +775,14 @@ export const Parcel_Item = {
 
   fromJSON(object: any): Parcel_Item {
     return {
-      itemId: isSet(object.itemId) ? String(object.itemId) : "",
+      item_id: isSet(object.item_id) ? String(object.item_id) : "",
       quantity: isSet(object.quantity) ? Number(object.quantity) : 0,
     };
   },
 
   toJSON(message: Parcel_Item): unknown {
     const obj: any = {};
-    message.itemId !== undefined && (obj.itemId = message.itemId);
+    message.item_id !== undefined && (obj.item_id = message.item_id);
     message.quantity !== undefined &&
       (obj.quantity = Math.round(message.quantity));
     return obj;
@@ -780,7 +792,7 @@ export const Parcel_Item = {
     object: I
   ): Parcel_Item {
     const message = createBaseParcel_Item();
-    message.itemId = object.itemId ?? "";
+    message.item_id = object.item_id ?? "";
     message.quantity = object.quantity ?? 0;
     return message;
   },
@@ -788,7 +800,7 @@ export const Parcel_Item = {
 
 function createBaseOrder(): Order {
   return {
-    referenceId: "",
+    reference_id: "",
     parcels: [],
     sender: undefined,
     receiver: undefined,
@@ -798,8 +810,8 @@ function createBaseOrder(): Order {
 
 export const Order = {
   encode(message: Order, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.referenceId !== "") {
-      writer.uint32(10).string(message.referenceId);
+    if (message.reference_id !== "") {
+      writer.uint32(10).string(message.reference_id);
     }
     for (const v of message.parcels) {
       Parcel.encode(v!, writer.uint32(18).fork()).ldelim();
@@ -824,7 +836,7 @@ export const Order = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.referenceId = reader.string();
+          message.reference_id = reader.string();
           break;
         case 2:
           message.parcels.push(Parcel.decode(reader, reader.uint32()));
@@ -848,7 +860,9 @@ export const Order = {
 
   fromJSON(object: any): Order {
     return {
-      referenceId: isSet(object.referenceId) ? String(object.referenceId) : "",
+      reference_id: isSet(object.reference_id)
+        ? String(object.reference_id)
+        : "",
       parcels: Array.isArray(object?.parcels)
         ? object.parcels.map((e: any) => Parcel.fromJSON(e))
         : [],
@@ -864,8 +878,8 @@ export const Order = {
 
   toJSON(message: Order): unknown {
     const obj: any = {};
-    message.referenceId !== undefined &&
-      (obj.referenceId = message.referenceId);
+    message.reference_id !== undefined &&
+      (obj.reference_id = message.reference_id);
     if (message.parcels) {
       obj.parcels = message.parcels.map((e) =>
         e ? Parcel.toJSON(e) : undefined
@@ -887,7 +901,7 @@ export const Order = {
 
   fromPartial<I extends Exact<DeepPartial<Order>, I>>(object: I): Order {
     const message = createBaseOrder();
-    message.referenceId = object.referenceId ?? "";
+    message.reference_id = object.reference_id ?? "";
     message.parcels = object.parcels?.map((e) => Parcel.fromPartial(e)) || [];
     message.sender =
       object.sender !== undefined && object.sender !== null
@@ -907,7 +921,7 @@ function createBaseLabel(): Label {
     url: undefined,
     pdf: undefined,
     png: undefined,
-    shipmentNumber: "",
+    shipment_number: "",
     state: 0,
     status: undefined,
   };
@@ -924,8 +938,8 @@ export const Label = {
     if (message.png !== undefined) {
       writer.uint32(26).string(message.png);
     }
-    if (message.shipmentNumber !== "") {
-      writer.uint32(34).string(message.shipmentNumber);
+    if (message.shipment_number !== "") {
+      writer.uint32(34).string(message.shipment_number);
     }
     if (message.state !== 0) {
       writer.uint32(40).int32(message.state);
@@ -953,7 +967,7 @@ export const Label = {
           message.png = reader.string();
           break;
         case 4:
-          message.shipmentNumber = reader.string();
+          message.shipment_number = reader.string();
           break;
         case 5:
           message.state = reader.int32() as any;
@@ -974,8 +988,8 @@ export const Label = {
       url: isSet(object.url) ? String(object.url) : undefined,
       pdf: isSet(object.pdf) ? String(object.pdf) : undefined,
       png: isSet(object.png) ? String(object.png) : undefined,
-      shipmentNumber: isSet(object.shipmentNumber)
-        ? String(object.shipmentNumber)
+      shipment_number: isSet(object.shipment_number)
+        ? String(object.shipment_number)
         : "",
       state: isSet(object.state) ? stateFromJSON(object.state) : 0,
       status: isSet(object.status) ? Status.fromJSON(object.status) : undefined,
@@ -987,8 +1001,8 @@ export const Label = {
     message.url !== undefined && (obj.url = message.url);
     message.pdf !== undefined && (obj.pdf = message.pdf);
     message.png !== undefined && (obj.png = message.png);
-    message.shipmentNumber !== undefined &&
-      (obj.shipmentNumber = message.shipmentNumber);
+    message.shipment_number !== undefined &&
+      (obj.shipment_number = message.shipment_number);
     message.state !== undefined && (obj.state = stateToJSON(message.state));
     message.status !== undefined &&
       (obj.status = message.status ? Status.toJSON(message.status) : undefined);
@@ -1000,7 +1014,7 @@ export const Label = {
     message.url = object.url ?? undefined;
     message.pdf = object.pdf ?? undefined;
     message.png = object.png ?? undefined;
-    message.shipmentNumber = object.shipmentNumber ?? "";
+    message.shipment_number = object.shipment_number ?? "";
     message.state = object.state ?? 0;
     message.status =
       object.status !== undefined && object.status !== null
@@ -1091,7 +1105,7 @@ export const FulfillmentRequest = {
 };
 
 function createBaseFulfillmentRequestList(): FulfillmentRequestList {
-  return { items: [], totalCount: 0, subject: undefined };
+  return { items: [], total_count: 0, subject: undefined };
 }
 
 export const FulfillmentRequestList = {
@@ -1102,8 +1116,8 @@ export const FulfillmentRequestList = {
     for (const v of message.items) {
       FulfillmentRequest.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(26).fork()).ldelim();
@@ -1127,7 +1141,7 @@ export const FulfillmentRequestList = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -1145,7 +1159,7 @@ export const FulfillmentRequestList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => FulfillmentRequest.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
         : undefined,
@@ -1161,8 +1175,8 @@ export const FulfillmentRequestList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
     message.subject !== undefined &&
       (obj.subject = message.subject
         ? Subject.toJSON(message.subject)
@@ -1176,7 +1190,7 @@ export const FulfillmentRequestList = {
     const message = createBaseFulfillmentRequestList();
     message.items =
       object.items?.map((e) => FulfillmentRequest.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
+    message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
         ? Subject.fromPartial(object.subject)
@@ -1371,7 +1385,7 @@ export const FulfillmentResponse = {
 };
 
 function createBaseFulfillmentResponseList(): FulfillmentResponseList {
-  return { items: [], totalCount: 0, operationStatus: undefined };
+  return { items: [], total_count: 0, operation_status: undefined };
 }
 
 export const FulfillmentResponseList = {
@@ -1382,12 +1396,12 @@ export const FulfillmentResponseList = {
     for (const v of message.items) {
       FulfillmentResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(26).fork()
       ).ldelim();
     }
@@ -1410,10 +1424,10 @@ export const FulfillmentResponseList = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -1431,9 +1445,9 @@ export const FulfillmentResponseList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => FulfillmentResponse.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -1447,11 +1461,11 @@ export const FulfillmentResponseList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -1462,17 +1476,17 @@ export const FulfillmentResponseList = {
     const message = createBaseFulfillmentResponseList();
     message.items =
       object.items?.map((e) => FulfillmentResponse.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.total_count = object.total_count ?? 0;
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },
 };
 
 function createBaseTrackingRequest(): TrackingRequest {
-  return { fulfillmentId: "", shipmentNumbers: [], options: undefined };
+  return { fulfillment_id: "", shipment_numbers: [], options: undefined };
 }
 
 export const TrackingRequest = {
@@ -1480,10 +1494,10 @@ export const TrackingRequest = {
     message: TrackingRequest,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.fulfillmentId !== "") {
-      writer.uint32(10).string(message.fulfillmentId);
+    if (message.fulfillment_id !== "") {
+      writer.uint32(10).string(message.fulfillment_id);
     }
-    for (const v of message.shipmentNumbers) {
+    for (const v of message.shipment_numbers) {
       writer.uint32(18).string(v!);
     }
     if (message.options !== undefined) {
@@ -1500,10 +1514,10 @@ export const TrackingRequest = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.fulfillmentId = reader.string();
+          message.fulfillment_id = reader.string();
           break;
         case 2:
-          message.shipmentNumbers.push(reader.string());
+          message.shipment_numbers.push(reader.string());
           break;
         case 3:
           message.options = Any.decode(reader, reader.uint32());
@@ -1518,11 +1532,11 @@ export const TrackingRequest = {
 
   fromJSON(object: any): TrackingRequest {
     return {
-      fulfillmentId: isSet(object.fulfillmentId)
-        ? String(object.fulfillmentId)
+      fulfillment_id: isSet(object.fulfillment_id)
+        ? String(object.fulfillment_id)
         : "",
-      shipmentNumbers: Array.isArray(object?.shipmentNumbers)
-        ? object.shipmentNumbers.map((e: any) => String(e))
+      shipment_numbers: Array.isArray(object?.shipment_numbers)
+        ? object.shipment_numbers.map((e: any) => String(e))
         : [],
       options: isSet(object.options) ? Any.fromJSON(object.options) : undefined,
     };
@@ -1530,12 +1544,12 @@ export const TrackingRequest = {
 
   toJSON(message: TrackingRequest): unknown {
     const obj: any = {};
-    message.fulfillmentId !== undefined &&
-      (obj.fulfillmentId = message.fulfillmentId);
-    if (message.shipmentNumbers) {
-      obj.shipmentNumbers = message.shipmentNumbers.map((e) => e);
+    message.fulfillment_id !== undefined &&
+      (obj.fulfillment_id = message.fulfillment_id);
+    if (message.shipment_numbers) {
+      obj.shipment_numbers = message.shipment_numbers.map((e) => e);
     } else {
-      obj.shipmentNumbers = [];
+      obj.shipment_numbers = [];
     }
     message.options !== undefined &&
       (obj.options = message.options ? Any.toJSON(message.options) : undefined);
@@ -1546,8 +1560,8 @@ export const TrackingRequest = {
     object: I
   ): TrackingRequest {
     const message = createBaseTrackingRequest();
-    message.fulfillmentId = object.fulfillmentId ?? "";
-    message.shipmentNumbers = object.shipmentNumbers?.map((e) => e) || [];
+    message.fulfillment_id = object.fulfillment_id ?? "";
+    message.shipment_numbers = object.shipment_numbers?.map((e) => e) || [];
     message.options =
       object.options !== undefined && object.options !== null
         ? Any.fromPartial(object.options)
@@ -1723,7 +1737,7 @@ export const Event = {
 
 function createBaseTracking(): Tracking {
   return {
-    shipmentNumber: "",
+    shipment_number: "",
     events: [],
     details: undefined,
     status: undefined,
@@ -1735,8 +1749,8 @@ export const Tracking = {
     message: Tracking,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.shipmentNumber !== "") {
-      writer.uint32(10).string(message.shipmentNumber);
+    if (message.shipment_number !== "") {
+      writer.uint32(10).string(message.shipment_number);
     }
     for (const v of message.events) {
       Event.encode(v!, writer.uint32(26).fork()).ldelim();
@@ -1758,7 +1772,7 @@ export const Tracking = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.shipmentNumber = reader.string();
+          message.shipment_number = reader.string();
           break;
         case 3:
           message.events.push(Event.decode(reader, reader.uint32()));
@@ -1779,8 +1793,8 @@ export const Tracking = {
 
   fromJSON(object: any): Tracking {
     return {
-      shipmentNumber: isSet(object.shipmentNumber)
-        ? String(object.shipmentNumber)
+      shipment_number: isSet(object.shipment_number)
+        ? String(object.shipment_number)
         : "",
       events: Array.isArray(object?.events)
         ? object.events.map((e: any) => Event.fromJSON(e))
@@ -1792,8 +1806,8 @@ export const Tracking = {
 
   toJSON(message: Tracking): unknown {
     const obj: any = {};
-    message.shipmentNumber !== undefined &&
-      (obj.shipmentNumber = message.shipmentNumber);
+    message.shipment_number !== undefined &&
+      (obj.shipment_number = message.shipment_number);
     if (message.events) {
       obj.events = message.events.map((e) => (e ? Event.toJSON(e) : undefined));
     } else {
@@ -1808,7 +1822,7 @@ export const Tracking = {
 
   fromPartial<I extends Exact<DeepPartial<Tracking>, I>>(object: I): Tracking {
     const message = createBaseTracking();
-    message.shipmentNumber = object.shipmentNumber ?? "";
+    message.shipment_number = object.shipment_number ?? "";
     message.events = object.events?.map((e) => Event.fromPartial(e)) || [];
     message.details =
       object.details !== undefined && object.details !== null
@@ -1918,7 +1932,7 @@ export const TrackingResult = {
 };
 
 function createBaseTrackingResultList(): TrackingResultList {
-  return { items: [], operationStatus: undefined };
+  return { items: [], operation_status: undefined };
 }
 
 export const TrackingResultList = {
@@ -1929,9 +1943,9 @@ export const TrackingResultList = {
     for (const v of message.items) {
       TrackingResult.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(18).fork()
       ).ldelim();
     }
@@ -1949,7 +1963,7 @@ export const TrackingResultList = {
           message.items.push(TrackingResult.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -1967,8 +1981,8 @@ export const TrackingResultList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => TrackingResult.fromJSON(e))
         : [],
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -1982,9 +1996,9 @@ export const TrackingResultList = {
     } else {
       obj.items = [];
     }
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -1995,9 +2009,9 @@ export const TrackingResultList = {
     const message = createBaseTrackingResultList();
     message.items =
       object.items?.map((e) => TrackingResult.fromPartial(e)) || [];
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },

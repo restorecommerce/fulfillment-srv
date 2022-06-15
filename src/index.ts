@@ -48,7 +48,7 @@ export interface AggregatedTrackingRequest extends TrackingRequest
 
 export interface FlatAggregatedTrackingRequest extends TrackingRequest
 {
-  shipmentNumber: string;
+  shipment_number: string;
   fulfillment: FlatAggregatedFulfillment;
 }
 
@@ -74,14 +74,14 @@ export abstract class Stub
     let stub = Stub.REGISTER[courier?.id];
     if (!stub)
     {
-      stub = Stub.STUB_TYPES[courier?.stubType] && Stub.STUB_TYPES[courier.stubType](courier, kwargs);
+      stub = Stub.STUB_TYPES[courier?.stub_type] && Stub.STUB_TYPES[courier.stub_type](courier, kwargs);
       Stub.REGISTER[courier.id] = stub;
     }
     return stub;
   }
 };
 
-export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillmentRequest[]): FlatAggregatedFulfillmentRequest[] =>
+export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillmentRequest[]): FlatAggregatedFulfillmentRequest[] => 
   [].concat(...requests.map((request) =>
     request?.order?.parcels?.map((parcel,i) =>
       Object.assign({}, request, {
@@ -97,31 +97,31 @@ export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillm
       }) || request
     )
   )
-  );
+);
 
-export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
+export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] => 
   [].concat(...fulfillments.map(fulfillment =>
     fulfillment?.labels?.map((label,i) =>
       Object.assign(fulfillment, {
         uuid: randomUUID(),
-        label,
+        label: label,
         labels: [label],
         courier: fulfillment.couriers[i],
         product: fulfillment.products[i],
       }) || fulfillment
     )
   )
-  );
+);
 
-export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingRequest[]): FlatAggregatedTrackingRequest[] =>
+export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingRequest[]): FlatAggregatedTrackingRequest[] => 
   [].concat(...requests.map((request) =>
     request?.fulfillment?.labels?.map((label,i) =>
       Object.assign({}, request, {
-        shipmentNumber: label.shipmentNumber,
-        shipmentNumbers: [label.shipmentNumber],
+        shipment_number: label.shipment_number,
+        shipment_numbers: [label.shipment_number],
         fulfillment: Object.assign(request.fulfillment, {
           uuid: randomUUID(),
-          label,
+          label: label,
           labels: [label],
           courier: request.fulfillment.couriers[i],
           product: request.fulfillment.products[i],
@@ -129,12 +129,12 @@ export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingReq
       }) || request
     )
   )
-  );
+);
 
 export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fulfillment[] => {
-  const mergedFulfillments: { [uuid: string]: Fulfillment } = {};
+  const merged_fulfillments: { [uuid: string]: Fulfillment } = {};
   fulfillments.forEach(b => {
-    const c = mergedFulfillments[b.uuid];
+    const c = merged_fulfillments[b.uuid];
     if (c) {
       c.order.parcels.push(...b.order.parcels);
       c.labels.push(...b.labels);
@@ -145,25 +145,25 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
       delete b.courier;
       delete b.product;
       delete b.label;
-      mergedFulfillments[b.uuid] = b;
+      merged_fulfillments[b.uuid] = b;
     }
   });
-  return Object.values(mergedFulfillments);
+  return Object.values(merged_fulfillments);
 };
 
 export const mergeTrackingResults = (trackings: TrackingResult[]): TrackingResult[] => {
-  const mergedTracks: { [id: string]: TrackingResult } = {};
+  const merged_tracks: { [id: string]: TrackingResult } = {};
   trackings.forEach(b => {
-    const c = mergedTracks[b.fulfillment.id];
+    const c = merged_tracks[b.fulfillment.id];
     if (c) {
       c.tracks.push(...b.tracks);
       c.fulfillment.fulfilled &&= b.fulfillment.fulfilled;
     }
     else {
-      mergedTracks[b.fulfillment.id] = b;
+      merged_tracks[b.fulfillment.id] = b;
     }
   });
-  return Object.values(mergedTracks);
+  return Object.values(merged_tracks);
 };
 
 // Register Stubs at the end of this file

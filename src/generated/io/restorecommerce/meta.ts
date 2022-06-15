@@ -11,13 +11,13 @@ export interface Meta {
   /** timestamp */
   modified: number;
   /** ID from last User who modified it */
-  modifiedBy: string;
+  modified_by: string;
   owner: Attribute[];
   acl: AttributeObj[];
 }
 
 function createBaseMeta(): Meta {
-  return { created: 0, modified: 0, modifiedBy: "", owner: [], acl: [] };
+  return { created: 0, modified: 0, modified_by: "", owner: [], acl: [] };
 }
 
 export const Meta = {
@@ -28,8 +28,8 @@ export const Meta = {
     if (message.modified !== 0) {
       writer.uint32(17).double(message.modified);
     }
-    if (message.modifiedBy !== "") {
-      writer.uint32(26).string(message.modifiedBy);
+    if (message.modified_by !== "") {
+      writer.uint32(26).string(message.modified_by);
     }
     for (const v of message.owner) {
       Attribute.encode(v!, writer.uint32(34).fork()).ldelim();
@@ -54,7 +54,7 @@ export const Meta = {
           message.modified = reader.double();
           break;
         case 3:
-          message.modifiedBy = reader.string();
+          message.modified_by = reader.string();
           break;
         case 4:
           message.owner.push(Attribute.decode(reader, reader.uint32()));
@@ -74,7 +74,7 @@ export const Meta = {
     return {
       created: isSet(object.created) ? Number(object.created) : 0,
       modified: isSet(object.modified) ? Number(object.modified) : 0,
-      modifiedBy: isSet(object.modifiedBy) ? String(object.modifiedBy) : "",
+      modified_by: isSet(object.modified_by) ? String(object.modified_by) : "",
       owner: Array.isArray(object?.owner)
         ? object.owner.map((e: any) => Attribute.fromJSON(e))
         : [],
@@ -88,7 +88,8 @@ export const Meta = {
     const obj: any = {};
     message.created !== undefined && (obj.created = message.created);
     message.modified !== undefined && (obj.modified = message.modified);
-    message.modifiedBy !== undefined && (obj.modifiedBy = message.modifiedBy);
+    message.modified_by !== undefined &&
+      (obj.modified_by = message.modified_by);
     if (message.owner) {
       obj.owner = message.owner.map((e) =>
         e ? Attribute.toJSON(e) : undefined
@@ -110,7 +111,7 @@ export const Meta = {
     const message = createBaseMeta();
     message.created = object.created ?? 0;
     message.modified = object.modified ?? 0;
-    message.modifiedBy = object.modifiedBy ?? "";
+    message.modified_by = object.modified_by ?? "";
     message.owner = object.owner?.map((e) => Attribute.fromPartial(e)) || [];
     message.acl = object.acl?.map((e) => AttributeObj.fromPartial(e)) || [];
     return message;

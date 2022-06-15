@@ -89,19 +89,19 @@ export interface Any {
    * Schemas other than `http`, `https` (or the empty schema) might be
    * used with implementation specific semantics.
    */
-  typeUrl: string;
+  type_url: string;
   /** Must be a valid serialized protocol buffer of the above specified type. */
   value: Buffer;
 }
 
 function createBaseAny(): Any {
-  return { typeUrl: "", value: Buffer.alloc(0) };
+  return { type_url: "", value: Buffer.alloc(0) };
 }
 
 export const Any = {
   encode(message: Any, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
-    if (message.typeUrl !== "") {
-      writer.uint32(10).string(message.typeUrl);
+    if (message.type_url !== "") {
+      writer.uint32(10).string(message.type_url);
     }
     if (message.value.length !== 0) {
       writer.uint32(18).bytes(message.value);
@@ -117,7 +117,7 @@ export const Any = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.typeUrl = reader.string();
+          message.type_url = reader.string();
           break;
         case 2:
           message.value = reader.bytes() as Buffer;
@@ -132,7 +132,7 @@ export const Any = {
 
   fromJSON(object: any): Any {
     return {
-      typeUrl: isSet(object.typeUrl) ? String(object.typeUrl) : "",
+      type_url: isSet(object.type_url) ? String(object.type_url) : "",
       value: isSet(object.value)
         ? Buffer.from(bytesFromBase64(object.value))
         : Buffer.alloc(0),
@@ -141,7 +141,7 @@ export const Any = {
 
   toJSON(message: Any): unknown {
     const obj: any = {};
-    message.typeUrl !== undefined && (obj.typeUrl = message.typeUrl);
+    message.type_url !== undefined && (obj.type_url = message.type_url);
     message.value !== undefined &&
       (obj.value = base64FromBytes(
         message.value !== undefined ? message.value : Buffer.alloc(0)
@@ -151,7 +151,7 @@ export const Any = {
 
   fromPartial<I extends Exact<DeepPartial<Any>, I>>(object: I): Any {
     const message = createBaseAny();
-    message.typeUrl = object.typeUrl ?? "";
+    message.type_url = object.type_url ?? "";
     message.value = object.value ?? Buffer.alloc(0);
     return message;
   },

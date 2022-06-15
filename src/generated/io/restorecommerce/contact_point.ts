@@ -18,14 +18,14 @@ export interface Deleted {
 
 export interface ContactPointList {
   items: ContactPoint[];
-  totalCount: number;
+  total_count: number;
   subject: Subject;
 }
 
 export interface ContactPointListResponse {
   items: ContactPointResponse[];
-  totalCount: number;
-  operationStatus: OperationStatus;
+  total_count: number;
+  operation_status: OperationStatus;
 }
 
 export interface ContactPointResponse {
@@ -36,13 +36,13 @@ export interface ContactPointResponse {
 export interface ContactPoint {
   id: string;
   meta: Meta;
-  physicalAddressId: string;
+  physical_address_id: string;
   website: string;
   email: string;
-  contactPointTypeId: string;
+  contact_point_type_id: string;
   telephone: string;
-  timezoneId: string;
-  localeId: string;
+  timezone_id: string;
+  locale_id: string;
 }
 
 function createBaseDeleted(): Deleted {
@@ -98,7 +98,7 @@ export const Deleted = {
 };
 
 function createBaseContactPointList(): ContactPointList {
-  return { items: [], totalCount: 0, subject: undefined };
+  return { items: [], total_count: 0, subject: undefined };
 }
 
 export const ContactPointList = {
@@ -109,8 +109,8 @@ export const ContactPointList = {
     for (const v of message.items) {
       ContactPoint.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(26).fork()).ldelim();
@@ -129,7 +129,7 @@ export const ContactPointList = {
           message.items.push(ContactPoint.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -147,7 +147,7 @@ export const ContactPointList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => ContactPoint.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
         : undefined,
@@ -163,8 +163,8 @@ export const ContactPointList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
     message.subject !== undefined &&
       (obj.subject = message.subject
         ? Subject.toJSON(message.subject)
@@ -177,7 +177,7 @@ export const ContactPointList = {
   ): ContactPointList {
     const message = createBaseContactPointList();
     message.items = object.items?.map((e) => ContactPoint.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
+    message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
         ? Subject.fromPartial(object.subject)
@@ -187,7 +187,7 @@ export const ContactPointList = {
 };
 
 function createBaseContactPointListResponse(): ContactPointListResponse {
-  return { items: [], totalCount: 0, operationStatus: undefined };
+  return { items: [], total_count: 0, operation_status: undefined };
 }
 
 export const ContactPointListResponse = {
@@ -198,12 +198,12 @@ export const ContactPointListResponse = {
     for (const v of message.items) {
       ContactPointResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(26).fork()
       ).ldelim();
     }
@@ -226,10 +226,10 @@ export const ContactPointListResponse = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -247,9 +247,9 @@ export const ContactPointListResponse = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => ContactPointResponse.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -263,11 +263,11 @@ export const ContactPointListResponse = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -278,10 +278,10 @@ export const ContactPointListResponse = {
     const message = createBaseContactPointListResponse();
     message.items =
       object.items?.map((e) => ContactPointResponse.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.total_count = object.total_count ?? 0;
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },
@@ -369,13 +369,13 @@ function createBaseContactPoint(): ContactPoint {
   return {
     id: "",
     meta: undefined,
-    physicalAddressId: "",
+    physical_address_id: "",
     website: "",
     email: "",
-    contactPointTypeId: "",
+    contact_point_type_id: "",
     telephone: "",
-    timezoneId: "",
-    localeId: "",
+    timezone_id: "",
+    locale_id: "",
   };
 }
 
@@ -390,8 +390,8 @@ export const ContactPoint = {
     if (message.meta !== undefined) {
       Meta.encode(message.meta, writer.uint32(18).fork()).ldelim();
     }
-    if (message.physicalAddressId !== "") {
-      writer.uint32(26).string(message.physicalAddressId);
+    if (message.physical_address_id !== "") {
+      writer.uint32(26).string(message.physical_address_id);
     }
     if (message.website !== "") {
       writer.uint32(34).string(message.website);
@@ -399,17 +399,17 @@ export const ContactPoint = {
     if (message.email !== "") {
       writer.uint32(42).string(message.email);
     }
-    if (message.contactPointTypeId !== "") {
-      writer.uint32(50).string(message.contactPointTypeId);
+    if (message.contact_point_type_id !== "") {
+      writer.uint32(50).string(message.contact_point_type_id);
     }
     if (message.telephone !== "") {
       writer.uint32(66).string(message.telephone);
     }
-    if (message.timezoneId !== "") {
-      writer.uint32(74).string(message.timezoneId);
+    if (message.timezone_id !== "") {
+      writer.uint32(74).string(message.timezone_id);
     }
-    if (message.localeId !== "") {
-      writer.uint32(82).string(message.localeId);
+    if (message.locale_id !== "") {
+      writer.uint32(82).string(message.locale_id);
     }
     return writer;
   },
@@ -428,7 +428,7 @@ export const ContactPoint = {
           message.meta = Meta.decode(reader, reader.uint32());
           break;
         case 3:
-          message.physicalAddressId = reader.string();
+          message.physical_address_id = reader.string();
           break;
         case 4:
           message.website = reader.string();
@@ -437,16 +437,16 @@ export const ContactPoint = {
           message.email = reader.string();
           break;
         case 6:
-          message.contactPointTypeId = reader.string();
+          message.contact_point_type_id = reader.string();
           break;
         case 8:
           message.telephone = reader.string();
           break;
         case 9:
-          message.timezoneId = reader.string();
+          message.timezone_id = reader.string();
           break;
         case 10:
-          message.localeId = reader.string();
+          message.locale_id = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -460,17 +460,17 @@ export const ContactPoint = {
     return {
       id: isSet(object.id) ? String(object.id) : "",
       meta: isSet(object.meta) ? Meta.fromJSON(object.meta) : undefined,
-      physicalAddressId: isSet(object.physicalAddressId)
-        ? String(object.physicalAddressId)
+      physical_address_id: isSet(object.physical_address_id)
+        ? String(object.physical_address_id)
         : "",
       website: isSet(object.website) ? String(object.website) : "",
       email: isSet(object.email) ? String(object.email) : "",
-      contactPointTypeId: isSet(object.contactPointTypeId)
-        ? String(object.contactPointTypeId)
+      contact_point_type_id: isSet(object.contact_point_type_id)
+        ? String(object.contact_point_type_id)
         : "",
       telephone: isSet(object.telephone) ? String(object.telephone) : "",
-      timezoneId: isSet(object.timezoneId) ? String(object.timezoneId) : "",
-      localeId: isSet(object.localeId) ? String(object.localeId) : "",
+      timezone_id: isSet(object.timezone_id) ? String(object.timezone_id) : "",
+      locale_id: isSet(object.locale_id) ? String(object.locale_id) : "",
     };
   },
 
@@ -479,15 +479,16 @@ export const ContactPoint = {
     message.id !== undefined && (obj.id = message.id);
     message.meta !== undefined &&
       (obj.meta = message.meta ? Meta.toJSON(message.meta) : undefined);
-    message.physicalAddressId !== undefined &&
-      (obj.physicalAddressId = message.physicalAddressId);
+    message.physical_address_id !== undefined &&
+      (obj.physical_address_id = message.physical_address_id);
     message.website !== undefined && (obj.website = message.website);
     message.email !== undefined && (obj.email = message.email);
-    message.contactPointTypeId !== undefined &&
-      (obj.contactPointTypeId = message.contactPointTypeId);
+    message.contact_point_type_id !== undefined &&
+      (obj.contact_point_type_id = message.contact_point_type_id);
     message.telephone !== undefined && (obj.telephone = message.telephone);
-    message.timezoneId !== undefined && (obj.timezoneId = message.timezoneId);
-    message.localeId !== undefined && (obj.localeId = message.localeId);
+    message.timezone_id !== undefined &&
+      (obj.timezone_id = message.timezone_id);
+    message.locale_id !== undefined && (obj.locale_id = message.locale_id);
     return obj;
   },
 
@@ -500,13 +501,13 @@ export const ContactPoint = {
       object.meta !== undefined && object.meta !== null
         ? Meta.fromPartial(object.meta)
         : undefined;
-    message.physicalAddressId = object.physicalAddressId ?? "";
+    message.physical_address_id = object.physical_address_id ?? "";
     message.website = object.website ?? "";
     message.email = object.email ?? "";
-    message.contactPointTypeId = object.contactPointTypeId ?? "";
+    message.contact_point_type_id = object.contact_point_type_id ?? "";
     message.telephone = object.telephone ?? "";
-    message.timezoneId = object.timezoneId ?? "";
-    message.localeId = object.localeId ?? "";
+    message.timezone_id = object.timezone_id ?? "";
+    message.locale_id = object.locale_id ?? "";
     return message;
   },
 };

@@ -28,12 +28,12 @@ export interface Query {
   receiver: Address;
   goods: Item[];
   preferences: Preferences;
-  referenceId: string;
+  reference_id: string;
 }
 
 export interface QueryList {
   items: Query[];
-  totalCount: number;
+  total_count: number;
   subject: Subject;
 }
 
@@ -41,12 +41,12 @@ export interface FulfillmentProduct {
   id: string;
   name: string;
   description: string;
-  courierId: string;
+  courier_id: string;
   /** repeated io.restorecommerce.country.Country start_country = 5; */
-  startZones: string[];
+  start_zones: string[];
   /** repeated io.restorecommerce.country.Country destination_country = 7; */
-  destinationZones: string[];
-  taxIds: string[];
+  destination_zones: string[];
+  tax_ids: string[];
   attributes: Attribute[];
   variants: Variant[];
   meta: Meta;
@@ -57,16 +57,16 @@ export interface Variant {
   name: string;
   description: string;
   price: number;
-  maxWeight: number;
-  maxWidth: number;
-  maxHeight: number;
-  maxLength: number;
-  maxVolume: number;
+  max_weight: number;
+  max_width: number;
+  max_height: number;
+  max_length: number;
+  max_volume: number;
 }
 
 export interface FulfillmentProductList {
   items: FulfillmentProduct[];
-  totalCount: number;
+  total_count: number;
   subject: Subject;
 }
 
@@ -77,12 +77,12 @@ export interface FulfillmentProductResponse {
 
 export interface FulfillmentProductResponseList {
   items: FulfillmentProductResponse[];
-  totalCount: number;
-  operationStatus: OperationStatus;
+  total_count: number;
+  operation_status: OperationStatus;
 }
 
 export interface PackingSolution {
-  referenceId: string;
+  reference_id: string;
   price: number;
   compactness: number;
   homogeneity: number;
@@ -97,8 +97,8 @@ export interface PackingSolutionResponse {
 
 export interface PackingSolutionResponseList {
   items: PackingSolutionResponse[];
-  totalCount: number;
-  operationStatus: OperationStatus;
+  total_count: number;
+  operation_status: OperationStatus;
 }
 
 export interface Deleted {
@@ -203,7 +203,7 @@ function createBaseQuery(): Query {
     receiver: undefined,
     goods: [],
     preferences: undefined,
-    referenceId: "",
+    reference_id: "",
   };
 }
 
@@ -224,8 +224,8 @@ export const Query = {
         writer.uint32(34).fork()
       ).ldelim();
     }
-    if (message.referenceId !== "") {
-      writer.uint32(42).string(message.referenceId);
+    if (message.reference_id !== "") {
+      writer.uint32(42).string(message.reference_id);
     }
     return writer;
   },
@@ -250,7 +250,7 @@ export const Query = {
           message.preferences = Preferences.decode(reader, reader.uint32());
           break;
         case 5:
-          message.referenceId = reader.string();
+          message.reference_id = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -274,7 +274,9 @@ export const Query = {
       preferences: isSet(object.preferences)
         ? Preferences.fromJSON(object.preferences)
         : undefined,
-      referenceId: isSet(object.referenceId) ? String(object.referenceId) : "",
+      reference_id: isSet(object.reference_id)
+        ? String(object.reference_id)
+        : "",
     };
   },
 
@@ -297,8 +299,8 @@ export const Query = {
       (obj.preferences = message.preferences
         ? Preferences.toJSON(message.preferences)
         : undefined);
-    message.referenceId !== undefined &&
-      (obj.referenceId = message.referenceId);
+    message.reference_id !== undefined &&
+      (obj.reference_id = message.reference_id);
     return obj;
   },
 
@@ -317,13 +319,13 @@ export const Query = {
       object.preferences !== undefined && object.preferences !== null
         ? Preferences.fromPartial(object.preferences)
         : undefined;
-    message.referenceId = object.referenceId ?? "";
+    message.reference_id = object.reference_id ?? "";
     return message;
   },
 };
 
 function createBaseQueryList(): QueryList {
-  return { items: [], totalCount: 0, subject: undefined };
+  return { items: [], total_count: 0, subject: undefined };
 }
 
 export const QueryList = {
@@ -334,8 +336,8 @@ export const QueryList = {
     for (const v of message.items) {
       Query.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(26).fork()).ldelim();
@@ -354,7 +356,7 @@ export const QueryList = {
           message.items.push(Query.decode(reader, reader.uint32()));
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -372,7 +374,7 @@ export const QueryList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => Query.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
         : undefined,
@@ -386,8 +388,8 @@ export const QueryList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
     message.subject !== undefined &&
       (obj.subject = message.subject
         ? Subject.toJSON(message.subject)
@@ -400,7 +402,7 @@ export const QueryList = {
   ): QueryList {
     const message = createBaseQueryList();
     message.items = object.items?.map((e) => Query.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
+    message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
         ? Subject.fromPartial(object.subject)
@@ -414,10 +416,10 @@ function createBaseFulfillmentProduct(): FulfillmentProduct {
     id: "",
     name: "",
     description: "",
-    courierId: "",
-    startZones: [],
-    destinationZones: [],
-    taxIds: [],
+    courier_id: "",
+    start_zones: [],
+    destination_zones: [],
+    tax_ids: [],
     attributes: [],
     variants: [],
     meta: undefined,
@@ -438,16 +440,16 @@ export const FulfillmentProduct = {
     if (message.description !== "") {
       writer.uint32(26).string(message.description);
     }
-    if (message.courierId !== "") {
-      writer.uint32(34).string(message.courierId);
+    if (message.courier_id !== "") {
+      writer.uint32(34).string(message.courier_id);
     }
-    for (const v of message.startZones) {
+    for (const v of message.start_zones) {
       writer.uint32(50).string(v!);
     }
-    for (const v of message.destinationZones) {
+    for (const v of message.destination_zones) {
       writer.uint32(66).string(v!);
     }
-    for (const v of message.taxIds) {
+    for (const v of message.tax_ids) {
       writer.uint32(74).string(v!);
     }
     for (const v of message.attributes) {
@@ -479,16 +481,16 @@ export const FulfillmentProduct = {
           message.description = reader.string();
           break;
         case 4:
-          message.courierId = reader.string();
+          message.courier_id = reader.string();
           break;
         case 6:
-          message.startZones.push(reader.string());
+          message.start_zones.push(reader.string());
           break;
         case 8:
-          message.destinationZones.push(reader.string());
+          message.destination_zones.push(reader.string());
           break;
         case 9:
-          message.taxIds.push(reader.string());
+          message.tax_ids.push(reader.string());
           break;
         case 10:
           message.attributes.push(Attribute.decode(reader, reader.uint32()));
@@ -512,15 +514,15 @@ export const FulfillmentProduct = {
       id: isSet(object.id) ? String(object.id) : "",
       name: isSet(object.name) ? String(object.name) : "",
       description: isSet(object.description) ? String(object.description) : "",
-      courierId: isSet(object.courierId) ? String(object.courierId) : "",
-      startZones: Array.isArray(object?.startZones)
-        ? object.startZones.map((e: any) => String(e))
+      courier_id: isSet(object.courier_id) ? String(object.courier_id) : "",
+      start_zones: Array.isArray(object?.start_zones)
+        ? object.start_zones.map((e: any) => String(e))
         : [],
-      destinationZones: Array.isArray(object?.destinationZones)
-        ? object.destinationZones.map((e: any) => String(e))
+      destination_zones: Array.isArray(object?.destination_zones)
+        ? object.destination_zones.map((e: any) => String(e))
         : [],
-      taxIds: Array.isArray(object?.taxIds)
-        ? object.taxIds.map((e: any) => String(e))
+      tax_ids: Array.isArray(object?.tax_ids)
+        ? object.tax_ids.map((e: any) => String(e))
         : [],
       attributes: Array.isArray(object?.attributes)
         ? object.attributes.map((e: any) => Attribute.fromJSON(e))
@@ -538,21 +540,21 @@ export const FulfillmentProduct = {
     message.name !== undefined && (obj.name = message.name);
     message.description !== undefined &&
       (obj.description = message.description);
-    message.courierId !== undefined && (obj.courierId = message.courierId);
-    if (message.startZones) {
-      obj.startZones = message.startZones.map((e) => e);
+    message.courier_id !== undefined && (obj.courier_id = message.courier_id);
+    if (message.start_zones) {
+      obj.start_zones = message.start_zones.map((e) => e);
     } else {
-      obj.startZones = [];
+      obj.start_zones = [];
     }
-    if (message.destinationZones) {
-      obj.destinationZones = message.destinationZones.map((e) => e);
+    if (message.destination_zones) {
+      obj.destination_zones = message.destination_zones.map((e) => e);
     } else {
-      obj.destinationZones = [];
+      obj.destination_zones = [];
     }
-    if (message.taxIds) {
-      obj.taxIds = message.taxIds.map((e) => e);
+    if (message.tax_ids) {
+      obj.tax_ids = message.tax_ids.map((e) => e);
     } else {
-      obj.taxIds = [];
+      obj.tax_ids = [];
     }
     if (message.attributes) {
       obj.attributes = message.attributes.map((e) =>
@@ -580,10 +582,10 @@ export const FulfillmentProduct = {
     message.id = object.id ?? "";
     message.name = object.name ?? "";
     message.description = object.description ?? "";
-    message.courierId = object.courierId ?? "";
-    message.startZones = object.startZones?.map((e) => e) || [];
-    message.destinationZones = object.destinationZones?.map((e) => e) || [];
-    message.taxIds = object.taxIds?.map((e) => e) || [];
+    message.courier_id = object.courier_id ?? "";
+    message.start_zones = object.start_zones?.map((e) => e) || [];
+    message.destination_zones = object.destination_zones?.map((e) => e) || [];
+    message.tax_ids = object.tax_ids?.map((e) => e) || [];
     message.attributes =
       object.attributes?.map((e) => Attribute.fromPartial(e)) || [];
     message.variants =
@@ -602,11 +604,11 @@ function createBaseVariant(): Variant {
     name: "",
     description: "",
     price: 0,
-    maxWeight: 0,
-    maxWidth: 0,
-    maxHeight: 0,
-    maxLength: 0,
-    maxVolume: 0,
+    max_weight: 0,
+    max_width: 0,
+    max_height: 0,
+    max_length: 0,
+    max_volume: 0,
   };
 }
 
@@ -627,20 +629,20 @@ export const Variant = {
     if (message.price !== 0) {
       writer.uint32(33).double(message.price);
     }
-    if (message.maxWeight !== 0) {
-      writer.uint32(41).double(message.maxWeight);
+    if (message.max_weight !== 0) {
+      writer.uint32(41).double(message.max_weight);
     }
-    if (message.maxWidth !== 0) {
-      writer.uint32(49).double(message.maxWidth);
+    if (message.max_width !== 0) {
+      writer.uint32(49).double(message.max_width);
     }
-    if (message.maxHeight !== 0) {
-      writer.uint32(57).double(message.maxHeight);
+    if (message.max_height !== 0) {
+      writer.uint32(57).double(message.max_height);
     }
-    if (message.maxLength !== 0) {
-      writer.uint32(65).double(message.maxLength);
+    if (message.max_length !== 0) {
+      writer.uint32(65).double(message.max_length);
     }
-    if (message.maxVolume !== 0) {
-      writer.uint32(73).double(message.maxVolume);
+    if (message.max_volume !== 0) {
+      writer.uint32(73).double(message.max_volume);
     }
     return writer;
   },
@@ -665,19 +667,19 @@ export const Variant = {
           message.price = reader.double();
           break;
         case 5:
-          message.maxWeight = reader.double();
+          message.max_weight = reader.double();
           break;
         case 6:
-          message.maxWidth = reader.double();
+          message.max_width = reader.double();
           break;
         case 7:
-          message.maxHeight = reader.double();
+          message.max_height = reader.double();
           break;
         case 8:
-          message.maxLength = reader.double();
+          message.max_length = reader.double();
           break;
         case 9:
-          message.maxVolume = reader.double();
+          message.max_volume = reader.double();
           break;
         default:
           reader.skipType(tag & 7);
@@ -693,11 +695,11 @@ export const Variant = {
       name: isSet(object.name) ? String(object.name) : "",
       description: isSet(object.description) ? String(object.description) : "",
       price: isSet(object.price) ? Number(object.price) : 0,
-      maxWeight: isSet(object.maxWeight) ? Number(object.maxWeight) : 0,
-      maxWidth: isSet(object.maxWidth) ? Number(object.maxWidth) : 0,
-      maxHeight: isSet(object.maxHeight) ? Number(object.maxHeight) : 0,
-      maxLength: isSet(object.maxLength) ? Number(object.maxLength) : 0,
-      maxVolume: isSet(object.maxVolume) ? Number(object.maxVolume) : 0,
+      max_weight: isSet(object.max_weight) ? Number(object.max_weight) : 0,
+      max_width: isSet(object.max_width) ? Number(object.max_width) : 0,
+      max_height: isSet(object.max_height) ? Number(object.max_height) : 0,
+      max_length: isSet(object.max_length) ? Number(object.max_length) : 0,
+      max_volume: isSet(object.max_volume) ? Number(object.max_volume) : 0,
     };
   },
 
@@ -708,11 +710,11 @@ export const Variant = {
     message.description !== undefined &&
       (obj.description = message.description);
     message.price !== undefined && (obj.price = message.price);
-    message.maxWeight !== undefined && (obj.maxWeight = message.maxWeight);
-    message.maxWidth !== undefined && (obj.maxWidth = message.maxWidth);
-    message.maxHeight !== undefined && (obj.maxHeight = message.maxHeight);
-    message.maxLength !== undefined && (obj.maxLength = message.maxLength);
-    message.maxVolume !== undefined && (obj.maxVolume = message.maxVolume);
+    message.max_weight !== undefined && (obj.max_weight = message.max_weight);
+    message.max_width !== undefined && (obj.max_width = message.max_width);
+    message.max_height !== undefined && (obj.max_height = message.max_height);
+    message.max_length !== undefined && (obj.max_length = message.max_length);
+    message.max_volume !== undefined && (obj.max_volume = message.max_volume);
     return obj;
   },
 
@@ -722,17 +724,17 @@ export const Variant = {
     message.name = object.name ?? "";
     message.description = object.description ?? "";
     message.price = object.price ?? 0;
-    message.maxWeight = object.maxWeight ?? 0;
-    message.maxWidth = object.maxWidth ?? 0;
-    message.maxHeight = object.maxHeight ?? 0;
-    message.maxLength = object.maxLength ?? 0;
-    message.maxVolume = object.maxVolume ?? 0;
+    message.max_weight = object.max_weight ?? 0;
+    message.max_width = object.max_width ?? 0;
+    message.max_height = object.max_height ?? 0;
+    message.max_length = object.max_length ?? 0;
+    message.max_volume = object.max_volume ?? 0;
     return message;
   },
 };
 
 function createBaseFulfillmentProductList(): FulfillmentProductList {
-  return { items: [], totalCount: 0, subject: undefined };
+  return { items: [], total_count: 0, subject: undefined };
 }
 
 export const FulfillmentProductList = {
@@ -743,8 +745,8 @@ export const FulfillmentProductList = {
     for (const v of message.items) {
       FulfillmentProduct.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
     if (message.subject !== undefined) {
       Subject.encode(message.subject, writer.uint32(26).fork()).ldelim();
@@ -768,7 +770,7 @@ export const FulfillmentProductList = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
           message.subject = Subject.decode(reader, reader.uint32());
@@ -786,7 +788,7 @@ export const FulfillmentProductList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => FulfillmentProduct.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
       subject: isSet(object.subject)
         ? Subject.fromJSON(object.subject)
         : undefined,
@@ -802,8 +804,8 @@ export const FulfillmentProductList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
     message.subject !== undefined &&
       (obj.subject = message.subject
         ? Subject.toJSON(message.subject)
@@ -817,7 +819,7 @@ export const FulfillmentProductList = {
     const message = createBaseFulfillmentProductList();
     message.items =
       object.items?.map((e) => FulfillmentProduct.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
+    message.total_count = object.total_count ?? 0;
     message.subject =
       object.subject !== undefined && object.subject !== null
         ? Subject.fromPartial(object.subject)
@@ -908,7 +910,7 @@ export const FulfillmentProductResponse = {
 };
 
 function createBaseFulfillmentProductResponseList(): FulfillmentProductResponseList {
-  return { items: [], totalCount: 0, operationStatus: undefined };
+  return { items: [], total_count: 0, operation_status: undefined };
 }
 
 export const FulfillmentProductResponseList = {
@@ -919,12 +921,12 @@ export const FulfillmentProductResponseList = {
     for (const v of message.items) {
       FulfillmentProductResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(26).fork()
       ).ldelim();
     }
@@ -947,10 +949,10 @@ export const FulfillmentProductResponseList = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -968,9 +970,9 @@ export const FulfillmentProductResponseList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => FulfillmentProductResponse.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -984,11 +986,11 @@ export const FulfillmentProductResponseList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -999,10 +1001,10 @@ export const FulfillmentProductResponseList = {
     const message = createBaseFulfillmentProductResponseList();
     message.items =
       object.items?.map((e) => FulfillmentProductResponse.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.total_count = object.total_count ?? 0;
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },
@@ -1010,7 +1012,7 @@ export const FulfillmentProductResponseList = {
 
 function createBasePackingSolution(): PackingSolution {
   return {
-    referenceId: "",
+    reference_id: "",
     price: 0,
     compactness: 0,
     homogeneity: 0,
@@ -1024,8 +1026,8 @@ export const PackingSolution = {
     message: PackingSolution,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.referenceId !== "") {
-      writer.uint32(10).string(message.referenceId);
+    if (message.reference_id !== "") {
+      writer.uint32(10).string(message.reference_id);
     }
     if (message.price !== 0) {
       writer.uint32(21).float(message.price);
@@ -1053,7 +1055,7 @@ export const PackingSolution = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.referenceId = reader.string();
+          message.reference_id = reader.string();
           break;
         case 2:
           message.price = reader.float();
@@ -1080,7 +1082,9 @@ export const PackingSolution = {
 
   fromJSON(object: any): PackingSolution {
     return {
-      referenceId: isSet(object.referenceId) ? String(object.referenceId) : "",
+      reference_id: isSet(object.reference_id)
+        ? String(object.reference_id)
+        : "",
       price: isSet(object.price) ? Number(object.price) : 0,
       compactness: isSet(object.compactness) ? Number(object.compactness) : 0,
       homogeneity: isSet(object.homogeneity) ? Number(object.homogeneity) : 0,
@@ -1093,8 +1097,8 @@ export const PackingSolution = {
 
   toJSON(message: PackingSolution): unknown {
     const obj: any = {};
-    message.referenceId !== undefined &&
-      (obj.referenceId = message.referenceId);
+    message.reference_id !== undefined &&
+      (obj.reference_id = message.reference_id);
     message.price !== undefined && (obj.price = message.price);
     message.compactness !== undefined &&
       (obj.compactness = message.compactness);
@@ -1115,7 +1119,7 @@ export const PackingSolution = {
     object: I
   ): PackingSolution {
     const message = createBasePackingSolution();
-    message.referenceId = object.referenceId ?? "";
+    message.reference_id = object.reference_id ?? "";
     message.price = object.price ?? 0;
     message.compactness = object.compactness ?? 0;
     message.homogeneity = object.homogeneity ?? 0;
@@ -1207,7 +1211,7 @@ export const PackingSolutionResponse = {
 };
 
 function createBasePackingSolutionResponseList(): PackingSolutionResponseList {
-  return { items: [], totalCount: 0, operationStatus: undefined };
+  return { items: [], total_count: 0, operation_status: undefined };
 }
 
 export const PackingSolutionResponseList = {
@@ -1218,12 +1222,12 @@ export const PackingSolutionResponseList = {
     for (const v of message.items) {
       PackingSolutionResponse.encode(v!, writer.uint32(10).fork()).ldelim();
     }
-    if (message.totalCount !== 0) {
-      writer.uint32(16).uint32(message.totalCount);
+    if (message.total_count !== 0) {
+      writer.uint32(16).uint32(message.total_count);
     }
-    if (message.operationStatus !== undefined) {
+    if (message.operation_status !== undefined) {
       OperationStatus.encode(
-        message.operationStatus,
+        message.operation_status,
         writer.uint32(26).fork()
       ).ldelim();
     }
@@ -1246,10 +1250,10 @@ export const PackingSolutionResponseList = {
           );
           break;
         case 2:
-          message.totalCount = reader.uint32();
+          message.total_count = reader.uint32();
           break;
         case 3:
-          message.operationStatus = OperationStatus.decode(
+          message.operation_status = OperationStatus.decode(
             reader,
             reader.uint32()
           );
@@ -1267,9 +1271,9 @@ export const PackingSolutionResponseList = {
       items: Array.isArray(object?.items)
         ? object.items.map((e: any) => PackingSolutionResponse.fromJSON(e))
         : [],
-      totalCount: isSet(object.totalCount) ? Number(object.totalCount) : 0,
-      operationStatus: isSet(object.operationStatus)
-        ? OperationStatus.fromJSON(object.operationStatus)
+      total_count: isSet(object.total_count) ? Number(object.total_count) : 0,
+      operation_status: isSet(object.operation_status)
+        ? OperationStatus.fromJSON(object.operation_status)
         : undefined,
     };
   },
@@ -1283,11 +1287,11 @@ export const PackingSolutionResponseList = {
     } else {
       obj.items = [];
     }
-    message.totalCount !== undefined &&
-      (obj.totalCount = Math.round(message.totalCount));
-    message.operationStatus !== undefined &&
-      (obj.operationStatus = message.operationStatus
-        ? OperationStatus.toJSON(message.operationStatus)
+    message.total_count !== undefined &&
+      (obj.total_count = Math.round(message.total_count));
+    message.operation_status !== undefined &&
+      (obj.operation_status = message.operation_status
+        ? OperationStatus.toJSON(message.operation_status)
         : undefined);
     return obj;
   },
@@ -1298,10 +1302,10 @@ export const PackingSolutionResponseList = {
     const message = createBasePackingSolutionResponseList();
     message.items =
       object.items?.map((e) => PackingSolutionResponse.fromPartial(e)) || [];
-    message.totalCount = object.totalCount ?? 0;
-    message.operationStatus =
-      object.operationStatus !== undefined && object.operationStatus !== null
-        ? OperationStatus.fromPartial(object.operationStatus)
+    message.total_count = object.total_count ?? 0;
+    message.operation_status =
+      object.operation_status !== undefined && object.operation_status !== null
+        ? OperationStatus.fromPartial(object.operation_status)
         : undefined;
     return message;
   },

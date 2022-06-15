@@ -28,36 +28,36 @@ import { Stub } from '..';
 
 interface QueryTotals extends Query {
   volume: number;
-  totalWeight: number;
-  maxWidth: number;
-  maxHeight: number;
-  maxLength: number;
+  total_weight: number;
+  max_width: number;
+  max_height: number;
+  max_length: number;
 }
 
 const buildQueryTotals = (items: Query[]): QueryTotals[] => items.map((item: Query) => Object.assign({}, item.goods.reduce((a: any, b: Good) => {
-  a.volume += b.widthInCm * b.heightInCm * b.lengthInCm * b.quantity;
-  a.totalWeight += b.weightInKg * b.quantity;
-  a.maxWidth = Math.max(a.maxWidth, b.widthInCm);
-  a.maxHeight = Math.max(a.maxHeight, b.heightInCm);
-  a.maxLength = Math.max(a.maxLength, b.lengthInCm);
+  a.volume += b.width_in_cm * b.height_in_cm * b.length_in_cm * b.quantity;
+  a.total_weight += b.weight_in_kg * b.quantity;
+  a.max_width = Math.max(a.max_width, b.width_in_cm);
+  a.max_height = Math.max(a.max_height, b.height_in_cm);
+  a.max_length = Math.max(a.max_length, b.length_in_cm);
   return a;
 }, {
   ...item,
   volume: 0.0,
-  totalWeight: 0.0,
-  maxWidth: 0.0,
-  maxHeight: 0.0,
-  maxLength: 0.0
+  total_weight: 0.0,
+  max_width: 0.0,
+  max_height: 0.0,
+  max_length: 0.0
 })));
 
-const countItems = (container: Container) => {
-  const itemsIds: { [itemId: string]: number } = {};
-  container.getLevels().forEach(level =>
-    level.forEach(a =>
-      itemsIds[a.getBox().getName()] = (itemsIds[a.getBox().getName()] || 0) + 1
+const count_items = (container:Container) => {
+  const items_ids: { [item_id:string]:number } = {};
+  container.getLevels().forEach(level => 
+    level.forEach(a => 
+      items_ids[a.getBox().getName()] = (items_ids[a.getBox().getName()] || 0) + 1
     )
   );
-  return Object.entries(itemsIds).map(([itemId, quantity]) => ({ itemId, quantity }));
+  return Object.entries(items_ids).map(([item_id, quantity]) => ({ item_id, quantity }));
 };
 
 export class FulfillmentProductResourceService extends ServiceBase {
@@ -136,12 +136,12 @@ export class FulfillmentProductResourceService extends ServiceBase {
     const promises = queries.map(async query => {
 
       const goods = query.goods.map((good): IItem => ({
-        sku: good.productVariantBundleId,
+        sku: good.product_variant_bundle_id,
         quantity: good.quantity,
-        weight: good.weightInKg,
-        width: good.widthInCm,
-        height: good.heightInCm,
-        depth: good.lengthInCm,
+        weight: good.weight_in_kg,
+        width: good.width_in_cm,
+        height: good.height_in_cm,
+        depth: good.length_in_cm,
         price: good.price,
         taxType: 'vat_standard'
       }));
@@ -154,15 +154,15 @@ export class FulfillmentProductResourceService extends ServiceBase {
         resp.items.map(item => item.payload)
       );
 
-      const offerLists = products.map((product): Offer[] =>
+      const offer_lists = products.map((product): Offer[] =>
         product.variants?.map((variant): Offer =>
           ({
             name: `${product.id}\t${variant.id}`,
             price: variant.price,
-            maxWeight: variant.maxWeight,
-            width: variant.maxWidth,
-            height: variant.maxHeight,
-            depth: variant.maxLength,
+            maxWeight: variant.max_weight,
+            width: variant.max_width,
+            height: variant.max_height,
+            depth: variant.max_length,
             type: 'parcel'
           })
         )
@@ -173,27 +173,27 @@ export class FulfillmentProductResourceService extends ServiceBase {
         shipping: null
       });
 
-      const solutions: PackingSolution[] = offerLists.map(offers => packer.canFit(offers, goods)).map(containers => ({
+      const solutions: PackingSolution[] = offer_lists.map(offers => packer.canFit(offers, goods)).map(containers => ({
         parcels: containers.map((container): Parcel => ({
-          productId: container.getOffer().name.split('\t')[0],
-          productVariantId: container.getOffer().name.split('\t')[1],
-          items: countItems(container),
-          heightInCm: container.getStackHeight(),
-          widthInCm: container.getWidth(),
-          weightInKg: container.getStackWeight(),
-          lengthInCm: container.getDepth()
+          product_id: container.getOffer().name.split('\t')[0],
+          product_variant_id: container.getOffer().name.split('\t')[1],
+          items: count_items(container),
+          height_in_cm: container.getStackHeight(),
+          width_in_cm: container.getWidth(),
+          weight_in_kg: container.getStackWeight(),
+          length_in_cm: container.getDepth()
         })),
         price: containers.reduce((a,b) => a + b.getOffer().price, 0),
         compactness: 1,
         homogeneity: 1,
         score: 1,
-        referenceId: query.referenceId
+        reference_id: query.reference_id
       }));
 
       const solution: PackingSolutionResponse = {
         solutions,
         status: {
-          id: query.referenceId,
+          id: query.reference_id,
           code: 200,
           message: `Best Solution: ${solutions.reduce((a,b) => Math.min(a,b.price), Number.MAX_SAFE_INTEGER)}`
         }
@@ -205,8 +205,8 @@ export class FulfillmentProductResourceService extends ServiceBase {
     const items = await Promise.all(promises);
     return {
       items,
-      totalCount: items.length,
-      operationStatus: {
+      total_count: items.length,
+      operation_status: {
         code: 200,
         message: 'success'
       }

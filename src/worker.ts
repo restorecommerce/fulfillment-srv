@@ -70,17 +70,6 @@ export class Worker {
     redisConfig.db = this.cfg.get('redis:db-indexes:db-subject');
     this.redisClient = createClient(redisConfig);
 
-    const fulfillmentCourierService = new FulfillmentCourierResourceService(
-      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
-    );
-    const fulfillmentProductService = new FulfillmentProductResourceService(
-      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
-    );
-    const fulfillmentService = new FulfillmentResourceService(
-      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
-    );
-    this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
-
     const that = this;
     const fulfillmentServiceEventListener = async (msg: any, context: any, config: any, eventName: string) => {
       if (eventName == CREATE_FULFILLMENTS) {
@@ -139,6 +128,17 @@ export class Worker {
       }
       this.topics.set(topicType, topic);
     }
+
+    const fulfillmentCourierService = new FulfillmentCourierResourceService(
+      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
+    );
+    const fulfillmentProductService = new FulfillmentProductResourceService(
+      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
+    );
+    const fulfillmentService = new FulfillmentResourceService(
+      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
+    );
+    this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
 
     const serviceNamesCfg = cfg.get('serviceNames');
     await this.server.bind(serviceNamesCfg.fulfillment, fulfillmentService);
