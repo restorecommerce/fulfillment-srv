@@ -1,5 +1,5 @@
 import * as soap from 'soap';
-import * as moment from 'moment';
+import moment from 'moment';
 import fetch from 'node-fetch';
 import { xml2js, js2xml } from 'xml-js';
 
@@ -328,7 +328,7 @@ export namespace DHL
     shipmentNumber: requests.map(request => request.label.shipment_number)
   });
 
-  const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map:{[k:string]:FlatAggregatedFulfillment}, response: any, err?:any): FlatAggregatedFulfillment[] => { 
+  const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map:{[k:string]:FlatAggregatedFulfillment}, response: any, err?:any): FlatAggregatedFulfillment[] => {
     if (err) {
       return Object.values(fulfillment_map).map(fulfillment => {
         fulfillment.label.status = {
@@ -339,7 +339,7 @@ export namespace DHL
         return fulfillment;
       });
     }
-    
+
     return response.DeletionState.map(state => {
       const fulfillment = fulfillment_map[state.shipmentNumber];
       fulfillment.label.state = state.Status.statusCode == 0 ? State.Cancelled : fulfillment.label.state;
