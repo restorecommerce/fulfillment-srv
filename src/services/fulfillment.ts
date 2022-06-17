@@ -6,7 +6,7 @@ import {
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { FulfillmentCourierResourceService, FulfillmentProductResourceService} from './';
-import { 
+import {
   FulfillmentCourier as Courier,
   FulfillmentCourierResponseList as CourierResponseList
 } from '../generated/io/restorecommerce/fulfillment_courier';
@@ -181,7 +181,7 @@ export class FulfillmentResourceService extends ServiceBase {
     );
   }
 
-  private async aggregateFulfillments(ids:string[], context?:any): Promise<{[id:string]:AggregatedFulfillment}> {
+  private async aggregateFulfillments(ids: string[], context?: any): Promise<{[id: string]: AggregatedFulfillment}> {
     const fulfillments = await this.getFulfillmentsByIDs(ids);
     const product_map: {[id: string]: Product} = {};
     const product_ids = [].concat(...fulfillments.items.map(item => item.payload.order.parcels.map(product => product.product_id)));
@@ -200,7 +200,7 @@ export class FulfillmentResourceService extends ServiceBase {
       const couriers = products.map(product => courier_map[product.courier_id]);
       return { [item.payload.id] : Object.assign(item.payload, { products, couriers }) };
     }));
-    
+
     return aggregatedFulfillments;
   }
 
@@ -212,7 +212,7 @@ export class FulfillmentResourceService extends ServiceBase {
       Object.assign(item, {
         fulfillment: aggregatedFulfillments[item.fulfillment_id],
         shipment_numbers: item.shipment_numbers.concat(
-          aggregatedFulfillments[item.fulfillment_id].labels.map((label:any) => label.shipment_number)
+          aggregatedFulfillments[item.fulfillment_id].labels.map((label: any) => label.shipment_number)
         )
       })
     );
@@ -227,8 +227,8 @@ export class FulfillmentResourceService extends ServiceBase {
     const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
     const items = mergeFulfillments(responses);
 
-    await Promise.all(items.map(item => 
-      Promise.all(item.labels.map(label => 
+    await Promise.all(items.map(item =>
+      Promise.all(item.labels.map(label =>
         this.topic.emit(`fulfillmentLabel${State[label.state]}`, label)
       ))
     ));
@@ -248,11 +248,11 @@ export class FulfillmentResourceService extends ServiceBase {
     const items = mergeTrackingResults(response);
 
     await Promise.all(items.map(async item => {
-      await Promise.all(item.fulfillment.labels.map(label => 
+      await Promise.all(item.fulfillment.labels.map(label =>
         this.topic.emit(`fulfillmentLabel${State[label.state]}`, label)
       ));
       if (item.fulfillment.fulfilled) {
-        await this.topic.emit(`fulfillmentFulfilled`, item.fulfillment)
+        await this.topic.emit(`fulfillmentFulfilled`, item.fulfillment);
       }
     }));
 
@@ -274,7 +274,7 @@ export class FulfillmentResourceService extends ServiceBase {
     const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
     const items = mergeFulfillments(responses);
 
-    items.forEach(item => 
+    items.forEach(item =>
       this.topic.emit(`fulfillmentCancelled`, item)
     );
 

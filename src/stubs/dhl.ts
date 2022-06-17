@@ -237,7 +237,7 @@ export namespace DHL
 
       return fulfillment;
     }
-  );
+    );
 
   const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
     timestamp: attributes['event-timestamp'],
@@ -276,7 +276,7 @@ export namespace DHL
             id: request.fulfillment.label.shipment_number,
             code: response.elements[0].attributes.code,
             message: response.elements[0].attributes.error || response.elements[0].elements[0].attributes.status
-          }
+          };
           request.fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Done : State.Shipping;
           request.fulfillment.label.status = status;
           request.fulfillment.fulfilled = request.fulfillment.label.state == State.Done;
@@ -299,12 +299,12 @@ export namespace DHL
             status: {
               id: request.fulfillment.label.shipment_number,
               code: response?.elements?.[0]?.attributes?.code || 500,
-              message: response?.elements?.[0]?.attributes?.error || "Error Unknown!"
+              message: response?.elements?.[0]?.attributes?.error || 'Error Unknown!'
             }
           };
         }
       },
-      (err:any): Tracking => {
+      (err: any): Tracking => {
         request.fulfillment.label.state = State.Invalid;
         return {
           shipment_number: request.fulfillment.label.shipment_number,
@@ -328,14 +328,14 @@ export namespace DHL
     shipmentNumber: requests.map(request => request.label.shipment_number)
   });
 
-  const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map:{[k:string]:FlatAggregatedFulfillment}, response: any, err?:any): FlatAggregatedFulfillment[] => {
+  const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map: {[k: string]: FlatAggregatedFulfillment}, response: any, err?: any): FlatAggregatedFulfillment[] => {
     if (err) {
       return Object.values(fulfillment_map).map(fulfillment => {
         fulfillment.label.status = {
           id: fulfillment.label.shipment_number,
           code: err.code || err.statusCode || 500,
           message: err.message || err.statusText || JSON.stringify(err)
-        }
+        };
         return fulfillment;
       });
     }
@@ -347,10 +347,10 @@ export namespace DHL
         id: state.shipmentNumber,
         code: state.Status.statusCode,
         message: state.Status.statusText
-      }
+      };
       return fulfillment;
     });
-  }
+  };
 
   class DHLStub extends Stub {
     protected static _clients: { [id: string]: soap.Client } = {};
@@ -525,7 +525,7 @@ export namespace DHL
 
         } catch (err) {
           this.logger?.error(`${this.constructor.name}: ${err}`);
-          item.fulfillment.label.state = State.Invalid
+          item.fulfillment.label.state = State.Invalid;
           return {
             fulfillment: item.fulfillment,
             tracks: null,
@@ -541,14 +541,14 @@ export namespace DHL
       return await Promise.all(promises);
     };
 
-    async cancel (request:FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+    async cancel (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       request = request.filter(request => request?.courier?.id == this.courier.id);
       if (request.length == 0) return [];
-      const fulfillment_map: { [k:string]:FlatAggregatedFulfillment } = {};
+      const fulfillment_map: { [k: string]: FlatAggregatedFulfillment } = {};
       request.forEach(a => fulfillment_map[a.label.shipment_number] = a);
       const dhl_cancel_request = AggregatedFulfillment2DHLShipmentCancelRequest(request);
       const client = await this.registerSoapClient();
-      return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject:(v:FlatAggregatedFulfillment[])=>void): void => {
+      return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject: (v: FlatAggregatedFulfillment[]) => void): void => {
         client.GVAPI_2_0_de.GKVAPISOAP11port0.deleteShipmentOrder(dhl_cancel_request,
           (err: any, result: any, rawResponse: any, rawRequest: any): any => {
             if (err) {

@@ -50,10 +50,10 @@ const buildQueryTotals = (items: Query[]): QueryTotals[] => items.map((item: Que
   max_length: 0.0
 })));
 
-const count_items = (container:Container) => {
-  const items_ids: { [item_id:string]:number } = {};
-  container.getLevels().forEach(level => 
-    level.forEach(a => 
+const count_items = (container: Container) => {
+  const items_ids: { [item_id: string]: number } = {};
+  container.getLevels().forEach(level =>
+    level.forEach(a =>
       items_ids[a.getBox().getName()] = (items_ids[a.getBox().getName()] || 0) + 1
     )
   );

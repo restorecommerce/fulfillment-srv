@@ -81,7 +81,7 @@ export abstract class Stub
   }
 };
 
-export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillmentRequest[]): FlatAggregatedFulfillmentRequest[] => 
+export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillmentRequest[]): FlatAggregatedFulfillmentRequest[] =>
   [].concat(...requests.map((request) =>
     request?.order?.parcels?.map((parcel,i) =>
       Object.assign({}, request, {
@@ -97,23 +97,23 @@ export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillm
       }) || request
     )
   )
-);
+  );
 
-export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] => 
+export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
   [].concat(...fulfillments.map(fulfillment =>
     fulfillment?.labels?.map((label,i) =>
       Object.assign(fulfillment, {
         uuid: randomUUID(),
-        label: label,
+        label,
         labels: [label],
         courier: fulfillment.couriers[i],
         product: fulfillment.products[i],
       }) || fulfillment
     )
   )
-);
+  );
 
-export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingRequest[]): FlatAggregatedTrackingRequest[] => 
+export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingRequest[]): FlatAggregatedTrackingRequest[] =>
   [].concat(...requests.map((request) =>
     request?.fulfillment?.labels?.map((label,i) =>
       Object.assign({}, request, {
@@ -121,7 +121,7 @@ export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingReq
         shipment_numbers: [label.shipment_number],
         fulfillment: Object.assign(request.fulfillment, {
           uuid: randomUUID(),
-          label: label,
+          label,
           labels: [label],
           courier: request.fulfillment.couriers[i],
           product: request.fulfillment.products[i],
@@ -129,7 +129,7 @@ export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingReq
       }) || request
     )
   )
-);
+  );
 
 export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fulfillment[] => {
   const merged_fulfillments: { [uuid: string]: Fulfillment } = {};
