@@ -1,4 +1,3 @@
-import * as should from 'should';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import { createLogger } from '@restorecommerce/logger';
 import { Events, Topic } from '@restorecommerce/kafka-client';
@@ -31,6 +30,6 @@ export async function connectEvents(): Promise<Events> {
 
 export async function connectTopics(events: Events, resourceName: string): Promise<Topic> {
     const topic = cfg.get(`events:kafka:topics:${resourceName}:topic`);
-    should.exist(topic);
+    expect(topic).not.toBeNull();
     return events.topic(topic);
 }

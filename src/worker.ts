@@ -1,22 +1,29 @@
 import * as _ from 'lodash';
 import {
   Server, OffsetStore, database,
-  CommandInterface, ServerReflection,
-  Health
+  CommandInterface,
+  //Health
 } from '@restorecommerce/chassis-srv';
 import { Events, Topic } from '@restorecommerce/kafka-client';
 import { createLogger } from '@restorecommerce/logger';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import {
-  FulfillmentResourceService,
-  FulfillmentCourierResourceService,
-  FulfillmentProductResourceService
+  FulfillmentService,
+  FulfillmentCourierService,
+  FulfillmentProductService
 } from './services/';
 import { RedisClientType as RedisClient, createClient } from 'redis';
-import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
+//import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
 import { Logger } from 'winston';
+import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transport/provider/grpc';
+import { ServiceDefinition as FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { ServiceDefinition as FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import { ServiceDefinition as FulfillmentProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+import { ServiceDefinition as CommandInterfaceServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface';
+
 
 const CREATE_FULFILLMENTS = 'createFulfillments';
+const SUBMIT_FULFILLMENTS = 'submitFulfillments';
 const TRACK_FULFILLMENTS = 'trackFulfillments';
 const CANCEL_FULFILLMENTS = 'cancelFulfillments';
 const QUEUED_JOB = 'queuedJob';
@@ -71,45 +78,42 @@ export class Worker {
     this.redisClient = createClient(redisConfig);
 
     const that = this;
-    const fulfillmentServiceEventListener = async (msg: any, context: any, config: any, eventName: string) => {
-      if (eventName == CREATE_FULFILLMENTS) {
-        await fulfillmentService.create({ request: msg }, context).then(
+    const fulfillmentServiceActions = {
+      [CREATE_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) => {
+        return fulfillmentService.create(msg, context).then(
+          () => that.logger.info(`Event ${eventName} done.`),
+          err => that.logger.error(`Event ${eventName} failed: ${err}`)
+        );
+      },
+      [SUBMIT_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) => {
+        return fulfillmentService.submit(msg, context).then(
+          () => that.logger.info(`Event ${eventName} done.`),
+          err => that.logger.error(`Event ${eventName} failed: ${err}`)
+        );
+      },
+      [TRACK_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) => {
+        return fulfillmentService.track(msg, context).then(
+          () => that.logger.info(`Event ${eventName} done.`),
+          err => that.logger.error(`Event ${eventName} failed: ${err}`)
+        );
+      },
+      [CANCEL_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) =>  {
+        return fulfillmentService.track(msg, context).then(
           () => that.logger.info(`Event ${eventName} done.`),
           err => that.logger.error(`Event ${eventName} failed: ${err}`)
         );
       }
-      else if (eventName == QUEUED_JOB && msg?.type == CREATE_FULFILLMENTS) {
-        await fulfillmentService.create({ request: msg?.data?.payload }, context).then(
-          () => that.logger.info(`Job ${eventName} done.`),
-          err => that.logger.error(`Job ${eventName} failed: ${err}`)
-        );
-      }
-      else if (eventName == TRACK_FULFILLMENTS) {
-        await fulfillmentService.track({ request: msg }, context).then(
-          () => that.logger.info(`Event ${eventName} done.`),
-          err => that.logger.error(`Event ${eventName} failed: ${err}`)
-        );
-      }
-      else if (eventName == QUEUED_JOB && msg?.type == TRACK_FULFILLMENTS) {
-        await fulfillmentService.track({ request: msg?.data?.payload }, context).then(
-          () => that.logger.info(`Job ${eventName} done.`),
-          err => that.logger.error(`Job ${eventName} failed: ${err}`)
-        );
-      }
-      else if (eventName == CANCEL_FULFILLMENTS) {
-        await fulfillmentService.track({ request: msg }, context).then(
-          () => that.logger.info('Event trackFulfillments done.'),
-          err => that.logger.error(`Event trackFulfillments failed: ${err}`)
-        );
-      }
-      else if (eventName == QUEUED_JOB && msg?.type == CANCEL_FULFILLMENTS) {
-        await fulfillmentService.track({ request: msg?.data?.payload }, context).then(
-          () => that.logger.info(`Job ${eventName} done.`),
-          err => that.logger.error(`Job ${eventName} failed: ${err}`)
+    };
+
+    const fulfillmentServiceEventListeners = (msg: any, context: any, config: any, eventName: string) => {
+      if (eventName == QUEUED_JOB) {
+        return fulfillmentServiceActions[msg?.type](msg?.data?.payload, context, config, msg?.type).then(
+          () => that.logger.info(`Job ${msg?.type} done.`),
+          err => that.logger.error(`Job ${msg?.type} failed: ${err}`)
         );
       }
       else {
-        await that.cis.command(msg, context);
+        return fulfillmentServiceActions[eventName](msg, context, config, eventName);
       }
     };
 
@@ -118,35 +122,51 @@ export class Worker {
       const topic = await this.events.topic(topicName);
       const offSetValue: number = await this.offsetStore.getOffset(topicName);
       logger.info('subscribing to topic with offset value', topicName, offSetValue);
-      if (kafkaCfg.topics[topicType].events) {
-        const eventNames = kafkaCfg.topics[topicType].events;
-        for (let eventName of eventNames) {
-          topic.on(eventName, fulfillmentServiceEventListener, {
-            startingOffset: offSetValue
-          });
-        }
-      }
+      kafkaCfg.topics[topicType]?.events?.forEach(
+        eventName => topic.on(
+          eventName,
+          fulfillmentServiceEventListeners[eventName],
+          { startingOffset: offSetValue }
+        )
+      );
       this.topics.set(topicType, topic);
     }
 
-    const fulfillmentCourierService = new FulfillmentCourierResourceService(
+    const fulfillmentCourierService = new FulfillmentCourierService(
       this.topics.get('fulfillment_courier.resource'), db, cfg, logger
     );
-    const fulfillmentProductService = new FulfillmentProductResourceService(
+    const fulfillmentProductService = new FulfillmentProductService(
       fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
     );
-    const fulfillmentService = new FulfillmentResourceService(
+    const fulfillmentService = new FulfillmentService(
       fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
     );
     this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
 
-    const serviceNamesCfg = cfg.get('serviceNames');
-    await this.server.bind(serviceNamesCfg.fulfillment, fulfillmentService);
-    await this.server.bind(serviceNamesCfg.fulfillment_courier, fulfillmentCourierService);
-    await this.server.bind(serviceNamesCfg.fulfillment_product, fulfillmentProductService);
-    await this.server.bind(serviceNamesCfg.cis, this.cis);
+    const serviceNamesCfg = cfg.get('service_names');
+
+    await this.server.bind(serviceNamesCfg.fulfillment, {
+      service: FulfillmentServiceDefinition,
+      implementation: fulfillmentService
+    } as BindConfig<FulfillmentServiceDefinition>);
+
+    await this.server.bind(serviceNamesCfg.fulfillment_courier, {
+      service: FulfillmentCourierServiceDefinition,
+      implementation: fulfillmentCourierService,
+    } as BindConfig<FulfillmentCourierServiceDefinition>);
+
+    await this.server.bind(serviceNamesCfg.fulfillment_product, {
+      service: FulfillmentProductServiceDefinition,
+      implementation: fulfillmentProductService,
+    } as BindConfig<FulfillmentProductServiceDefinition>);
+
+    await this.server.bind(serviceNamesCfg.cis, {
+      service: CommandInterfaceServiceDefinition,
+      implementation: this.cis
+    } as BindConfig<CommandInterfaceServiceDefinition>);
 
     // Add reflection service
+    /*
     const reflectionServiceName = serviceNamesCfg.reflection;
     const transportName = cfg.get(`server:services:${reflectionServiceName}:serverReflectionInfo:transport:0`);
     const transport = this.server.transport[transportName];
@@ -155,6 +175,7 @@ export class Worker {
     await this.server.bind(serviceNamesCfg.health, new Health(this.cis, {
       readiness: async () => !!await ((db as Arango).db).version()
     }));
+    */
 
     // start server
     await this.server.start();

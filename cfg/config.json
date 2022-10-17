@@ -278,6 +278,7 @@
           "topic": "io.restorecommerce.fulfillment.resource",
           "events": [
             "createFulfillments",
+            "submitFulfillments",
             "trackFulfillments",
             "cancelFulfillments"
           ]

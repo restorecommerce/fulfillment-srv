@@ -1,16 +1,13 @@
 import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
-import {
-  ServiceCall,
-  ReadRequest,
-  FilterOperation,
-  FilterValueType,
-  OperatorType
-} from '@restorecommerce/resource-base-interface/lib/core/interfaces';
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
+import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
+import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
+import { FilterOp_Operator, Filter_Operation, Filter_ValueType } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter';
 import { Courier as Packer, Offer } from '@restorecommerce/cart/lib/model/impl/Courier';
 import { Container } from '@restorecommerce/cart/lib/model/impl/bin/Container';
 import { IItem } from '@restorecommerce/cart/lib/model/IItem';
+import { Item } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product';
 import {
   QueryList,
   Query,
@@ -18,11 +15,17 @@ import {
   PackingSolutionResponseList,
   FulfillmentProductResponseList as ProductResponseList,
   PackingSolutionResponse,
-} from '../generated/io/restorecommerce/fulfillment_product';
-import { Item as Good } from '../generated/io/restorecommerce/order';
-import { Parcel } from '../generated/io/restorecommerce/fulfillment';
-import { FulfillmentCourierResponseList as CourierResponseList } from '../generated/io/restorecommerce/fulfillment_courier';
-import { FulfillmentCourierResourceService } from '.';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+import { Parcel } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { 
+  FulfillmentProductResponseList,
+  FulfillmentProductList
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+import {
+  FulfillmentCourier as Courier,
+  FulfillmentCourierResponseList as CourierResponseList 
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import { FulfillmentCourierService } from '.';
 import { Stub } from '..';
 
 
@@ -34,36 +37,41 @@ interface QueryTotals extends Query {
   max_length: number;
 }
 
-const buildQueryTotals = (items: Query[]): QueryTotals[] => items.map((item: Query) => Object.assign({}, item.goods.reduce((a: any, b: Good) => {
-  a.volume += b.width_in_cm * b.height_in_cm * b.length_in_cm * b.quantity;
-  a.total_weight += b.weight_in_kg * b.quantity;
-  a.max_width = Math.max(a.max_width, b.width_in_cm);
-  a.max_height = Math.max(a.max_height, b.height_in_cm);
-  a.max_length = Math.max(a.max_length, b.length_in_cm);
-  return a;
-}, {
-  ...item,
-  volume: 0.0,
-  total_weight: 0.0,
-  max_width: 0.0,
-  max_height: 0.0,
-  max_length: 0.0
-})));
+const buildQueryTotals = (items: Query[]): QueryTotals[] => items.map(
+  (item: Query): QueryTotals => item.goods.reduce((a: QueryTotals, b: any) => {
+    a.volume += b.width_in_cm * b.height_in_cm * b.length_in_cm * b.quantity;
+    a.total_weight += b.weight_in_kg * b.quantity;
+    a.max_width = Math.max(a.max_width, b.width_in_cm);
+    a.max_height = Math.max(a.max_height, b.height_in_cm);
+    a.max_length = Math.max(a.max_length, b.length_in_cm);
+    return a;
+  }, {
+    ...item,
+    volume: 0.0,
+    total_weight: 0.0,
+    max_width: 0.0,
+    max_height: 0.0,
+    max_length: 0.0
+  } as QueryTotals)
+);
 
-const count_items = (container: Container) => {
-  const items_ids: { [item_id: string]: number } = {};
+const countItems = (goods: Item[], container: Container) => {
+  const item_map = new Map<string, Item>(goods.map(
+    item => [item.product_variant_bundle_id, { ...item, quantity: 0 }]
+  ));
   container.getLevels().forEach(level =>
-    level.forEach(a =>
-      items_ids[a.getBox().getName()] = (items_ids[a.getBox().getName()] || 0) + 1
-    )
+    level.forEach(a => {
+      const item = item_map.get(a.getBox().getName());
+      item && (item.quantity += 1);
+    })
   );
-  return Object.entries(items_ids).map(([item_id, quantity]) => ({ item_id, quantity }));
+  return [...item_map.values()];
 };
 
-export class FulfillmentProductResourceService extends ServiceBase {
+export class FulfillmentProductService extends ServiceBase<FulfillmentProductResponseList, FulfillmentProductList> {
 
   constructor(
-    public courier_srv: FulfillmentCourierResourceService,
+    public courier_srv: FulfillmentCourierService,
     topic: Topic,
     db: DatabaseProvider,
     public cfg: any,
@@ -78,63 +86,58 @@ export class FulfillmentProductResourceService extends ServiceBase {
     );
   }
 
-  async findCouriers(query: QueryTotals, context?: any): Promise<CourierResponseList>
+  async findCouriers(query: QueryTotals, context?: any): Promise<DeepPartial<CourierResponseList>>
   {
-    const call: ServiceCall<ReadRequest> = {
-      request: {
-        filters: [{
-          filter: query.preferences.couriers.map(att => ({
-            field: att.id,
-            operation: FilterOperation.eq,
-            value: att.value
-          })),
-          operator: OperatorType.or
-        }]
-      }
-    };
+    const call = ReadRequest.fromPartial({
+      filters: [{
+        filter: query.preferences.couriers.map(att => ({
+          field: att.id,
+          operation: Filter_Operation.eq,
+          value: att.value
+        })),
+        operator: FilterOp_Operator.or
+      }]
+    });
     return this.courier_srv.read(call, context);
   }
 
-  async findProducts(query: QueryTotals, courier_stubs?: Stub[], context?: any): Promise<ProductResponseList>
+  async findProducts(query: QueryTotals, courier_stubs?: Stub[], context?: any): Promise<DeepPartial<ProductResponseList>>
   {
     courier_stubs = courier_stubs || await this.findCouriers(query, context).then((resp: CourierResponseList) =>
       resp.items.map(item => Stub.instantiate(item.payload, { cfg: this.cfg, logger: this.logger }))
     );
 
     const start_zones: string[] = [];
-    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.sender)))
+    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.sender.address)))
     {
       start_zones.push(await promise.catch(err => null));
     }
 
     const dest_zones: string[] = [];
-    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.receiver)))
+    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.receiver.address)))
     {
       dest_zones.push(await promise.catch(err => null));
     }
 
-    const call: ServiceCall<ReadRequest> = {
-      request: {
-        filters: [{
-          filter: [{
-            field: 'courier_id',
-            operation: FilterOperation.in,
-            value: JSON.stringify(courier_stubs.map(stub => stub.courier.id)),
-            type: FilterValueType.ARRAY
-          }],
-          operator: OperatorType.or
-        }]
-      }
-    };
+    const call = ReadRequest.fromPartial({
+      filters: [{
+        filter: [{
+          field: 'courier_id',
+          operation: Filter_Operation.in,
+          value: JSON.stringify(courier_stubs.map(stub => stub.courier.id)),
+          type: Filter_ValueType.ARRAY
+        }],
+        operator: FilterOp_Operator.or
+      }]
+    });
 
     return this.read(call, context);
   }
 
-  async find(call: ServiceCall<QueryList>, context?: any): Promise<PackingSolutionResponseList>
+  async find(request: QueryList, context?: any): Promise<PackingSolutionResponseList>
   {
-    const queries = buildQueryTotals(call.request.items);
+    const queries = buildQueryTotals(request.items);
     const promises = queries.map(async query => {
-
       const goods = query.goods.map((good): IItem => ({
         sku: good.product_variant_bundle_id,
         quantity: good.quantity,
@@ -147,7 +150,7 @@ export class FulfillmentProductResourceService extends ServiceBase {
       }));
 
       const stubs = await this.findCouriers(query, context).then(resp =>
-        resp.items.map(item => Stub.instantiate(item.payload, { cfg: this.cfg, logger: this.logger }))
+        resp.items.map(item => Stub.instantiate(item.payload as Courier, { cfg: this.cfg, logger: this.logger }))
       );
 
       const products = await this.findProducts(query, stubs, context).then(resp =>
@@ -177,7 +180,7 @@ export class FulfillmentProductResourceService extends ServiceBase {
         parcels: containers.map((container): Parcel => ({
           product_id: container.getOffer().name.split('\t')[0],
           product_variant_id: container.getOffer().name.split('\t')[1],
-          items: count_items(container),
+          items: countItems(query.goods, container),
           height_in_cm: container.getStackHeight(),
           width_in_cm: container.getWidth(),
           weight_in_kg: container.getStackWeight(),

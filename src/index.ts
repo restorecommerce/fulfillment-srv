@@ -1,33 +1,39 @@
 import { randomUUID } from 'crypto';
 import { Logger } from 'winston';
+import { Address } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
+import { Country } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
 import {
-  Address,
-  FulfillmentRequest,
   Fulfillment,
+  FulfillmentAddress,
   TrackingRequest,
   TrackingResult,
   Label,
-  Parcel
-} from './generated/io/restorecommerce/fulfillment';
-import { FulfillmentCourier as Courier } from './generated/io/restorecommerce/fulfillment_courier';
-import { FulfillmentProduct as Product } from './generated/io/restorecommerce/fulfillment_product';
+  Parcel,
+  State,
+  Order
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { FulfillmentCourier as Courier } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import { FulfillmentProduct as Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 
-export interface AggregatedFulfillmentRequest extends FulfillmentRequest
+export interface AggregatedAddress extends Address
 {
-  couriers: Courier[];
-  products: Product[];
+  country: Country;
 }
 
-export interface FlatAggregatedFulfillmentRequest extends FulfillmentRequest
+export interface AggregatedFulfillmentAddress extends FulfillmentAddress
 {
-  uuid: string;
-  courier: Courier;
-  product: Product;
-  parcel: Parcel;
+  address: AggregatedAddress;
+}
+
+export interface AggregatedFulfillmentOrder extends Order
+{
+  sender: AggregatedFulfillmentAddress;
+  receiver: AggregatedFulfillmentAddress
 }
 
 export interface AggregatedFulfillment extends Fulfillment
 {
+  order: AggregatedFulfillmentOrder;
   couriers: Courier[];
   products: Product[];
 }
@@ -36,6 +42,7 @@ export interface FlatAggregatedFulfillment extends Fulfillment
 {
   uuid: string;
   label: Label;
+  order: AggregatedFulfillmentOrder;
   courier: Courier;
   product: Product;
   parcel: Parcel;
@@ -62,7 +69,7 @@ export abstract class Stub
     public logger?: Logger
   ) {}
 
-  abstract order (request: FlatAggregatedFulfillmentRequest[]): Promise<FlatAggregatedFulfillment[]>;
+  abstract order (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   abstract track (request: FlatAggregatedTrackingRequest[]): Promise<TrackingResult[]>;
   abstract cancel (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   abstract getZoneFor(address: Address): Promise<string>;
@@ -81,7 +88,7 @@ export abstract class Stub
   }
 };
 
-export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillmentRequest[]): FlatAggregatedFulfillmentRequest[] =>
+export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
   [].concat(...requests.map((request) =>
     request?.order?.parcels?.map((parcel,i) =>
       Object.assign({}, request, {
@@ -97,7 +104,7 @@ export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillm
       }) || request
     )
   )
-  );
+);
 
 export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
   [].concat(...fulfillments.map(fulfillment =>
@@ -111,7 +118,7 @@ export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): Flat
       }) || fulfillment
     )
   )
-  );
+);
 
 export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingRequest[]): FlatAggregatedTrackingRequest[] =>
   [].concat(...requests.map((request) =>
@@ -129,7 +136,7 @@ export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingReq
       }) || request
     )
   )
-  );
+);
 
 export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fulfillment[] => {
   const merged_fulfillments: { [uuid: string]: Fulfillment } = {};

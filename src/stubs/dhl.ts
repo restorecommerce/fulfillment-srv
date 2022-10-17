@@ -1,20 +1,18 @@
 import * as soap from 'soap';
-import moment from 'moment';
 import fetch from 'node-fetch';
 import { xml2js, js2xml } from 'xml-js';
 
 import {
-  Address,
   Event,
   State,
   Tracking,
   TrackingResult
-} from '../generated/io/restorecommerce/fulfillment';
-import { FulfillmentCourier as Courier } from '../generated/io/restorecommerce/fulfillment_courier';
-import { Status } from '../generated/io/restorecommerce/status';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { FulfillmentCourier as Courier } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 import {
+  AggregatedAddress,
   FlatAggregatedFulfillment,
-  FlatAggregatedFulfillmentRequest,
   FlatAggregatedTrackingRequest,
   Stub
 } from '..';
@@ -133,7 +131,15 @@ export namespace DHL
       })))}
   }));
 
-  const AggregatedFulfillmentRequests2DHLShipmentOrderRequest = (requests: FlatAggregatedFulfillmentRequest[]): ShipmentOrderRequest => ({
+  /*
+  function parseAddress (address: Address) {
+    switch (address.type) {
+
+    }
+  }
+  */
+
+  const AggregatedFulfillmentRequests2DHLShipmentOrderRequest = (requests: FlatAggregatedFulfillment[]): ShipmentOrderRequest => ({
     Version: {
       majorRelease: 3,
       minorRelease: 1
@@ -143,9 +149,9 @@ export namespace DHL
       Shipment: {
         Shipper: {
           Name: {
-            name1: request.order.sender.name[0],
-            name2: request.order.sender.name[1],
-            name3: request.order.sender.name[2]
+            name1: request.order.sender.address.residential_address?.family_name || request.order.sender.address.business_address?.name,
+            name2: request.order.sender.address.residential_address?.given_name,
+            name3: request.order.sender.address.residential_address?.mid_name,
           },
           Address: {
             streetName: request.order.sender.address?.street,
@@ -153,38 +159,38 @@ export namespace DHL
             zip: request.order.sender.address?.postcode,
             city: request.order.sender.address?.region,
             Origin: {
-              country: request.order.sender.country.name,
-              countryISOCode: request.order.sender.country.country_code
+              country: request.order.sender.address.country.name,
+              countryISOCode: request.order.sender.address.country.country_code
             },
             Communication: {
-              contactPerson: request.order.sender.contact?.name,
-              email: request.order.sender.contact?.email,
-              phone: request.order.sender.contact?.phone,
+              contactPerson: request.order.sender.contact_person?.name,
+              email: request.order.sender.contact_person.email,
+              phone: request.order.sender.contact_person.phone,
             }
           }
         },
         Receiver: {
-          name1: request.order.receiver.name[0],
+          name1: request.order.receiver.address.residential_address?.family_name || request.order.receiver.address.business_address?.name,
           Address: {
-            name2: request.order.receiver.name[1],
-            name3: request.order.receiver.name[2],
+            name2: request.order.receiver.address.residential_address?.given_name,
+            name3: request.order.receiver.address.residential_address?.mid_name,
             streetName: request.order.receiver.address?.street,
             streetNumber: request.order.receiver.address?.building_number,
             zip: request.order.receiver.address?.postcode,
             city: request.order.receiver.address?.region,
             Origin: {
-              country: request.order.receiver.country.name,
-              countryISOCode: request.order.receiver.country.country_code
+              country: request.order.receiver.address.country.name,
+              countryISOCode: request.order.receiver.address.country.country_code
             },
             Communication: {
-              contactPerson: request.order.receiver.contact?.name,
-              email: request.order.receiver.contact?.email,
-              phone: request.order.receiver.contact?.phone,
+              contactPerson: request.order.receiver.contact_person?.name,
+              email: request.order.receiver.contact_person?.email,
+              phone: request.order.receiver.contact_person?.phone,
             }
           }
         },
         ShipmentDetails: {
-          shipmentDate: moment().format('YYYY-MM-DD'),
+          shipmentDate: new Date().toISOString().slice(0,10),
           costCenter: '',
           customerReference: request.order.reference_id,
           product: request.product.attributes.find(att => att.id == 'urn:restorecommerce:fufs:names:product:attr:dhl:productName').value,
@@ -204,8 +210,8 @@ export namespace DHL
     }))
   });
 
-  const DHLShipmentLabels2FulfillmentResponses = (requests: FlatAggregatedFulfillmentRequest[], response: any, status?: Status): FlatAggregatedFulfillment[] =>
-    requests.map((request, i) => {
+  function DHLShipmentLabels2FulfillmentResponses (requests: FlatAggregatedFulfillment[], response: any, status?: Status): FlatAggregatedFulfillment[] {
+    return requests.map((request, i) => {
       const dhl_state = response?.CreationState.find((state: any) => state.sequenceNumber == i);
       if (status) {
         status.id = request.id;
@@ -220,11 +226,13 @@ export namespace DHL
 
       const label = {
         shipment_number: dhl_state?.shipmentNumber,
+        fulfillment_id: request.id,
+        reference_id: request.order.reference_id,
         type: 'url',
         url: dhl_state?.LabelData.labelUrl,
         png: undefined,
         pdf: undefined,
-        state: dhl_state?.LabelData.Status.statusCode == 0 ? State.Ordered : State.Invalid,
+        state: dhl_state?.LabelData.Status.statusCode == 0 ? State.Submitted : State.Invalid,
         status
       };
 
@@ -232,12 +240,12 @@ export namespace DHL
         ...request,
         label,
         labels: [label],
-        fulfilled: label.state == State.Done
+        state: label.state
       };
 
       return fulfillment;
-    }
-    );
+    });
+  }
 
   const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
     timestamp: attributes['event-timestamp'],
@@ -400,7 +408,7 @@ export namespace DHL
       return this.clients[courier.id];
     };
 
-    async order (requests: FlatAggregatedFulfillmentRequest[]): Promise<FlatAggregatedFulfillment[]> {
+    async order (requests: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       requests = requests.filter(request => request?.courier?.id == this.courier.id);
       if (requests.length == 0) return [];
       const dhl_order_request = AggregatedFulfillmentRequests2DHLShipmentOrderRequest(requests);
@@ -568,7 +576,7 @@ export namespace DHL
       });
     };
 
-    async getZoneFor(address: Address): Promise<string> {
+    async getZoneFor(address: AggregatedAddress): Promise<string> {
       return address?.country?.country_code;
     }
   };

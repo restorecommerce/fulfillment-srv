@@ -1,3 +1,3 @@
-export { FulfillmentResourceService } from './fulfillment';
-export { FulfillmentCourierResourceService } from './courier';
-export { FulfillmentProductResourceService } from './product';
+export { FulfillmentService } from './fulfillment';
+export { FulfillmentCourierService } from './courier';
+export { FulfillmentProductService } from './product';
