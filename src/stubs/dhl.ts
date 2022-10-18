@@ -1,6 +1,5 @@
 import * as soap from 'soap';
 import moment from 'moment';
-import fetch from 'node-fetch';
 import { xml2js, js2xml } from 'xml-js';
 
 import {
@@ -18,6 +17,13 @@ import {
   FlatAggregatedTrackingRequest,
   Stub
 } from '..';
+
+// node-fetch is now ESM only module
+const _importDynamic = new Function('modulePath', 'return import(modulePath)');
+const fetch = async (...args) => {
+  const { default: fetch } = await _importDynamic('node-fetch');
+  return fetch(...args);
+};
 
 export namespace DHL
 {

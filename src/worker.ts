@@ -71,6 +71,15 @@ export class Worker {
     this.redisClient = createClient(redisConfig);
 
     const that = this;
+    const fulfillmentCourierService = new FulfillmentCourierResourceService(
+      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
+    );
+    const fulfillmentProductService = new FulfillmentProductResourceService(
+      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
+    );
+    const fulfillmentService = new FulfillmentResourceService(
+      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
+    );
     const fulfillmentServiceEventListener = async (msg: any, context: any, config: any, eventName: string) => {
       if (eventName == CREATE_FULFILLMENTS) {
         await fulfillmentService.create({ request: msg }, context).then(
@@ -121,7 +130,7 @@ export class Worker {
       if (kafkaCfg.topics[topicType].events) {
         const eventNames = kafkaCfg.topics[topicType].events;
         for (let eventName of eventNames) {
-          topic.on(eventName, fulfillmentServiceEventListener, {
+          await topic.on(eventName, fulfillmentServiceEventListener, {
             startingOffset: offSetValue
           });
         }
@@ -129,15 +138,6 @@ export class Worker {
       this.topics.set(topicType, topic);
     }
 
-    const fulfillmentCourierService = new FulfillmentCourierResourceService(
-      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
-    );
-    const fulfillmentProductService = new FulfillmentProductResourceService(
-      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
-    );
-    const fulfillmentService = new FulfillmentResourceService(
-      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
-    );
     this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
 
     const serviceNamesCfg = cfg.get('serviceNames');

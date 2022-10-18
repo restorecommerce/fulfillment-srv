@@ -6,7 +6,10 @@ module.exports = {
   },
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "project": "tsconfig.json",
+    "project": [
+      "tsconfig.json",
+      "tsconfig.test.json"
+    ],
     "sourceType": "module"
   },
   "plugins": [
@@ -16,6 +19,7 @@ module.exports = {
   ],
   "rules": {
     "@typescript-eslint/adjacent-overload-signatures": "error",
+    "@typescript-eslint/no-floating-promises": "error",
     "@typescript-eslint/naming-convention": [
       "error",
       {
