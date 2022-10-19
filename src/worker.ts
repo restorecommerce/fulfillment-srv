@@ -143,7 +143,7 @@ export class Worker {
     );
     this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
 
-    const serviceNamesCfg = cfg.get('service_names');
+    const serviceNamesCfg = cfg.get('serviceNames');
 
     await this.server.bind(serviceNamesCfg.fulfillment, {
       service: FulfillmentServiceDefinition,

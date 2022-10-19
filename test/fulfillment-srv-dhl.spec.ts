@@ -1,3 +1,5 @@
+import {} from 'mocha';
+import * as should from 'should';
 import { Client } from 'nice-grpc';
 import { database } from '@restorecommerce/chassis-srv';
 import { createClient, createChannel, GrpcClientConfig } from '@restorecommerce/grpc-client';
@@ -29,7 +31,7 @@ describe("Testing Fulfillment Service:", () => {
   let product_client: Client<FulfillmentProductServiceDefinition>;
   let fulfillment_client: Client<FulfillmentServiceDefinition>;
 
-  beforeAll(async function() {
+  before(async function() {
     this.timeout(15000);
     worker = await startWorker();
     events = await connectEvents();
@@ -66,7 +68,7 @@ describe("Testing Fulfillment Service:", () => {
     await db_client.upsert('fulfillment', samples.DHL.MockFulfillments.items);
   });
 
-  afterAll(async function() {
+  after(async function() {
     this.timeout(15000);
     await courier_client?.delete({ collection: true });
     await product_client?.delete({ collection: true });
@@ -83,28 +85,29 @@ describe("Testing Fulfillment Service:", () => {
         }
         return item;
       });
-      expect(sample).not.toBeNull(); //"samples.DHL.CreateCouriers should exist in samples.json");
+      should.exist(sample, "samples.DHL.CreateCouriers should exist in samples.json");
       const response = await courier_client.create(sample);
-      expect(response?.operation_status?.code).toBe(200); //, "response.operation_status.code should be 200");
-      expect(response?.items[0]?.payload?.id).not.toBeNull(); //, "response.data.items[0].payload.id should exist");
+      console.log(response);
+      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
+      should.equal(response?.items[0]?.payload?.id, "response.data.items[0].payload.id should exist");
     });
   });
 
   describe("The Fulfillment Product Service:", () => {
     it("should create a set of products", async () => {
       const sample = samples.DHL.CreateProducts;
-      expect(sample).not.toBeNull(); //should.exist(sample, "samples.DHL.CreateProducts should exist in samples.json");
+      should.exist(sample, "samples.DHL.CreateProducts should exist in samples.json");
       const response = await product_client.create(sample);
-      expect(response?.operation_status?.code).toBe(200); //"response.operation_status.code should be 200");
-      expect(response?.items[0]?.payload?.id).not.toBeNull(); //, "response.items[0].payload.id should exist");
+      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
+      should.equal(response?.items[0]?.payload?.id, "response.items[0].payload.id should exist");
     });
 
     it("should find a solution for a query of items", async () => {
       const sample = samples.DHL.ProductQuery;
-      expect(sample).not.toBeNull(); //, "samples.DHL.ProductQuery should exist in samples.json");
+      should.exist(sample, "samples.DHL.ProductQuery should exist in samples.json");
       const response = await product_client.find(sample);
-      expect(response?.operation_status?.code).toBe(200); //"response.operation_status.code should be 200");
-      expect(response?.items[0]?.solutions).toBeNull(); //, "response.items[0].payload should exist");
+      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
+      should.equal(response?.items[0]?.solutions, "response.items[0].payload should exist");
     });
   });
   
@@ -112,25 +115,25 @@ describe("Testing Fulfillment Service:", () => {
     let offset: any;
 
     const onLabelOrdered = (msg:any, context?:any): void => {
-      expect(msg?.state).toBe(State.Submitted);
+      should.equal(msg?.state,State.Submitted);
     };
 
     const onLabelDone = (msg:any, context?:any): void => {
-      expect(msg?.state).toBe(State.Done);
+      should.equal(msg?.state, State.Done);
     };
 
     const onFulfillmentCancelled = (msg:any, context?:any): void => {
-      expect(msg?.labels[0].state).toBe(State.Cancelled);
+      should.equal(msg?.labels[0].state, State.Cancelled);
     };
 
-    beforeAll(async function() {
+    before(async function() {
       this.timeout(15000);
       await topics.on('fulfillmentLabelOrdered', onLabelOrdered);
       await topics.on('fulfillmentLabelDone', onLabelDone);
       await topics.on('fulfillmentCancelled', onFulfillmentCancelled);
     });
 
-    afterAll(async function() {
+    after(async function() {
       this.timeout(15000);
       await topics.removeListener('fulfillmentLabelOrdered', onLabelOrdered);
       await topics.removeListener('fulfillmentLabelDone', onLabelDone);
@@ -140,13 +143,15 @@ describe("Testing Fulfillment Service:", () => {
     it("should create fulfillment orders for DHL", async function() {
       this.timeout(30000);
       const sample = samples.DHL.CreateFulfillments;
-      expect(sample).not.toBeNull(); //, "samples.DHL.CreateFulfillments should exist in samples.json");
+      should.exist(sample, "samples.DHL.CreateFulfillments should exist in samples.json");
 
       offset = await topics.$offset(-1);
       const response = await fulfillment_client.create(sample);
-      expect(response?.operation_status?.code).toBe(200); //, "response.operation_status.code should be 200");
-      expect(response?.items[0]?.status?.code).toBe(200); //, "response.items[0].status.code should be 200");
-      expect(response?.items[0]?.payload?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true)).toBeTruthy();
+      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
+      should.equal(response?.items[0]?.status?.code, 200, "response.items[0].status.code should be 200");
+      should.ok(response?.items[0]?.payload?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
+        "response.items[0].payload.labels.status.code should all be 200"
+      );
     });
 
     it("should have received an event of 'fulfillmentLabelOrdered'", async function() {
@@ -157,13 +162,15 @@ describe("Testing Fulfillment Service:", () => {
     it("should track fulfillment orders from DHL", async function() {
       this.timeout(30000);
       const sample = samples.DHL.TrackFulfillments;
-      expect(sample).not.toBeNull(); //, "samples.DHL.TrackFulfillments should exist in samples.json");
+      should.exist(sample, "samples.DHL.TrackFulfillments should exist in samples.json");
 
       offset = await topics.$offset(-1);
       const response = await fulfillment_client.track(sample);
-      expect(response?.operation_status?.code,).toBe(200); //, "response.operation_status.code should be 200");
-      expect(response?.items[0]?.status?.code).toBe(200); //, "response.items[0].status.code should be 200");
-      expect(response?.items[0]?.fulfillment?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 0), true)).toBeTruthy();
+      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
+      should.equal(response?.items[0]?.status?.code, 200, "response.items[0].status.code should be 200");
+      should.ok(response?.items[0]?.fulfillment?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
+        "response.items[0].fulfillment.labels.status.code should all be 200"
+      );
     });
 
     it("should have received an event of 'fulfillmentLabelDone'", async function() {
@@ -174,13 +181,16 @@ describe("Testing Fulfillment Service:", () => {
     it("should cancel fulfillment orders of DHL", async function() {
       this.timeout(30000);
       const sample = samples.DHL.CancelFulfillments;
-      expect(sample).not.toBeNull(); //, "samples.DHL.CancelFulfillments should exist in samples.json");
+      should.exist(sample, "samples.DHL.CancelFulfillments should exist in samples.json");
 
       offset = await topics.$offset(-1);
       const response = await fulfillment_client.cancel(sample);
-      expect(response?.operation_status?.code).toBe(200); //, "response.operation_status.code should be 200");
-      expect(response?.items[0]?.status?.code).toBe(200) //, "response.items[0].status.code should be 200");
-      expect(response?.items[0]?.payload?.labels[0]?.state?.toString()).toBe('Cancelled'); //, "response.items[0]?.labels[0].state should be Cancelled");
+      should.equal(response?.operation_status?.code,200, "response.operation_status.code should be 200");
+      should.equal(response?.items[0]?.status?.code,200, "response.items[0].status.code should be 200");
+      should.equal(response?.items[0]?.payload?.labels[0]?.state?.toString(),
+        'Cancelled',
+        "response.items[0]?.labels[0].state should be Cancelled"
+      );
     });
 
     it("should have received an event of 'fulfillmentCancelled'", async function() {

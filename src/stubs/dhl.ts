@@ -1,5 +1,4 @@
 import * as soap from 'soap';
-import fetch from 'node-fetch';
 import { xml2js, js2xml } from 'xml-js';
 
 import {

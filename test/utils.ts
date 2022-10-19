@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import * as should from 'should';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import { createLogger } from '@restorecommerce/logger';
 import { Events, Topic } from '@restorecommerce/kafka-client';
@@ -8,7 +10,7 @@ require('dotenv').config({path:envPath})
 
 export const cfg = createServiceConfig(process.cwd() + '/test');
 export const logger = createLogger(cfg.get('logger'));
-export const samples = require('./cfg/samples.json');
+export const samples = JSON.parse(readFileSync(process.cwd() + '/test/cfg/samples.json').toString());
 
 export async function startWorker(): Promise<Worker> {
     const worker = new Worker();
@@ -30,6 +32,6 @@ export async function connectEvents(): Promise<Events> {
 
 export async function connectTopics(events: Events, resourceName: string): Promise<Topic> {
     const topic = cfg.get(`events:kafka:topics:${resourceName}:topic`);
-    expect(topic).not.toBeNull();
+    should.exist(topic);
     return events.topic(topic);
 }
