@@ -28,6 +28,9 @@ import {
 import { FulfillmentCourierService } from '.';
 import { Stub } from '..';
 
+const ENTITY_NAME = 'fulfillment_product';
+const COLLECTION_NAME = 'fulfillment_products';
+
 
 interface QueryTotals extends Query {
   volume: number;
@@ -78,10 +81,10 @@ export class FulfillmentProductService extends ServiceBase<FulfillmentProductRes
     public logger: any
   ) {
     super(
-      'fulfillment_product',
+      ENTITY_NAME,
       topic,
       logger,
-      new ResourcesAPIBase(db, 'fulfillment_product'),
+      new ResourcesAPIBase(db, COLLECTION_NAME),
       true
     );
   }

@@ -87,9 +87,13 @@ describe("Testing Fulfillment Service:", () => {
       });
       should.exist(sample, "samples.DHL.CreateCouriers should exist in samples.json");
       const response = await courier_client.create(sample);
-      console.log(response);
-      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
-      should.equal(response?.items[0]?.payload?.id, "response.data.items[0].payload.id should exist");
+      should.equal(
+        response?.operation_status?.code, 200,
+        response?.operation_status?.message || "response.operation_status.code should be 200");
+      should.exist(
+        response?.items[0]?.payload?.id,
+        "response.data.items[0].payload.id should exist"
+      );
     });
   });
 
@@ -98,16 +102,28 @@ describe("Testing Fulfillment Service:", () => {
       const sample = samples.DHL.CreateProducts;
       should.exist(sample, "samples.DHL.CreateProducts should exist in samples.json");
       const response = await product_client.create(sample);
-      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
-      should.equal(response?.items[0]?.payload?.id, "response.items[0].payload.id should exist");
+      should.equal(
+        response?.operation_status?.code, 200, 
+        response?.operation_status?.message || "response.operation_status.code should be 200"
+      );
+      should.exist(
+        response?.items[0]?.payload?.id,
+        "response.items[0].payload.id should exist"
+      );
     });
 
     it("should find a solution for a query of items", async () => {
       const sample = samples.DHL.ProductQuery;
       should.exist(sample, "samples.DHL.ProductQuery should exist in samples.json");
       const response = await product_client.find(sample);
-      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
-      should.equal(response?.items[0]?.solutions, "response.items[0].payload should exist");
+      should.equal(
+        response?.operation_status?.code, 200, 
+        response?.operation_status?.message || "response.operation_status.code should be 200"
+      );
+      should.exist(
+        response?.items[0]?.solutions,
+        "response.items[0].payload should exist"
+      );
     });
   });
   
@@ -147,8 +163,13 @@ describe("Testing Fulfillment Service:", () => {
 
       offset = await topics.$offset(-1);
       const response = await fulfillment_client.create(sample);
-      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
-      should.equal(response?.items[0]?.status?.code, 200, "response.items[0].status.code should be 200");
+      should.equal(
+        response?.operation_status?.code, 200,
+        response.operation_status?.message || "response.operation_status.code should be 200"
+      );
+      should.equal(
+        response?.items[0]?.status?.code, 200,
+        response.items[0]?.status?.message || "response.items[0]?.status?.code should be 200");
       should.ok(response?.items[0]?.payload?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
         "response.items[0].payload.labels.status.code should all be 200"
       );
@@ -166,10 +187,17 @@ describe("Testing Fulfillment Service:", () => {
 
       offset = await topics.$offset(-1);
       const response = await fulfillment_client.track(sample);
-      should.equal(response?.operation_status?.code, 200, "response.operation_status.code should be 200");
-      should.equal(response?.items[0]?.status?.code, 200, "response.items[0].status.code should be 200");
-      should.ok(response?.items[0]?.fulfillment?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
-        "response.items[0].fulfillment.labels.status.code should all be 200"
+      should.equal(
+        response?.operation_status?.code, 200,
+        response?.operation_status?.message || "response.operation_status.code should be 200"
+      );
+      should.equal(
+        response?.items[0]?.status?.code, 200,
+        response?.items[0]?.status?.message || "response.items[0].status.code should be 200"
+      );
+      should.ok(
+        response?.items[0]?.fulfillment?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
+        response?.operation_status?.message || "response?.items[0]?.fulfillment?.labels[*].status.code should all be 200"
       );
     });
 

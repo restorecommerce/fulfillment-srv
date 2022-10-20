@@ -2,9 +2,10 @@ import * as _ from 'lodash';
 import {
   Server, OffsetStore, database,
   CommandInterface,
-  //Health
+  buildReflectionService,
+  Health
 } from '@restorecommerce/chassis-srv';
-import { Events, Topic } from '@restorecommerce/kafka-client';
+import { Events, Topic, registerProtoMeta } from '@restorecommerce/kafka-client';
 import { createLogger } from '@restorecommerce/logger';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import {
@@ -13,13 +14,27 @@ import {
   FulfillmentProductService
 } from './services/';
 import { RedisClientType as RedisClient, createClient } from 'redis';
-//import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
+import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
 import { Logger } from 'winston';
 import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transport/provider/grpc';
-import { ServiceDefinition as FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
-import { ServiceDefinition as FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
-import { ServiceDefinition as FulfillmentProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
-import { ServiceDefinition as CommandInterfaceServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface';
+import { 
+  ServiceDefinition as FulfillmentServiceDefinition,
+  protoMetadata as FulfillmentMeta,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import {
+  ServiceDefinition as FulfillmentCourierServiceDefinition,
+  protoMetadata as FulfillmentCourierMeta,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import {
+  ServiceDefinition as FulfillmentProductServiceDefinition,
+  protoMetadata as FulfillmentProductMeta,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+import { 
+  ServiceDefinition as CommandInterfaceServiceDefinition,
+  protoMetadata as CommandInterfaceMeta,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface';
+import { HealthDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/grpc/health/v1/health';
+import { ServerReflectionService } from 'nice-grpc-server-reflection';
 
 
 const CREATE_FULFILLMENTS = 'createFulfillments';
@@ -28,6 +43,12 @@ const TRACK_FULFILLMENTS = 'trackFulfillments';
 const CANCEL_FULFILLMENTS = 'cancelFulfillments';
 const QUEUED_JOB = 'queuedJob';
 
+registerProtoMeta(
+  FulfillmentMeta,
+  FulfillmentCourierMeta,
+  FulfillmentProductMeta,
+  CommandInterfaceMeta
+);
 
 class FulfillmentCommandInterface extends CommandInterface {
   logger: any;
@@ -166,16 +187,27 @@ export class Worker {
     } as BindConfig<CommandInterfaceServiceDefinition>);
 
     // Add reflection service
-    /*
     const reflectionServiceName = serviceNamesCfg.reflection;
-    const transportName = cfg.get(`server:services:${reflectionServiceName}:serverReflectionInfo:transport:0`);
-    const transport = this.server.transport[transportName];
-    const reflectionService = new ServerReflection(transport.$builder, this.server.config);
-    await this.server.bind(reflectionServiceName, reflectionService);
-    await this.server.bind(serviceNamesCfg.health, new Health(this.cis, {
-      readiness: async () => !!await ((db as Arango).db).version()
-    }));
-    */
+    const reflectionService = buildReflectionService([
+      { descriptor: FulfillmentMeta.fileDescriptor },
+      { descriptor: FulfillmentCourierMeta.fileDescriptor },
+      { descriptor: FulfillmentProductMeta.fileDescriptor },
+    ]);
+
+    await this.server.bind(reflectionServiceName, {
+      service: ServerReflectionService,
+      implementation: reflectionService
+    });
+
+    await this.server.bind(serviceNamesCfg.health, {
+      service: HealthDefinition,
+      implementation: new Health(this.cis, {
+        logger,
+        cfg,
+        dependencies: [],
+        readiness: async () => !!await (db as Arango).db.version()
+      })
+    } as BindConfig<HealthDefinition>);
 
     // start server
     await this.server.start();

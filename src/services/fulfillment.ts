@@ -43,7 +43,8 @@ import {
   flattenFulfillments
 } from '..';
 
-const COLLECTION_NAME = 'fulfillment';
+const ENTITY_NAME = 'fulfillment';
+const COLLECTION_NAME = 'fulfillments';
 const FULFILLMENT_SUBMIT_EVENT = 'fulfillmentSubmitted';
 const FULFILLMENT_TRACK_EVENT = 'fulfillmentTracked';
 const FULFILLMENT_FULFILL_EVENT = 'fulfillmentFulfilled';
@@ -62,7 +63,7 @@ export class FulfillmentService extends ServiceBase<FulfillmentResponseList, Ful
     _logger: any,
   ) {
     super(
-      COLLECTION_NAME,
+      ENTITY_NAME,
       _topic,
       _logger,
       new ResourcesAPIBase(_db, COLLECTION_NAME),
