@@ -21,36 +21,34 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 import {
   State,
-  FulfillmentResponseList,
-  TrackingRequestList,
-  TrackingResultList,
-  TrackingRequest,
-  TrackingResult,
-  CancelRequestList,
+  FulfillmentListResponse,
   Fulfillment,
-  FulfillmentList
+  FulfillmentList,
+  FulfillmentIdList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import { FulfillmentCourierService, FulfillmentProductService} from './';
 import {
   Stub,
   AggregatedFulfillment,
-  AggregatedTrackingRequest,
+  //AggregatedTrackingRequest,
   mergeFulfillments,
   FlatAggregatedFulfillment,
-  flattenAggregatedFulfillmentRequest,
-  flattenAggregatedTrackingRequest,
-  mergeTrackingResults,
-  flattenFulfillments
+  flattenAggregatedFulfillments,
+  //flattenAggregatedTrackingRequest,
+  //mergeTrackingResults,
+  //flattenFulfillments
 } from '..';
 
 const ENTITY_NAME = 'fulfillment';
 const COLLECTION_NAME = 'fulfillments';
 const FULFILLMENT_SUBMIT_EVENT = 'fulfillmentSubmitted';
+const FULFILLMENT_INVALID_EVENT = 'fulfillmentInvalid';
 const FULFILLMENT_TRACK_EVENT = 'fulfillmentTracked';
 const FULFILLMENT_FULFILL_EVENT = 'fulfillmentFulfilled';
 const FULFILLMENT_CANCEL_EVENT = 'fulfillmentCancelled';
+const FULFILLMENT_FAILED_EVENT = 'fulfillmentFailed';
 
-export class FulfillmentService extends ServiceBase<FulfillmentResponseList, FulfillmentList> {
+export class FulfillmentService extends ServiceBase<FulfillmentListResponse, FulfillmentList> {
 
   private _countryClient: Client<CountryServiceDefinition> = null;
 
@@ -143,7 +141,7 @@ export class FulfillmentService extends ServiceBase<FulfillmentResponseList, Ful
     return this.countryClient.read(request, context);
   }
 
-  private getFulfillmentsByIDs(ids: string[], context?: any): Promise<DeepPartial<FulfillmentResponseList>> {
+  private getFulfillmentsByIDs(ids: string[], context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     const request = ReadRequest.fromPartial({
       filters: [{
         filter: [{
@@ -157,7 +155,7 @@ export class FulfillmentService extends ServiceBase<FulfillmentResponseList, Ful
     return this.read(request, context);
   }
 
-  private getAllUnfulfilledFulfillments(context?: any): Promise<DeepPartial<FulfillmentResponseList>> {
+  private getAllUnfulfilledFulfillments(context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     const request = ReadRequest.fromPartial({
       filters: [{
         filter: [{
@@ -225,8 +223,9 @@ export class FulfillmentService extends ServiceBase<FulfillmentResponseList, Ful
     );
   }
 
-  private async aggregateTracking(tracking: TrackingRequest[], context?: any): Promise<AggregatedTrackingRequest[]> {
-    const fulfillment_ids = tracking.map((item: TrackingRequest) => item.fulfillment_id);
+  /*
+  private async aggregateTracking(tracking: FulfillmentIdList, context?: any): Promise<AggregatedTrackingRequest[]> {
+    const fulfillment_ids = tracking.items.map((item) => item.id);
     const fulfillments = await this.getFulfillmentsByIDs(fulfillment_ids, context).then(
       response => response.items.map(item => item.payload as Fulfillment)
     );
@@ -240,65 +239,100 @@ export class FulfillmentService extends ServiceBase<FulfillmentResponseList, Ful
     }));
     return aggregatedTrackingRequests;
   }
+  */
 
-  async submit(request: FulfillmentList, context?: any): Promise<DeepPartial<FulfillmentResponseList>> {
+  async submit(request: FulfillmentList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     const requests = await this.aggregateFulfillments(request.items, context);
-    const flat_requests = flattenAggregatedFulfillmentRequest(requests);
+    const flat_requests = flattenAggregatedFulfillments(requests);
     const promises = Object.values(Stub.REGISTER).map(stub => stub.order(flat_requests));
     const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
     const items = mergeFulfillments(responses);
 
-    items.forEach(item => this.topic.emit(FULFILLMENT_SUBMIT_EVENT, item));
-
-    return super.upsert({
+    const upsert_results = await super.upsert({
       items,
       total_count: items.length,
       subject: request.subject
     }, context);
+
+    upsert_results.items.forEach(item => {
+      if (item.payload.state === State.Invalid) {
+        this.topic.emit(FULFILLMENT_INVALID_EVENT, item)
+      }
+      else {
+        this.topic.emit(FULFILLMENT_SUBMIT_EVENT, item)
+      }
+    });
+    return upsert_results;
   }
 
-  async track(request: TrackingRequestList, context?: any): Promise<DeepPartial<TrackingResultList>> {
-    const requests = await this.aggregateTracking(request?.items, context);
-    const flat_requests = flattenAggregatedTrackingRequest(requests);
-    const promises = Object.values(Stub.REGISTER).map(stub => stub.track(flat_requests));
-    const response: TrackingResult[] = [].concat(...await Promise.all(promises));
-    const items = mergeTrackingResults(response);
+  async track(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+    const request_map = new Map(request.items.map(item => [item.id, item.shipment_numbers]));
+    const fulfillments = await this.getFulfillmentsByIDs(request.items.map(item => item.id)).then(
+      response => response.items.map(item => item.payload as Fulfillment)
+    );
+    const agg_fulfillments = await this.aggregateFulfillments(fulfillments, context);
+    const flat_fulfillments = flattenAggregatedFulfillments(agg_fulfillments).filter(
+      f => {
+        const shipment_numbers = request_map.get(f.id);
+        return !shipment_numbers?.length || shipment_numbers.find(s => s === f.label.shipment_number)
+      }
+    );
+    const promises = Object.values(Stub.REGISTER).map(stub => stub.track(flat_fulfillments));
+    const response: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
+    const items = mergeFulfillments(response);
 
     const update_results = await super.update({
-      items: items.map(item => item.fulfillment),
+      items,
       total_count: items.length,
       subject: request.subject
     }, context);
 
     update_results.items.forEach(item => {
-      this.topic.emit(FULFILLMENT_TRACK_EVENT, item)
-      if (item.payload.fulfilled) {
+      if (item.payload.state === State.Fulfilled) {
         this.topic.emit(FULFILLMENT_FULFILL_EVENT, item);
+      }
+      else if (item.payload.state === State.Failed) {
+        this.topic.emit(FULFILLMENT_FAILED_EVENT, item);
+      }
+      else {
+        this.topic.emit(FULFILLMENT_TRACK_EVENT, item);
       }
     });
 
-    return {
-      items,
-      operation_status: update_results.operation_status
-    };
+    return update_results;
   }
 
-  async cancel(request: CancelRequestList, context?: any): Promise<DeepPartial<FulfillmentResponseList>> {
-    const fulfillments = await this.getFulfillmentsByIDs(request.ids).then(
+  async cancel(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+    const request_map = new Map(request.items.map(item => [item.id, item.shipment_numbers]));
+    const fulfillments = await this.getFulfillmentsByIDs(request.items.map(item => item.id)).then(
       response => response.items.map(item => item.payload as Fulfillment)
     );
-    const agg_fulfillments = await this.aggregateFulfillments(fulfillments);
-    const flat_fulfillments = flattenFulfillments(Object.values(agg_fulfillments));
+    const agg_fulfillments = await this.aggregateFulfillments(fulfillments, context);
+    const flat_fulfillments = flattenAggregatedFulfillments(agg_fulfillments).filter(
+      f => {
+        const shipment_numbers = request_map.get(f.id);
+        return !shipment_numbers?.length || shipment_numbers.find(s => s === f.label.shipment_number)
+      }
+    );
     const promises = Object.values(Stub.REGISTER).map(stub => stub.cancel(flat_fulfillments));
     const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
     const items = mergeFulfillments(responses);
 
-    items.forEach(item => this.topic.emit(FULFILLMENT_CANCEL_EVENT, item));
-
-    return super.update({
+    const update_results = await super.update({
       items,
       total_count: items.length,
       subject: request.subject
     }, context);
+
+    update_results.items.forEach(item => {
+      if (item.payload.state === State.Invalid) {
+        this.topic.emit(FULFILLMENT_INVALID_EVENT, item)
+      }
+      else {
+        this.topic.emit(FULFILLMENT_CANCEL_EVENT, item);
+      }
+    });
+
+    return update_results;
   }
 }

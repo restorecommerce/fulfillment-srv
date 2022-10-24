@@ -60,29 +60,23 @@
       "fulfillmentModified": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
-      "fulfillmentCancelled": {
-        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
-      },
       "fulfillmentDeleted": {
         "messageObject": "io.restorecommerce.fulfillment.Deleted"
       },
+      "fulfillmentSubmitted": {
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "fulfillmentInvalid": {
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
       "fulfillmentFulfilled": {
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "fulfillmentFailed": {
+        "messageObject": "io.restorecommerce.fulfillment.Label"
+      },
+      "fulfillmentCancelled": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
-      },
-      "fulfillmentLabelSubmitted": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelInvalid": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelShipping": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelDone": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelFailed": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
       },
       "fulfillment_courierCreated": {
         "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"

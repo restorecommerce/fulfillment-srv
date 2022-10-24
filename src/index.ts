@@ -5,8 +5,6 @@ import { Country } from '@restorecommerce/rc-grpc-clients/dist/generated-server/
 import {
   Fulfillment,
   FulfillmentAddress,
-  TrackingRequest,
-  TrackingResult,
   Label,
   Parcel,
   State,
@@ -48,17 +46,6 @@ export interface FlatAggregatedFulfillment extends Fulfillment
   parcel: Parcel;
 }
 
-export interface AggregatedTrackingRequest extends TrackingRequest
-{
-  fulfillment: AggregatedFulfillment;
-}
-
-export interface FlatAggregatedTrackingRequest extends TrackingRequest
-{
-  shipment_number: string;
-  fulfillment: FlatAggregatedFulfillment;
-}
-
 export abstract class Stub
 {
   abstract get type(): string;
@@ -70,7 +57,7 @@ export abstract class Stub
   ) {}
 
   abstract order (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  abstract track (request: FlatAggregatedTrackingRequest[]): Promise<TrackingResult[]>;
+  abstract track (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   abstract cancel (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   abstract getZoneFor(address: Address): Promise<string>;
 
@@ -88,24 +75,26 @@ export abstract class Stub
   }
 };
 
-export const flattenAggregatedFulfillmentRequest = (requests: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
-  [].concat(...requests.map((request) =>
-    request?.order?.parcels?.map((parcel,i) =>
-      Object.assign({}, request, {
-        uuid: randomUUID(),
-        courier: request.couriers[i],
-        product: request.products[i],
+export const flattenAggregatedFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
+  [].concat(...fulfillments.map((fulfillment) =>
+    fulfillment.order.parcels.map((parcel,i) => {
+      const uuid = fulfillment.id || randomUUID();
+      return Object.assign({}, fulfillment, {
+        uuid,
+        courier: fulfillment.couriers[i],
+        product: fulfillment.products[i],
         parcel,
-        couriers: [request.couriers[i]],
-        products: [request.products[i]],
-        order: Object.assign({}, request.order, {
+        couriers: [fulfillment.couriers[i]],
+        products: [fulfillment.products[i]],
+        order: Object.assign({}, fulfillment.order, {
           parcels: [parcel]
         })
-      }) || request
-    )
+      });
+    })
   )
 );
 
+/*
 export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
   [].concat(...fulfillments.map(fulfillment =>
     fulfillment?.labels?.map((label,i) =>
@@ -137,6 +126,7 @@ export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingReq
     )
   )
 );
+*/
 
 export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fulfillment[] => {
   const merged_fulfillments: { [uuid: string]: Fulfillment } = {};
@@ -145,19 +135,21 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
     if (c) {
       c.order.parcels.push(...b.order.parcels);
       c.labels.push(...b.labels);
-      c.fulfilled &&= b.fulfilled;
+      c.tracking.push(...b.tracking);
+      c.state = State[b.state] < State[c.state] ? b.state : c.state;
     }
     else {
+      merged_fulfillments[b.uuid] = b;
       delete b.uuid;
       delete b.courier;
       delete b.product;
       delete b.label;
-      merged_fulfillments[b.uuid] = b;
     }
   });
   return Object.values(merged_fulfillments);
 };
 
+/*
 export const mergeTrackingResults = (trackings: TrackingResult[]): TrackingResult[] => {
   const merged_tracks: { [id: string]: TrackingResult } = {};
   trackings.forEach(b => {
@@ -172,6 +164,7 @@ export const mergeTrackingResults = (trackings: TrackingResult[]): TrackingResul
   });
   return Object.values(merged_tracks);
 };
+*/
 
 // Register Stubs at the end of this file
 import { DHL } from './stubs/dhl'; DHL.register();

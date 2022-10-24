@@ -5,14 +5,12 @@ import {
   Event,
   State,
   Tracking,
-  TrackingResult
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import { FulfillmentCourier as Courier } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 import {
   AggregatedAddress,
   FlatAggregatedFulfillment,
-  FlatAggregatedTrackingRequest,
   Stub
 } from '..';
 
@@ -224,10 +222,8 @@ export namespace DHL
       }
 
       const label = {
+        parcel_id: request.parcel.id,
         shipment_number: dhl_state?.shipmentNumber,
-        fulfillment_id: request.id,
-        reference_id: request.order.reference_id,
-        type: 'url',
         url: dhl_state?.LabelData.labelUrl,
         png: undefined,
         pdf: undefined,
@@ -260,15 +256,15 @@ export namespace DHL
     }
   });
 
-  const DHLTracking2FulfillmentTracking = async (request: FlatAggregatedTrackingRequest, response: any, err?: any): Promise<Tracking> => {
+  const DHLTracking2FulfillmentTracking = async (fulfillment: FlatAggregatedFulfillment, response: any, err?: any): Promise<Tracking> => {
     if (err || response?.status != 200) {
-      request.fulfillment.label.state = State.Invalid;
+      fulfillment.label.state = State.Invalid;
       return {
-        shipment_number: request.fulfillment.label.shipment_number,
+        shipment_number: fulfillment.label.shipment_number,
         events: null,
         details: null,
         status: {
-          id: request.fulfillment.label.shipment_number,
+          id: fulfillment.label.shipment_number,
           code: response?.status || err?.code || 500,
           message: response?.statusText || err?.message || err?.msg || JSON.stringify(err, null, 2)
         }
@@ -280,15 +276,15 @@ export namespace DHL
         const response = xml2js(response_text);
         if (response?.elements?.[0]?.attributes?.code == 0) {
           const status = {
-            id: request.fulfillment.label.shipment_number,
+            id: fulfillment.label.shipment_number,
             code: response.elements[0].attributes.code,
             message: response.elements[0].attributes.error || response.elements[0].elements[0].attributes.status
           };
-          request.fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Done : State.Shipping;
-          request.fulfillment.label.status = status;
-          request.fulfillment.fulfilled = request.fulfillment.label.state == State.Done;
+          fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Fulfilled : State.Shipping;
+          fulfillment.label.status = status;
+          fulfillment.state = fulfillment.label.state;
           return {
-            shipment_number: request.fulfillment.label.shipment_number,
+            shipment_number: fulfillment.label.shipment_number,
             events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
             details: {
               type_url: null,
@@ -298,13 +294,13 @@ export namespace DHL
           };
         }
         else {
-          request.fulfillment.label.state = State.Invalid;
+          fulfillment.label.state = State.Invalid;
           return {
-            shipment_number: request.fulfillment.label.shipment_number,
+            shipment_number: fulfillment.label.shipment_number,
             events: null,
             details: null,
             status: {
-              id: request.fulfillment.label.shipment_number,
+              id: fulfillment.label.shipment_number,
               code: response?.elements?.[0]?.attributes?.code || 500,
               message: response?.elements?.[0]?.attributes?.error || 'Error Unknown!'
             }
@@ -312,13 +308,13 @@ export namespace DHL
         }
       },
       (err: any): Tracking => {
-        request.fulfillment.label.state = State.Invalid;
+        fulfillment.label.state = State.Invalid;
         return {
-          shipment_number: request.fulfillment.label.shipment_number,
+          shipment_number: fulfillment.label.shipment_number,
           events: null,
           details: null,
           status: {
-            id: request.fulfillment.label.shipment_number,
+            id: fulfillment.label.shipment_number,
             code: err?.code || 500,
             message: err?.message || err?.msg || JSON.stringify(err, null, 2)
           }

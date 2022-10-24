@@ -157,11 +157,9 @@ describe("Testing Fulfillment Service:", () => {
     });
 
     it("should create fulfillment orders for DHL", async function() {
-      this.timeout(30000);
       const sample = samples.DHL.CreateFulfillments;
       should.exist(sample, "samples.DHL.CreateFulfillments should exist in samples.json");
 
-      offset = await topics.$offset(-1);
       const response = await fulfillment_client.create(sample);
       should.equal(
         response?.operation_status?.code, 200,
@@ -175,7 +173,26 @@ describe("Testing Fulfillment Service:", () => {
       );
     });
 
-    it("should have received an event of 'fulfillmentLabelOrdered'", async function() {
+    it("should submit fulfillment orders for DHL", async function() {
+      this.timeout(30000);
+      const sample = samples.DHL.CreateFulfillments;
+      should.exist(sample, "samples.DHL.CreateFulfillments should exist in samples.json");
+
+      offset = await topics.$offset(-1);
+      const response = await fulfillment_client.submit(sample);
+      should.equal(
+        response?.operation_status?.code, 200,
+        response.operation_status?.message || "response.operation_status.code should be 200"
+      );
+      should.equal(
+        response?.items[0]?.status?.code, 200,
+        response.items[0]?.status?.message || "response.items[0]?.status?.code should be 200");
+      should.ok(response?.items[0]?.payload?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
+        "response.items[0].payload.labels.status.code should all be 200"
+      );
+    });
+
+    it("should have received an event of 'fulfillmentSubmitted'", async function() {
       this.timeout(12000);
       await topics.$wait(offset);
     });
@@ -201,8 +218,8 @@ describe("Testing Fulfillment Service:", () => {
       );
     });
 
-    it("should have received an event of 'fulfillmentLabelDone'", async function() {
-      this.timeout(12000);
+    it("should have received an event of 'fulfillmentDone'", async function() {
+      this.timeout(15000);
       await topics.$wait(offset);
     });
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
@@ -181,6 +182,7 @@ export class FulfillmentProductService extends ServiceBase<FulfillmentProductRes
 
       const solutions: PackingSolution[] = offer_lists.map(offers => packer.canFit(offers, goods)).map(containers => ({
         parcels: containers.map((container): Parcel => ({
+          id: randomUUID(),
           product_id: container.getOffer().name.split('\t')[0],
           product_variant_id: container.getOffer().name.split('\t')[1],
           items: countItems(query.goods, container),
