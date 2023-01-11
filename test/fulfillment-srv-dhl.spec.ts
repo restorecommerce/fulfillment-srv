@@ -17,6 +17,11 @@ import { State } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io
 import { ServiceDefinition as FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import { ServiceDefinition as FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import { ServiceDefinition as FulfillmentProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+import {
+  Country,
+  CountryListResponse,
+  ServiceDefinition as CountryServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
 
 /*
  * Note: To run this test, a running ArangoDB and Kafka instance is required.
@@ -27,16 +32,26 @@ describe("Testing Fulfillment Service:", () => {
   let events: Events;
   let topics: Topic;
   let db_client: database.DatabaseProvider;
+  let country_client: Client<CountryServiceDefinition>;
   let courier_client: Client<FulfillmentCourierServiceDefinition>;
   let product_client: Client<FulfillmentProductServiceDefinition>;
   let fulfillment_client: Client<FulfillmentServiceDefinition>;
 
   before(async function() {
-    this.timeout(15000);
+    this.timeout(30000);
     worker = await startWorker();
     events = await connectEvents();
     topics = await connectTopics(events, 'fulfillment.resource');
     db_client = await database.get(cfg.get('database:main'), logger);
+
+    country_client = createClient(
+      {
+        ...cfg.get('client:country'),
+        logger
+      } as GrpcClientConfig,
+      CountryServiceDefinition,
+      createChannel(cfg.get('client:country').address)
+    ) as Client<CountryServiceDefinition>;
 
     courier_client = createClient(
       {
@@ -70,10 +85,26 @@ describe("Testing Fulfillment Service:", () => {
 
   after(async function() {
     this.timeout(15000);
+    //await country_client?.delete({ collection: true });
     await courier_client?.delete({ collection: true });
     await product_client?.delete({ collection: true });
     await fulfillment_client?.delete({ collection: true });
     await worker?.stop();
+  });
+
+  describe("The Resource Service:", () => {
+    it("should have some countries", async () => {
+      const sample = samples.DHL.CreateCountries;
+      should.exist(sample, "samples.DHL.CreateCountries should exist in samples.json");
+      const response = await courier_client.upsert(sample);
+      should.equal(
+        response?.operation_status?.code, 200,
+        response?.operation_status?.message || "response.operation_status.code should be 200");
+      should.exist(
+        response?.items[0]?.payload?.id,
+        "response.data.items[0].payload.id should exist"
+      );
+    });
   });
 
   describe("The Fulfillment Courier Service:", () => {
@@ -135,7 +166,7 @@ describe("Testing Fulfillment Service:", () => {
     };
 
     const onLabelDone = (msg:any, context?:any): void => {
-      should.equal(msg?.state, State.Done);
+      should.equal(msg?.state, State.Fulfilled);
     };
 
     const onFulfillmentCancelled = (msg:any, context?:any): void => {
@@ -180,6 +211,7 @@ describe("Testing Fulfillment Service:", () => {
 
       offset = await topics.$offset(-1);
       const response = await fulfillment_client.submit(sample);
+      console.log(response);
       should.equal(
         response?.operation_status?.code, 200,
         response.operation_status?.message || "response.operation_status.code should be 200"
@@ -213,7 +245,7 @@ describe("Testing Fulfillment Service:", () => {
         response?.items[0]?.status?.message || "response.items[0].status.code should be 200"
       );
       should.ok(
-        response?.items[0]?.fulfillment?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
+        response?.items[0]?.payload?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
         response?.operation_status?.message || "response?.items[0]?.fulfillment?.labels[*].status.code should all be 200"
       );
     });

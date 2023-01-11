@@ -4,46 +4,32 @@ import { Address } from '@restorecommerce/rc-grpc-clients/dist/generated-server/
 import { Country } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
 import {
   Fulfillment,
-  FulfillmentAddress,
-  Label,
-  Parcel,
   State,
-  Order
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import { FulfillmentCourier as Courier } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import { FulfillmentProduct as Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 
-export interface AggregatedAddress extends Address
-{
+export interface AggregatedAddress extends Address {
   country: Country;
-}
-
-export interface AggregatedFulfillmentAddress extends FulfillmentAddress
-{
-  address: AggregatedAddress;
-}
-
-export interface AggregatedFulfillmentOrder extends Order
-{
-  sender: AggregatedFulfillmentAddress;
-  receiver: AggregatedFulfillmentAddress
 }
 
 export interface AggregatedFulfillment extends Fulfillment
 {
-  order: AggregatedFulfillmentOrder;
+  sender: AggregatedAddress;
+  receiver: AggregatedAddress;
   couriers: Courier[];
   products: Product[];
+  options: any;
 }
 
 export interface FlatAggregatedFulfillment extends Fulfillment
 {
   uuid: string;
-  label: Label;
-  order: AggregatedFulfillmentOrder;
+  sender: AggregatedAddress;
+  receiver: AggregatedAddress;
   courier: Courier;
   product: Product;
-  parcel: Parcel;
+  options: any;
 }
 
 export abstract class Stub
@@ -79,54 +65,19 @@ export const flattenAggregatedFulfillments = (fulfillments: AggregatedFulfillmen
   [].concat(...fulfillments.map((fulfillment) =>
     fulfillment.order.parcels.map((parcel,i) => {
       const uuid = fulfillment.id || randomUUID();
-      return Object.assign({}, fulfillment, {
+      return {
+        ...fulfillment,
         uuid,
+        labels: [fulfillment.labels[i]],
         courier: fulfillment.couriers[i],
         product: fulfillment.products[i],
-        parcel,
-        couriers: [fulfillment.couriers[i]],
-        products: [fulfillment.products[i]],
         order: Object.assign({}, fulfillment.order, {
           parcels: [parcel]
         })
-      });
+      };
     })
   )
 );
-
-/*
-export const flattenFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
-  [].concat(...fulfillments.map(fulfillment =>
-    fulfillment?.labels?.map((label,i) =>
-      Object.assign(fulfillment, {
-        uuid: randomUUID(),
-        label,
-        labels: [label],
-        courier: fulfillment.couriers[i],
-        product: fulfillment.products[i],
-      }) || fulfillment
-    )
-  )
-);
-
-export const flattenAggregatedTrackingRequest = (requests: AggregatedTrackingRequest[]): FlatAggregatedTrackingRequest[] =>
-  [].concat(...requests.map((request) =>
-    request?.fulfillment?.labels?.map((label,i) =>
-      Object.assign({}, request, {
-        shipment_number: label.shipment_number,
-        shipment_numbers: [label.shipment_number],
-        fulfillment: Object.assign(request.fulfillment, {
-          uuid: randomUUID(),
-          label,
-          labels: [label],
-          courier: request.fulfillment.couriers[i],
-          product: request.fulfillment.products[i],
-        })
-      }) || request
-    )
-  )
-);
-*/
 
 export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fulfillment[] => {
   const merged_fulfillments: { [uuid: string]: Fulfillment } = {};
@@ -143,28 +94,12 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
       delete b.uuid;
       delete b.courier;
       delete b.product;
-      delete b.label;
+      delete b.sender;
+      delete b.receiver;
     }
   });
   return Object.values(merged_fulfillments);
 };
-
-/*
-export const mergeTrackingResults = (trackings: TrackingResult[]): TrackingResult[] => {
-  const merged_tracks: { [id: string]: TrackingResult } = {};
-  trackings.forEach(b => {
-    const c = merged_tracks[b.fulfillment.id];
-    if (c) {
-      c.tracks.push(...b.tracks);
-      c.fulfillment.fulfilled &&= b.fulfillment.fulfilled;
-    }
-    else {
-      merged_tracks[b.fulfillment.id] = b;
-    }
-  });
-  return Object.values(merged_tracks);
-};
-*/
 
 // Register Stubs at the end of this file
 import { DHL } from './stubs/dhl'; DHL.register();

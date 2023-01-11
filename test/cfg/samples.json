@@ -354,11 +354,21 @@
       }],
       "total_count": 1
     },
+    "CreateCountries": {
+      "items": [{
+        "id": "test_germany",
+        "name": "Germany",
+        "country_code": "DE",
+        "geographical_name": "Deutschland"
+      }],
+      "total_count": 0
+    },
     "CreateFulfillments": {
       "items": [{
         "id": "fulfillment_test_id_1",
         "order": {
           "parcels": [{
+            "id": "1",
             "product_id": "dhl-1-national",
             "product_variant_id": "dhl-2-national-m",
             "item_ids": [],
@@ -367,6 +377,7 @@
             "length_in_cm": 50,
             "height_in_cm": 20
           },{
+            "id": "2",
             "product_id": "dhl-1-national",
             "product_variant_id": "dhl-2-national-m",
             "item_ids": [],
@@ -376,52 +387,54 @@
             "height_in_cm": 20
           }],
           "sender": {
-            "type": "address",
-            "title": "Frau",
-            "name": [
-              "name1",
-              "name2",
-              "name3"
-            ],
             "address": {
-              "street": "Vegesacker Heerstr.",
-              "building_number": "111",
+              "id": "",
+              "meta": null,
               "postcode": "28757",
+              "country_id": "test_germany",
               "locality": "Bremen",
-              "region": "Bremen"
+              "street": "Vegesacker Heerstr.",
+              "region": "Bremen",
+              "geo_coordinates": null,
+              "altitude": 0.0,
+              "building_number": "111",
+              "address_addition": null,
+              "type": "residential_address",
+              "residential_address": {
+                "title": "Frau",
+                "given_name": "Anja",
+                "mid_name": "",
+                "family_name": "Mueller"
+              }
             },
-            "country": {
-              "name": "Germany",
-              "country_code": "DE",
-              "geographical_name": "Deutschland"
-            },
-            "contact": {
+            "contact_person": {
               "name": "Absender",
               "phone": "+4917621908330",
               "email": "absender@test.de"
             }
           },
           "receiver": {
-            "type": "address",
-            "title": "Frau",
-            "name": [
-              "name1",
-              "name2",
-              "name3"
-            ],
             "address": {
-              "street": "Vegesacker Heerstr.",
-              "building_number": "111",
+              "id": "",
+              "meta": null,
               "postcode": "28757",
+              "country_id": "test_germany",
               "locality": "Bremen",
-              "region": "Bremen"
+              "street": "Vegesacker Heerstr.",
+              "region": "Bremen",
+              "geo_coordinates": null,
+              "altitude": 0.0,
+              "building_number": "111",
+              "address_addition": null,
+              "type": "residential_address",
+              "residential_address": {
+                "title": "Frau",
+                "given_name": "Anja",
+                "mid_name": "",
+                "family_name": "Mueller"
+              }
             },
-            "country": {
-              "name": "Germany",
-              "country_code": "DE",
-              "geographical_name": "Deutschland"
-            },
-            "contact": {
+            "contact_person": {
               "name": "Absender",
               "phone": "+4917621908330",
               "email": "absender@test.de"

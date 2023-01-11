@@ -30,14 +30,12 @@ import { FulfillmentCourierService, FulfillmentProductService} from './';
 import {
   Stub,
   AggregatedFulfillment,
-  //AggregatedTrackingRequest,
   mergeFulfillments,
   FlatAggregatedFulfillment,
   flattenAggregatedFulfillments,
-  //flattenAggregatedTrackingRequest,
-  //mergeTrackingResults,
-  //flattenFulfillments
+  AggregatedAddress,
 } from '..';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
 
 const ENTITY_NAME = 'fulfillment';
 const COLLECTION_NAME = 'fulfillments';
@@ -53,31 +51,22 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
   private _countryClient: Client<CountryServiceDefinition> = null;
 
   constructor(
-    private _fulfillmentCourierSrv: FulfillmentCourierService,
-    private _fulfillmentProductSrv: FulfillmentProductService,
-    private _topic: Topic,
-    _db: DatabaseProvider,
-    private _cfg: any,
-    _logger: any,
+    readonly fulfillmentCourierSrv: FulfillmentCourierService,
+    readonly fulfillmentProductSrv: FulfillmentProductService,
+    readonly topic: Topic,
+    readonly db: DatabaseProvider,
+    readonly cfg: any,
+    readonly logger: any,
+    readonly countryClient?: Client<CountryServiceDefinition>,
   ) {
     super(
       ENTITY_NAME,
-      _topic,
-      _logger,
-      new ResourcesAPIBase(_db, COLLECTION_NAME),
+      topic,
+      logger,
+      new ResourcesAPIBase(db, COLLECTION_NAME),
       true
     );
-  }
 
-  get topic(): Topic {
-    return this._topic;
-  }
-
-  get cfg(): any {
-    return this._cfg;
-  }
-
-  get countryClient(): Client<CountryServiceDefinition> {
     if (!this._countryClient) {
       this._countryClient = createClient(
         {
@@ -88,15 +77,6 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
         createChannel(this.cfg.get('client:country').address)
       ) as Client<CountryServiceDefinition>;
     }
-    return this._countryClient;
-  }
-
-  get fulfillmentCourierSrv(): FulfillmentCourierService {
-    return this._fulfillmentCourierSrv;
-  }
-
-  get fulfillmentProductSrv(): FulfillmentProductService {
-    return this._fulfillmentProductSrv;
   }
 
   private getProductsByIDs(ids: string[], context?: any): Promise<DeepPartial<ProductResponseList>> {
@@ -127,8 +107,8 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     return this.fulfillmentCourierSrv.read(request, context);
   }
 
-  private getCountriesByIDs(ids: string[], context?: any): Promise<DeepPartial<CountryListResponse>> {
-    const request = {
+  private getCountriesByIDs(ids: string[], subject: Subject, context?: any): Promise<DeepPartial<CountryListResponse>> {
+    const request = ReadRequest.fromPartial({
       filters: [{
         filter: [{
           field: 'id',
@@ -136,8 +116,9 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
           value: JSON.stringify(ids),
           type: Filter_ValueType.ARRAY
         }]
-      }]
-    };
+      }],
+      subject
+    });
     return this.countryClient.read(request, context);
   }
 
@@ -168,7 +149,7 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     return this.read(request, context);
   }
 
-  private async aggregateFulfillments(fulfillments: Fulfillment[], context?: any): Promise<AggregatedFulfillment[]>
+  private async aggregateFulfillments(fulfillments: Fulfillment[], subject: Subject, context?: any): Promise<AggregatedFulfillment[]>
   {
     const product_map: {[id: string]: Product} = {};
     fulfillments.forEach(
@@ -197,17 +178,24 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
       country_map[item.order.sender.address.country_id] = null;
       country_map[item.order.receiver.address.country_id] = null;
     });
-    await this.getCountriesByIDs(Object.keys(country_map), context).then(
-      response => response.items.forEach(
-        item => country_map[item.payload.id] = item.payload as Country
-      )
+
+    await this.getCountriesByIDs(Object.keys(country_map), subject, context).then(
+      response => {
+        console.log(response);
+        return response.items.forEach(
+          item => country_map[item.payload.id] = item.payload as Country
+        );
+      }
     );
 
     const aggregatedFulfillmentRequests = fulfillments.map((item): AggregatedFulfillment => {
       const aggregated = { ...item } as AggregatedFulfillment;
       aggregated.products = item.order.parcels.map(parcel => product_map[parcel.product_id]);
       aggregated.couriers = aggregated.products.map(product => courier_map[product.courier_id]);
-      aggregated.order.sender.address.country = country_map[item.order.sender.address.country_id]
+      aggregated.sender = item.order.sender.address as AggregatedAddress;
+      aggregated.receiver = item.order.sender.address as AggregatedAddress;
+      aggregated.sender.country = country_map[item.order.sender.address.country_id];
+      aggregated.receiver.country = country_map[item.order.receiver.address.country_id];
       return aggregated;
     });
 
@@ -223,46 +211,42 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     );
   }
 
-  /*
-  private async aggregateTracking(tracking: FulfillmentIdList, context?: any): Promise<AggregatedTrackingRequest[]> {
-    const fulfillment_ids = tracking.items.map((item) => item.id);
-    const fulfillments = await this.getFulfillmentsByIDs(fulfillment_ids, context).then(
-      response => response.items.map(item => item.payload as Fulfillment)
-    );
-    const aggregatedFulfillments = this.aggregateFulfillments(fulfillments, context);
-    const aggregatedTrackingRequests = tracking.map(item => ({
-      ...item,
-      fulfillment: aggregatedFulfillments[item.fulfillment_id],
-      shipment_numbers: item.shipment_numbers.concat(
-        aggregatedFulfillments[item.fulfillment_id].labels.map((label: any) => label.shipmentNumber)
-      )
-    }));
-    return aggregatedTrackingRequests;
-  }
-  */
-
   async submit(request: FulfillmentList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
-    const requests = await this.aggregateFulfillments(request.items, context);
-    const flat_requests = flattenAggregatedFulfillments(requests);
-    const promises = Object.values(Stub.REGISTER).map(stub => stub.order(flat_requests));
-    const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
-    const items = mergeFulfillments(responses);
+    try {
+      const requests = await this.aggregateFulfillments(request.items, request.subject, context);
+      const flat_requests = flattenAggregatedFulfillments(requests);
+      const promises = Object.values(Stub.REGISTER).map(stub => stub.order(flat_requests));
+      const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
+      const items = mergeFulfillments(responses);
 
-    const upsert_results = await super.upsert({
-      items,
-      total_count: items.length,
-      subject: request.subject
-    }, context);
+      const upsert_results = await super.upsert({
+        items,
+        total_count: items.length,
+        subject: request.subject
+      }, context);
 
-    upsert_results.items.forEach(item => {
-      if (item.payload.state === State.Invalid) {
-        this.topic.emit(FULFILLMENT_INVALID_EVENT, item)
+      upsert_results.items.forEach(item => {
+        if (item.payload.state === State.Invalid) {
+          this.topic.emit(FULFILLMENT_INVALID_EVENT, item)
+        }
+        else {
+          this.topic.emit(FULFILLMENT_SUBMIT_EVENT, item)
+        }
+      });
+      return upsert_results;
+    }
+    catch (err) {
+      this.logger.error(err);
+      console.error(err);
+      return {
+        items: [],
+        total_count: 0,
+        operation_status: {
+          code: 500,
+          message: err.toString(),
+        }
       }
-      else {
-        this.topic.emit(FULFILLMENT_SUBMIT_EVENT, item)
-      }
-    });
-    return upsert_results;
+    }
   }
 
   async track(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
@@ -274,7 +258,7 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     const flat_fulfillments = flattenAggregatedFulfillments(agg_fulfillments).filter(
       f => {
         const shipment_numbers = request_map.get(f.id);
-        return !shipment_numbers?.length || shipment_numbers.find(s => s === f.label.shipment_number)
+        return !shipment_numbers?.length || shipment_numbers.find(s => s === f.labels[0].shipment_number)
       }
     );
     const promises = Object.values(Stub.REGISTER).map(stub => stub.track(flat_fulfillments));
@@ -311,7 +295,7 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     const flat_fulfillments = flattenAggregatedFulfillments(agg_fulfillments).filter(
       f => {
         const shipment_numbers = request_map.get(f.id);
-        return !shipment_numbers?.length || shipment_numbers.find(s => s === f.label.shipment_number)
+        return !shipment_numbers?.length || shipment_numbers.find(s => s === f.labels[0].shipment_number)
       }
     );
     const promises = Object.values(Stub.REGISTER).map(stub => stub.cancel(flat_fulfillments));

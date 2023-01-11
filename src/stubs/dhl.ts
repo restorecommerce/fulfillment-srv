@@ -156,13 +156,13 @@ export namespace DHL
             zip: request.order.sender.address?.postcode,
             city: request.order.sender.address?.region,
             Origin: {
-              country: request.order.sender.address.country.name,
-              countryISOCode: request.order.sender.address.country.country_code
+              country: request.sender?.country?.name,
+              countryISOCode: request.sender?.country?.country_code
             },
             Communication: {
-              contactPerson: request.order.sender.contact_person?.name,
-              email: request.order.sender.contact_person.email,
-              phone: request.order.sender.contact_person.phone,
+              contactPerson: request.order.sender?.contact_person?.name,
+              email: request.order.sender?.contact_person.email,
+              phone: request.order.sender?.contact_person.phone,
             }
           }
         },
@@ -176,8 +176,8 @@ export namespace DHL
             zip: request.order.receiver.address?.postcode,
             city: request.order.receiver.address?.region,
             Origin: {
-              country: request.order.receiver.address.country.name,
-              countryISOCode: request.order.receiver.address.country.country_code
+              country: request.receiver?.country.name,
+              countryISOCode: request.receiver.country?.country_code
             },
             Communication: {
               contactPerson: request.order.receiver.contact_person?.name,
@@ -194,10 +194,10 @@ export namespace DHL
           accountNumber: request.product.attributes.find(att => att.id == 'urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber').value,
           // Service: parseService(request.order.parcels[0].attributes),
           ShipmentItem: {
-            heightInCM: request.parcel.height_in_cm,
-            lengthInCM: request.parcel.length_in_cm,
-            weightInKG: request.parcel.weight_in_kg,
-            widthInCM: request.parcel.width_in_cm
+            heightInCM: request.order.parcels[0].height_in_cm,
+            lengthInCM: request.order.parcels[0].length_in_cm,
+            weightInKG: request.order.parcels[0].weight_in_kg,
+            widthInCM: request.order.parcels[0].width_in_cm
           },
           Notification: {
             recipientEmailAddress: request.order.notify
@@ -222,7 +222,7 @@ export namespace DHL
       }
 
       const label = {
-        parcel_id: request.parcel.id,
+        parcel_id: request.order.parcels[0].id,
         shipment_number: dhl_state?.shipmentNumber,
         url: dhl_state?.LabelData.labelUrl,
         png: undefined,
@@ -256,71 +256,74 @@ export namespace DHL
     }
   });
 
-  const DHLTracking2FulfillmentTracking = async (fulfillment: FlatAggregatedFulfillment, response: any, err?: any): Promise<Tracking> => {
+  const DHLTracking2FulfillmentTracking = async (fulfillment: FlatAggregatedFulfillment, response: any, err?: any): Promise<FlatAggregatedFulfillment> => {
     if (err || response?.status != 200) {
-      fulfillment.label.state = State.Invalid;
-      return {
-        shipment_number: fulfillment.label.shipment_number,
+      fulfillment.labels[0].state = State.Invalid;
+      fulfillment.tracking = [{
+        shipment_number: fulfillment.labels[0].shipment_number,
         events: null,
         details: null,
         status: {
-          id: fulfillment.label.shipment_number,
+          id: fulfillment.labels[0].shipment_number,
           code: response?.status || err?.code || 500,
           message: response?.statusText || err?.message || err?.msg || JSON.stringify(err, null, 2)
         }
-      };
+      }];
     }
-
-    return response.text().then(
-      (response_text): Tracking => {
-        const response = xml2js(response_text);
-        if (response?.elements?.[0]?.attributes?.code == 0) {
-          const status = {
-            id: fulfillment.label.shipment_number,
-            code: response.elements[0].attributes.code,
-            message: response.elements[0].attributes.error || response.elements[0].elements[0].attributes.status
-          };
-          fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Fulfilled : State.Shipping;
-          fulfillment.label.status = status;
-          fulfillment.state = fulfillment.label.state;
+    else {
+      fulfillment.tracking = [await response.text().then(
+        (response_text): Tracking => {
+          const response = xml2js(response_text);
+          if (response?.elements?.[0]?.attributes?.code == 0) {
+            const status = {
+              id: fulfillment.labels[0].shipment_number,
+              code: response.elements[0].attributes.code,
+              message: response.elements[0].attributes.error || response.elements[0].elements[0].attributes.status
+            };
+            fulfillment.labels[0].state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Fulfilled : State.Shipping;
+            fulfillment.labels[0].status = status;
+            fulfillment.state = fulfillment.labels[0].state;
+            return {
+              shipment_number: fulfillment.labels[0].shipment_number,
+              events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
+              details: {
+                type_url: null,
+                value: Buffer.from(JSON.stringify(response.elements[0].elements[0].attributes))
+              },
+              status
+            };
+          }
+          else {
+            fulfillment.labels[0].state = State.Invalid;
+            return {
+              shipment_number: fulfillment.labels[0].shipment_number,
+              events: null,
+              details: null,
+              status: {
+                id: fulfillment.labels[0].shipment_number,
+                code: response?.elements?.[0]?.attributes?.code || 500,
+                message: response?.elements?.[0]?.attributes?.error || 'Error Unknown!'
+              }
+            };
+          }
+        },
+        (err: any): Tracking => {
+          fulfillment.labels[0].state = State.Invalid;
           return {
-            shipment_number: fulfillment.label.shipment_number,
-            events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
-            details: {
-              type_url: null,
-              value: Buffer.from(JSON.stringify(response.elements[0].elements[0].attributes))
-            },
-            status
-          };
-        }
-        else {
-          fulfillment.label.state = State.Invalid;
-          return {
-            shipment_number: fulfillment.label.shipment_number,
+            shipment_number: fulfillment.labels[0].shipment_number,
             events: null,
             details: null,
             status: {
-              id: fulfillment.label.shipment_number,
-              code: response?.elements?.[0]?.attributes?.code || 500,
-              message: response?.elements?.[0]?.attributes?.error || 'Error Unknown!'
+              id: fulfillment.labels[0].shipment_number,
+              code: err?.code || 500,
+              message: err?.message || err?.msg || JSON.stringify(err, null, 2)
             }
           };
         }
-      },
-      (err: any): Tracking => {
-        fulfillment.label.state = State.Invalid;
-        return {
-          shipment_number: fulfillment.label.shipment_number,
-          events: null,
-          details: null,
-          status: {
-            id: fulfillment.label.shipment_number,
-            code: err?.code || 500,
-            message: err?.message || err?.msg || JSON.stringify(err, null, 2)
-          }
-        };
-      }
-    );
+      )];
+    }
+
+    return fulfillment;
   };
 
   const AggregatedFulfillment2DHLShipmentCancelRequest = (requests: FlatAggregatedFulfillment[]): ShipmentCancelRequest => ({
@@ -328,14 +331,14 @@ export namespace DHL
       majorRelease: 3,
       minorRelease: 1
     },
-    shipmentNumber: requests.map(request => request.label.shipment_number)
+    shipmentNumber: requests.map(request => request.labels[0].shipment_number)
   });
 
   const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map: {[k: string]: FlatAggregatedFulfillment}, response: any, err?: any): FlatAggregatedFulfillment[] => {
     if (err) {
       return Object.values(fulfillment_map).map(fulfillment => {
-        fulfillment.label.status = {
-          id: fulfillment.label.shipment_number,
+        fulfillment.labels[0].status = {
+          id: fulfillment.labels[0].shipment_number,
           code: err.code || err.statusCode || 500,
           message: err.message || err.statusText || JSON.stringify(err)
         };
@@ -345,8 +348,8 @@ export namespace DHL
 
     return response.DeletionState.map(state => {
       const fulfillment = fulfillment_map[state.shipmentNumber];
-      fulfillment.label.state = state.Status.statusCode == 0 ? State.Cancelled : fulfillment.label.state;
-      fulfillment.label.status = {
+      fulfillment.labels[0].state = state.Status.statusCode == 0 ? State.Cancelled : fulfillment.labels[0].state;
+      fulfillment.labels[0].status = {
         id: state.shipmentNumber,
         code: state.Status.statusCode,
         message: state.Status.statusText
@@ -476,64 +479,50 @@ export namespace DHL
       });
     }
 
-    async track (request: FlatAggregatedTrackingRequest[]): Promise<TrackingResult[]> {
-      request = request.filter(request => request.fulfillment?.courier?.id == this.courier.id);
-      const promises = request.map(async item => {
+    async track (requests: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+      requests = requests.filter(request => request.courier?.id == this.courier.id);
+      const promises = requests.map(async item => {
         try {
           const options = JSON.parse(item?.options?.value?.toString() || null);
-          const tracks = item.shipment_numbers.map(shipment_number => {
-            const config = JSON.parse(item?.fulfillment?.courier?.configuration?.value?.toString() || null)?.tracking;
-            const client = {
-              appname: config?.appname || process.env.DHL_TRACKING_APPNAME || this.cfg.get('stub:DHL:Tracking:appname') || 'zt12345',
-              username: config?.username || process.env.DHL_TRACKING_USR || this.cfg.get('stub:DHL:Tracking:username'),
-              password: config?.password || process.env.DHL_TRACKING_PWD || this.cfg.get('stub:DHL:Tracking:password'),
-              token: config?.token || process.env.DHL_TRACKING_TOKEN || this.cfg.get('stub:DHL:Tracking:token'),
-              endpoint: config?.endpoint || process.env.DHL_TRACKING_URL|| this.cfg.get('stub:DHL:Tracking:endpoint')
-            };
-            const auth = 'Basic ' + Buffer.from(`${client.username}:${client.token}`).toString('base64');
-            const headers = {
-              method: 'get',
-              headers: {
-                Host: 'cig.dhl.de',
-                Authorization: auth,
-                Connection: 'Keep-Alive'
-              }
-            };
-            const attributes = {
-              appname: client.appname,
-              password: client.password,
-              'piece-code': shipment_number,
-              'language-code': options?.['language-code'] || 'de',
-              request: options?.request || 'd-get-piece-detail'
-            };
-            const xml = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + js2xml({ data: { _attributes: attributes } }, {compact: true});
-            return fetch(client.endpoint + '?xml=' +xml, headers).then(
-              response => DHLTracking2FulfillmentTracking(item, response),
-              err => {
-                this.logger?.error(`${this.constructor.name}: ${err}`);
-                return DHLTracking2FulfillmentTracking(item, null, err);
-              }
-            );
-          });
-
-          return {
-            fulfillment: item.fulfillment,
-            tracks: await Promise.all(await Promise.all(tracks)),
-            status: {
-              id: item.fulfillment_id,
-              code: 200,
-              message: 'OK'
+          const config = JSON.parse(item?.courier?.configuration?.value?.toString() || null)?.tracking;
+          const client = {
+            appname: config?.appname || process.env.DHL_TRACKING_APPNAME || this.cfg.get('stub:DHL:Tracking:appname') || 'zt12345',
+            username: config?.username || process.env.DHL_TRACKING_USR || this.cfg.get('stub:DHL:Tracking:username'),
+            password: config?.password || process.env.DHL_TRACKING_PWD || this.cfg.get('stub:DHL:Tracking:password'),
+            token: config?.token || process.env.DHL_TRACKING_TOKEN || this.cfg.get('stub:DHL:Tracking:token'),
+            endpoint: config?.endpoint || process.env.DHL_TRACKING_URL|| this.cfg.get('stub:DHL:Tracking:endpoint')
+          };
+          const auth = 'Basic ' + Buffer.from(`${client.username}:${client.token}`).toString('base64');
+          const headers = {
+            method: 'get',
+            headers: {
+              Host: 'cig.dhl.de',
+              Authorization: auth,
+              Connection: 'Keep-Alive'
             }
           };
-
+          const attributes = {
+            appname: client.appname,
+            password: client.password,
+            'piece-code': item.labels[0].shipment_number,
+            'language-code': options?.['language-code'] || 'de',
+            request: options?.request || 'd-get-piece-detail'
+          };
+          const xml = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + js2xml({ data: { _attributes: attributes } }, {compact: true});
+          return await fetch(client.endpoint + '?xml=' +xml, headers).then(
+            response => DHLTracking2FulfillmentTracking(item, response),
+            err => {
+              this.logger?.error(`${this.constructor.name}: ${err}`);
+              return DHLTracking2FulfillmentTracking(item, null, err);
+            }
+          );
         } catch (err) {
           this.logger?.error(`${this.constructor.name}: ${err}`);
-          item.fulfillment.label.state = State.Invalid;
+          item.labels[0].state = State.Invalid;
           return {
-            fulfillment: item.fulfillment,
-            tracks: null,
+            ...item,
             status: {
-              id: item.fulfillment_id,
+              id: item.id,
               code: 500,
               message: JSON.stringify(err)
             }
@@ -548,7 +537,7 @@ export namespace DHL
       request = request.filter(request => request?.courier?.id == this.courier.id);
       if (request.length == 0) return [];
       const fulfillment_map: { [k: string]: FlatAggregatedFulfillment } = {};
-      request.forEach(a => fulfillment_map[a.label.shipment_number] = a);
+      request.forEach(a => fulfillment_map[a.labels[0].shipment_number] = a);
       const dhl_cancel_request = AggregatedFulfillment2DHLShipmentCancelRequest(request);
       const client = await this.registerSoapClient();
       return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject: (v: FlatAggregatedFulfillment[]) => void): void => {

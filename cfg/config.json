@@ -36,6 +36,9 @@
     "fulfillment_product": {
       "address": "localhost:50067"
     },
+    "country": {
+      "address": "localhost:50053"
+    },
     "reflection": {
       "address": "localhost:50051"
     },
@@ -347,6 +350,9 @@
   "fieldHandlers": {
     "fulfillment_courier": {
       "bufferField": "configuration"
+    },
+    "fulfillment": {
+      "bufferField": "options"
     }
   },
   "stubs": {
