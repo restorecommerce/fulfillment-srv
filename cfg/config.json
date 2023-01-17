@@ -358,7 +358,8 @@
   "stubs": {
     "DHL": {
       "ordering": {
-        "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.1.4.wsdl",
+        "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
+        "version": [3, 4, 0],
         "endpoint": "https://cig.dhl.de/services/sandbox/soap",
         "username": null,
         "password": null,

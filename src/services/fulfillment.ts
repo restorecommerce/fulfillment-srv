@@ -33,7 +33,6 @@ import {
   mergeFulfillments,
   FlatAggregatedFulfillment,
   flattenAggregatedFulfillments,
-  AggregatedAddress,
 } from '..';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
 
@@ -48,8 +47,6 @@ const FULFILLMENT_FAILED_EVENT = 'fulfillmentFailed';
 
 export class FulfillmentService extends ServiceBase<FulfillmentListResponse, FulfillmentList> {
 
-  private _countryClient: Client<CountryServiceDefinition> = null;
-
   constructor(
     readonly fulfillmentCourierSrv: FulfillmentCourierService,
     readonly fulfillmentProductSrv: FulfillmentProductService,
@@ -57,7 +54,6 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     readonly db: DatabaseProvider,
     readonly cfg: any,
     readonly logger: any,
-    readonly countryClient?: Client<CountryServiceDefinition>,
   ) {
     super(
       ENTITY_NAME,
@@ -66,17 +62,6 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
       new ResourcesAPIBase(db, COLLECTION_NAME),
       true
     );
-
-    if (!this._countryClient) {
-      this._countryClient = createClient(
-        {
-          ...this.cfg.get('client:country'),
-          logger: this.logger
-        } as GrpcClientConfig,
-        CountryServiceDefinition,
-        createChannel(this.cfg.get('client:country').address)
-      ) as Client<CountryServiceDefinition>;
-    }
   }
 
   private getProductsByIDs(ids: string[], context?: any): Promise<DeepPartial<ProductResponseList>> {
@@ -107,21 +92,6 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     return this.fulfillmentCourierSrv.read(request, context);
   }
 
-  private getCountriesByIDs(ids: string[], subject: Subject, context?: any): Promise<DeepPartial<CountryListResponse>> {
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filter: [{
-          field: 'id',
-          operation: Filter_Operation.in,
-          value: JSON.stringify(ids),
-          type: Filter_ValueType.ARRAY
-        }]
-      }],
-      subject
-    });
-    return this.countryClient.read(request, context);
-  }
-
   private getFulfillmentsByIDs(ids: string[], context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     const request = ReadRequest.fromPartial({
       filters: [{
@@ -130,19 +100,6 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
           operation: Filter_Operation.in,
           value: JSON.stringify(ids),
           type: Filter_ValueType.ARRAY
-        }]
-      }]
-    });
-    return this.read(request, context);
-  }
-
-  private getAllUnfulfilledFulfillments(context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filter: [{
-          field: 'state',
-          operation: Filter_Operation.neq,
-          value: 'Done'
         }]
       }]
     });
@@ -173,29 +130,10 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
       )
     );
 
-    const country_map: {[id: string]: Country} = {};
-    fulfillments.forEach(item => {
-      country_map[item.order.sender.address.country_id] = null;
-      country_map[item.order.receiver.address.country_id] = null;
-    });
-
-    await this.getCountriesByIDs(Object.keys(country_map), subject, context).then(
-      response => {
-        console.log(response);
-        return response.items.forEach(
-          item => country_map[item.payload.id] = item.payload as Country
-        );
-      }
-    );
-
     const aggregatedFulfillmentRequests = fulfillments.map((item): AggregatedFulfillment => {
       const aggregated = { ...item } as AggregatedFulfillment;
       aggregated.products = item.order.parcels.map(parcel => product_map[parcel.product_id]);
       aggregated.couriers = aggregated.products.map(product => courier_map[product.courier_id]);
-      aggregated.sender = item.order.sender.address as AggregatedAddress;
-      aggregated.receiver = item.order.sender.address as AggregatedAddress;
-      aggregated.sender.country = country_map[item.order.sender.address.country_id];
-      aggregated.receiver.country = country_map[item.order.receiver.address.country_id];
       return aggregated;
     });
 
@@ -215,7 +153,7 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     try {
       const requests = await this.aggregateFulfillments(request.items, request.subject, context);
       const flat_requests = flattenAggregatedFulfillments(requests);
-      const promises = Object.values(Stub.REGISTER).map(stub => stub.order(flat_requests));
+      const promises = Object.values(Stub.REGISTER).map(stub => stub.submit(flat_requests));
       const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
       const items = mergeFulfillments(responses);
 
@@ -237,7 +175,6 @@ export class FulfillmentService extends ServiceBase<FulfillmentListResponse, Ful
     }
     catch (err) {
       this.logger.error(err);
-      console.error(err);
       return {
         items: [],
         total_count: 0,

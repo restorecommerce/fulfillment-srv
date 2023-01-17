@@ -407,6 +407,12 @@
                 "family_name": "Mueller"
               }
             },
+            "country": {
+              "id": "test_germany",
+              "name": "Germany",
+              "country_code": "DE",
+              "geographical_name": "Deutschland"
+            },
             "contact_person": {
               "name": "Absender",
               "phone": "+4917621908330",
@@ -433,6 +439,12 @@
                 "mid_name": "",
                 "family_name": "Mueller"
               }
+            },
+            "country": {
+              "id": "test_germany",
+              "name": "Germany",
+              "country_code": "DE",
+              "geographical_name": "Deutschland"
             },
             "contact_person": {
               "name": "Absender",
@@ -548,12 +560,14 @@
       }]
     },
     "TrackFulfillments": {
-      "items":[{
+      "items": [{
         "fulfillment_id": "fulfillment_mock_id_2"
       }]
     },
     "CancelFulfillments": {
-      "ids": ["fulfillment_test_id_1"]
+      "items": [{
+        "id": "fulfillment_test_id_1"
+      }]
     }
   }
 }

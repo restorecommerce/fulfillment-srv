@@ -1,22 +1,15 @@
 import { randomUUID } from 'crypto';
 import { Logger } from 'winston';
-import { Address } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
-import { Country } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
 import {
   Fulfillment,
+  FulfillmentAddress,
   State,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import { FulfillmentCourier as Courier } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import { FulfillmentProduct as Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 
-export interface AggregatedAddress extends Address {
-  country: Country;
-}
-
 export interface AggregatedFulfillment extends Fulfillment
 {
-  sender: AggregatedAddress;
-  receiver: AggregatedAddress;
   couriers: Courier[];
   products: Product[];
   options: any;
@@ -25,8 +18,6 @@ export interface AggregatedFulfillment extends Fulfillment
 export interface FlatAggregatedFulfillment extends Fulfillment
 {
   uuid: string;
-  sender: AggregatedAddress;
-  receiver: AggregatedAddress;
   courier: Courier;
   product: Product;
   options: any;
@@ -42,10 +33,10 @@ export abstract class Stub
     public logger?: Logger
   ) {}
 
-  abstract order (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
+  abstract submit (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   abstract track (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   abstract cancel (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  abstract getZoneFor(address: Address): Promise<string>;
+  abstract getZoneFor(address: FulfillmentAddress): Promise<string>;
 
   protected static STUB_TYPES: { [key: string]: (courier: Courier, kwargs?: { [key: string]: any }) => Stub } = {};
   static REGISTER: { [key: string]: Stub } = {};
@@ -94,8 +85,6 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
       delete b.uuid;
       delete b.courier;
       delete b.product;
-      delete b.sender;
-      delete b.receiver;
     }
   });
   return Object.values(merged_fulfillments);

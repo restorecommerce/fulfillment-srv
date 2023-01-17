@@ -112,13 +112,13 @@ export class FulfillmentProductService extends ServiceBase<FulfillmentProductRes
     );
 
     const start_zones: string[] = [];
-    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.sender.address)))
+    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.sender)))
     {
       start_zones.push(await promise.catch(err => null));
     }
 
     const dest_zones: string[] = [];
-    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.receiver.address)))
+    for (const promise of courier_stubs.map(courier => courier.getZoneFor(query.receiver)))
     {
       dest_zones.push(await promise.catch(err => null));
     }
