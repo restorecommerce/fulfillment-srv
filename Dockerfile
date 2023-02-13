@@ -1,5 +1,6 @@
 ### Base
 FROM node:14.15.5-alpine as base
+ENV NO_UPDATE_NOTIFIER=true
 
 RUN apk add --no-cache git
 
