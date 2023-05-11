@@ -18,6 +18,11 @@
         "fulfillments",
         "fulfillment_couriers",
         "fulfillment_products"
+      ],
+      "entities": [
+        "fulfillment",
+        "fulfillment_courier",
+        "fulfillment_product"
       ]
     }
   },
@@ -35,9 +40,6 @@
     },
     "fulfillment_product": {
       "address": "localhost:50067"
-    },
-    "country": {
-      "address": "localhost:50053"
     },
     "reflection": {
       "address": "localhost:50051"

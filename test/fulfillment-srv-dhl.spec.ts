@@ -12,16 +12,11 @@ import {
   startWorker,
   connectEvents,
   connectTopics
-} from './utils';
+} from '.';
 import { State } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
-import { ServiceDefinition as FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
-import { ServiceDefinition as FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
-import { ServiceDefinition as FulfillmentProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
-import {
-  Country,
-  CountryListResponse,
-  ServiceDefinition as CountryServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
+import { FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import { FulfillmentProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 
 /*
  * Note: To run this test, a running ArangoDB and Kafka instance is required.

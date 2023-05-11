@@ -1,16 +1,14 @@
-import { readFileSync } from 'fs';
 import * as should from 'should';
+import { createMockServer } from 'grpc-mock';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import { createLogger } from '@restorecommerce/logger';
 import { Events, Topic } from '@restorecommerce/kafka-client';
 import { Worker } from '../src/worker';
+import { rules } from './mocks';
 
-const envPath = __dirname + "/../.env"
-require('dotenv').config({path:envPath})
-
-export const cfg = createServiceConfig(process.cwd() + '/test');
+export const cfg = createServiceConfig('test');
 export const logger = createLogger(cfg.get('logger'));
-export const samples = JSON.parse(readFileSync(process.cwd() + '/test/cfg/samples.json').toString());
+export { samples } from './mocks';
 
 export async function startWorker(): Promise<Worker> {
     const worker = new Worker();
@@ -35,3 +33,24 @@ export async function connectTopics(events: Events, resourceName: string): Promi
     should.exist(topic);
     return events.topic(topic);
 }
+
+export async function mockServices(configs: { [key: string]: any }) {
+    return await Promise.all(Object.entries(configs).map(async ([name, config]) => { 
+      if (!config?.mock) {
+        return;
+      }
+  
+      if (!rules[name]) {
+        throw `No mocking rules for ${name} in mocks.ts!`
+      }
+  
+      return await new GrpcMockServer(
+        config.address,
+      ).addService(
+        config.mock.protoPath,
+        config.mock.packageName,
+        config.mock.serviceName,
+        rules[name],
+      ).start();
+    }).filter(m => !!m)) as GrpcMockServer[];
+  };

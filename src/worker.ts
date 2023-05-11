@@ -1,11 +1,16 @@
-import * as _ from 'lodash';
 import {
-  Server, OffsetStore, database,
+  Server,
+  OffsetStore,
+  database,
   CommandInterface,
   buildReflectionService,
   Health
 } from '@restorecommerce/chassis-srv';
-import { Events, Topic, registerProtoMeta } from '@restorecommerce/kafka-client';
+import {
+  Events,
+  Topic,
+  registerProtoMeta
+} from '@restorecommerce/kafka-client';
 import { createLogger } from '@restorecommerce/logger';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import {
@@ -18,15 +23,15 @@ import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arang
 import { Logger } from 'winston';
 import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transport/provider/grpc';
 import { 
-  ServiceDefinition as FulfillmentServiceDefinition,
+  FulfillmentServiceDefinition,
   protoMetadata as FulfillmentMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
-  ServiceDefinition as FulfillmentCourierServiceDefinition,
+  FulfillmentCourierServiceDefinition,
   protoMetadata as FulfillmentCourierMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import {
-  ServiceDefinition as FulfillmentProductServiceDefinition,
+  FulfillmentProductServiceDefinition,
   protoMetadata as FulfillmentProductMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 import { 
@@ -38,9 +43,12 @@ import { ServerReflectionService } from 'nice-grpc-server-reflection';
 
 
 const CREATE_FULFILLMENTS = 'createFulfillments';
+const UPDATE_FULFILLMENTS = 'updateFulfillments';
+const UPSERT_FULFILLMENTS = 'upsertFulfillments';
 const SUBMIT_FULFILLMENTS = 'submitFulfillments';
 const TRACK_FULFILLMENTS = 'trackFulfillments';
 const CANCEL_FULFILLMENTS = 'cancelFulfillments';
+const DELETE_FULFILLMENTS = 'deleteFulfillments';
 const QUEUED_JOB = 'queuedJob';
 
 registerProtoMeta(
@@ -76,7 +84,7 @@ export class Worker {
 
   async start(cfg?: any, logger?: any): Promise<any> {
     // Load config
-    this._cfg = cfg = cfg || createServiceConfig(process.cwd());
+    this._cfg = cfg = cfg ?? createServiceConfig(process.cwd());
 
     // create server
     this.logger = logger = logger || createLogger(cfg.get('logger'));
@@ -91,7 +99,7 @@ export class Worker {
     await this.events.start();
     this.offsetStore = new OffsetStore(this.events, cfg, logger);
 
-    const topicTypes = _.keys(kafkaCfg.topics);
+    const topicTypes = Object.keys(kafkaCfg.topics);
     this.topics = new Map<string, Topic>();
 
     const redisConfig = cfg.get('redis');
@@ -99,7 +107,7 @@ export class Worker {
     this.redisClient = createClient(redisConfig);
 
     const that = this;
-    const fulfillmentServiceActions = {
+    const serviceActions = {
       [CREATE_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) => {
         return fulfillmentService.create(msg, context).then(
           () => that.logger.info(`Event ${eventName} done.`),
@@ -119,35 +127,35 @@ export class Worker {
         );
       },
       [CANCEL_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) =>  {
-        return fulfillmentService.track(msg, context).then(
+        return fulfillmentService.cancel(msg, context).then(
           () => that.logger.info(`Event ${eventName} done.`),
           err => that.logger.error(`Event ${eventName} failed: ${err}`)
         );
       }
     };
 
-    const fulfillmentServiceEventListeners = (msg: any, context: any, config: any, eventName: string) => {
+    const serviceEventListeners = (msg: any, context: any, config: any, eventName: string) => {
       if (eventName == QUEUED_JOB) {
-        return fulfillmentServiceActions[msg?.type](msg?.data?.payload, context, config, msg?.type).then(
+        return serviceActions[msg?.type](msg?.data?.payload, context, config, msg?.type).then(
           () => that.logger.info(`Job ${msg?.type} done.`),
-          err => that.logger.error(`Job ${msg?.type} failed: ${err}`)
+          (err: any) => that.logger.error(`Job ${msg?.type} failed: ${err}`)
         );
       }
       else {
-        return fulfillmentServiceActions[eventName](msg, context, config, eventName);
+        return serviceActions[eventName](msg, context, config, eventName);
       }
     };
 
     for (let topicType of topicTypes) {
       const topicName = kafkaCfg.topics[topicType].topic;
       const topic = await this.events.topic(topicName);
-      const offSetValue: number = await this.offsetStore.getOffset(topicName);
-      logger.info('subscribing to topic with offset value', topicName, offSetValue);
+      const offsetValue: number = await this.offsetStore.getOffset(topicName);
+      logger.info('subscribing to topic with offset value', topicName, offsetValue);
       kafkaCfg.topics[topicType]?.events?.forEach(
         eventName => topic.on(
           eventName,
-          fulfillmentServiceEventListeners[eventName],
-          { startingOffset: offSetValue }
+          serviceEventListeners[eventName],
+          { startingOffset: offsetValue }
         )
       );
       this.topics.set(topicType, topic);

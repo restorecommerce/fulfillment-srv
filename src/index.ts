@@ -2,11 +2,14 @@ import { randomUUID } from 'crypto';
 import { Logger } from 'winston';
 import {
   Fulfillment,
-  FulfillmentAddress,
   State,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
-import { FulfillmentCourier as Courier } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
-import { FulfillmentProduct as Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+import { FulfillmentCourierResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import { FulfillmentProductResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+import { ShippingAddress } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
+
+export type Courier = FulfillmentCourierResponse;
+export type Product = FulfillmentProductResponse;
 
 export interface AggregatedFulfillment extends Fulfillment
 {
@@ -32,21 +35,78 @@ export abstract class Stub
     public cfg?: any,
     public logger?: Logger
   ) {}
+  
+  abstract submit (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
+  abstract track (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
+  abstract cancel (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
+  abstract getZoneFor(address: ShippingAddress): Promise<string>;
 
-  abstract submit (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  abstract track (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  abstract cancel (request: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  abstract getZoneFor(address: FulfillmentAddress): Promise<string>;
+  protected static STUB_TYPES: { [key: string]: (new (courier: Courier, kwargs?: { [key: string]: any }) => Stub) } = {};
+  protected static REGISTER: { [key: string]: Stub } = {};
 
-  protected static STUB_TYPES: { [key: string]: (courier: Courier, kwargs?: { [key: string]: any }) => Stub } = {};
-  static REGISTER: { [key: string]: Stub } = {};
-  static instantiate(courier: Courier, kwargs?: { [key: string]: any }): Stub
+  static all() {
+    return Object.values(Stub.REGISTER);
+  }
+
+  static submit(
+    couriers: Courier[],
+    fulfillments: FlatAggregatedFulfillment[],
+    kwargs: any
+  ) {
+    return couriers.map(
+      (courier) => Stub.getInstance(
+        courier,
+        kwargs
+      ).submit(
+        fulfillments
+      )
+    );
+  }
+
+  static track(
+    couriers: Courier[],
+    fulfillments: FlatAggregatedFulfillment[],
+    kwargs: any
+  ) {
+    return couriers.map(
+      (courier) => Stub.getInstance(
+        courier,
+        kwargs
+      ).track(
+        fulfillments
+      )
+    );
+  }
+
+  static cancel(
+    couriers: Courier[],
+    fulfillments: FlatAggregatedFulfillment[],
+    kwargs: any
+  ) {
+    return couriers.map(
+      (courier) => Stub.getInstance(
+        courier,
+        kwargs
+      ).cancel(
+        fulfillments
+      )
+    );
+  }
+
+  static register<T extends Stub>(
+    typeName: string,
+    type: (new (courier: Courier, kwargs?: { [key: string]: any }) => T)
+  ) {
+    Stub.STUB_TYPES[typeName] = type;
+  }
+  
+  static getInstance(courier: Courier, kwargs?: { [key: string]: any }): Stub
   {
-    let stub = Stub.REGISTER[courier?.id];
-    if (!stub)
+    let stub = Stub.REGISTER[courier.payload.id];
+    if (!stub && (courier.payload.stub_type in Stub.STUB_TYPES))
     {
-      stub = Stub.STUB_TYPES[courier?.stub_type] && Stub.STUB_TYPES[courier.stub_type](courier, kwargs);
-      Stub.REGISTER[courier.id] = stub;
+      stub = new Stub.STUB_TYPES[courier.payload.stub_type](courier, kwargs);
+      Stub.REGISTER[courier.payload.id] = stub;
     }
     return stub;
   }
@@ -54,7 +114,7 @@ export abstract class Stub
 
 export const flattenAggregatedFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] =>
   [].concat(...fulfillments.map((fulfillment) =>
-    fulfillment.order.parcels.map((parcel,i) => {
+    fulfillment.packing.parcels.map((parcel,i) => {
       const uuid = fulfillment.id || randomUUID();
       return {
         ...fulfillment,
@@ -62,7 +122,7 @@ export const flattenAggregatedFulfillments = (fulfillments: AggregatedFulfillmen
         labels: [fulfillment.labels[i]],
         courier: fulfillment.couriers[i],
         product: fulfillment.products[i],
-        order: Object.assign({}, fulfillment.order, {
+        packing: Object.assign({}, fulfillment.packing, {
           parcels: [parcel]
         })
       };
@@ -75,7 +135,7 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
   fulfillments.forEach(b => {
     const c = merged_fulfillments[b.uuid];
     if (c) {
-      c.order.parcels.push(...b.order.parcels);
+      c.packing.parcels.push(...b.packing.parcels);
       c.labels.push(...b.labels);
       c.tracking.push(...b.tracking);
       c.state = State[b.state] < State[c.state] ? b.state : c.state;
@@ -91,4 +151,4 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
 };
 
 // Register Stubs at the end of this file
-import { DHL } from './stubs/dhl'; DHL.register();
+export { DHL } from './stubs/dhl';
