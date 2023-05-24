@@ -214,7 +214,9 @@
     "ownerEntity": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
     "ownerInstance": "urn:restorecommerce:acs:names:ownerInstance",
     "organization": "urn:restorecommerce:acs:model:organization.Organization",
-    "user": "urn:restorecommerce:acs:model:user.User"
+    "user": "urn:restorecommerce:acs:model:user.User",
+    "productName": "urn:restorecommerce:fufs:names:product:attr:productName",
+    "accountNumber": "urn:restorecommerce:fufs:names:product:attr:accountNumber"
   },
   "server": {
     "services": {

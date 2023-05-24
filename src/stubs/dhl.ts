@@ -11,7 +11,6 @@ import {
   FlatAggregatedFulfillment,
   Stub
 } from '..';
-import { ShippingAddress } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
 
 export namespace DHL
 {
@@ -127,43 +126,38 @@ export namespace DHL
       })))}
   }));
 
-  /*
-  function parseAddress (address: Address) {
-    switch (address.type) {
-
-    }
-  }
-  */
-
-  function DHLShipmentLabels2FulfillmentResponses (requests: FlatAggregatedFulfillment[], response: any, status?: Status): FlatAggregatedFulfillment[] {
+  function DHLShipmentLabels2FulfillmentResponses (
+    requests: FlatAggregatedFulfillment[],
+    response: any,
+    status?: any,
+  ): FlatAggregatedFulfillment[] {
     return requests.map((request, i) => {
       const dhl_state = response?.CreationState?.find((state: any) => state.sequenceNumber == i);
       if (status) {
-        status.id = request.id;
+        status.id = request.payload.id;
       }
       else {
-        status = {
-          id: request.id,
-          code: 200,
-          message: 'OK'
-        };
+        status = request.status
       }
 
+      const state = dhl_state?.LabelData.Status.statusCode == 0 ? State.Submitted : State.Invalid;
+      
       const label = {
-        parcel_id: request.packing.parcels[0].id,
+        parcel_id: request.parcel.id,
         shipment_number: dhl_state?.shipmentNumber,
         url: dhl_state?.LabelData.labelUrl,
         png: undefined,
         pdf: undefined,
-        state: dhl_state?.LabelData.Status.statusCode == 0 ? State.Submitted : State.Invalid,
+        state,
         status
       };
+
+      request.payload.state = state;
 
       const fulfillment = {
         ...request,
         label,
-        labels: [label],
-        state: label.state
+        status,
       };
 
       return fulfillment;
@@ -184,35 +178,39 @@ export namespace DHL
     }
   });
 
-  const DHLTracking2FulfillmentTracking = async (fulfillment: FlatAggregatedFulfillment, response: any, err?: any): Promise<FlatAggregatedFulfillment> => {
+  const DHLTracking2FulfillmentTracking = async (
+    fulfillment: FlatAggregatedFulfillment,
+    response: any,
+    err?: any
+  ): Promise<FlatAggregatedFulfillment> => {
     if (err || response?.status != 200) {
-      fulfillment.labels[0].state = State.Invalid;
-      fulfillment.tracking = [{
-        shipment_number: fulfillment.labels[0].shipment_number,
+      fulfillment.label.state = State.Invalid;
+      fulfillment.payload.tracking = [{
+        shipment_number: fulfillment.label.shipment_number,
         events: null,
         details: null,
         status: {
-          id: fulfillment.labels[0].shipment_number,
+          id: fulfillment.label.shipment_number,
           code: response?.status || err?.code || 500,
           message: response?.statusText || err?.message || err?.msg || JSON.stringify(err, null, 2)
         }
       }];
     }
     else {
-      fulfillment.tracking = [await response.text().then(
+      fulfillment.payload.tracking = [await response.text().then(
         (response_text): Tracking => {
           const response = xml2js(response_text);
           if (response?.elements?.[0]?.attributes?.code == 0) {
             const status = {
-              id: fulfillment.labels[0].shipment_number,
+              id: fulfillment.label.shipment_number,
               code: response.elements[0].attributes.code,
               message: response.elements[0].attributes.error || response.elements[0].elements[0].attributes.status
             };
-            fulfillment.labels[0].state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Fulfilled : State.Shipping;
-            fulfillment.labels[0].status = status;
-            fulfillment.state = fulfillment.labels[0].state;
+            fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.Fulfilled : State.InTransit;
+            fulfillment.label.status = status;
+            fulfillment.payload.state = fulfillment.label.state;
             return {
-              shipment_number: fulfillment.labels[0].shipment_number,
+              shipment_number: fulfillment.label.shipment_number,
               events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
               details: {
                 type_url: null,
@@ -222,13 +220,13 @@ export namespace DHL
             };
           }
           else {
-            fulfillment.labels[0].state = State.Invalid;
+            fulfillment.label.state = State.Invalid;
             return {
-              shipment_number: fulfillment.labels[0].shipment_number,
+              shipment_number: fulfillment.label.shipment_number,
               events: null,
               details: null,
               status: {
-                id: fulfillment.labels[0].shipment_number,
+                id: fulfillment.label.shipment_number,
                 code: response?.elements?.[0]?.attributes?.code || 500,
                 message: response?.elements?.[0]?.attributes?.error || 'Error Unknown!'
               }
@@ -236,13 +234,13 @@ export namespace DHL
           }
         },
         (err: any): Tracking => {
-          fulfillment.labels[0].state = State.Invalid;
+          fulfillment.label.state = State.Invalid;
           return {
-            shipment_number: fulfillment.labels[0].shipment_number,
+            shipment_number: fulfillment.label.shipment_number,
             events: null,
             details: null,
             status: {
-              id: fulfillment.labels[0].shipment_number,
+              id: fulfillment.label.shipment_number,
               code: err?.code || 500,
               message: err?.message || err?.msg || JSON.stringify(err, null, 2)
             }
@@ -254,26 +252,34 @@ export namespace DHL
     return fulfillment;
   };
 
-  const DHLShipmentCancelResponse2AggregatedFulfillment = (fulfillment_map: {[k: string]: FlatAggregatedFulfillment}, response: any, err?: any): FlatAggregatedFulfillment[] => {
+  const DHLShipmentCancelResponse2AggregatedFulfillment = (
+    fulfillment_map: {[k: string]: FlatAggregatedFulfillment},
+    response: any,
+    err?: any
+  ): FlatAggregatedFulfillment[] => {
     if (err) {
       return Object.values(fulfillment_map).map(fulfillment => {
-        fulfillment.labels[0].status = {
-          id: fulfillment.labels[0].shipment_number,
+        const status = {
+          id: fulfillment.payload.id,
           code: err.code || err.statusCode || 500,
           message: err.message || err.statusText || JSON.stringify(err)
         };
+        fulfillment.label.status = status;
+        fulfillment.status = status;
         return fulfillment;
       });
     }
 
     return response.DeletionState.map(state => {
       const fulfillment = fulfillment_map[state.shipmentNumber];
-      fulfillment.labels[0].state = state.Status.statusCode == 0 ? State.Cancelled : fulfillment.labels[0].state;
-      fulfillment.labels[0].status = {
-        id: state.shipmentNumber,
+      fulfillment.label.state = state.Status.statusCode == 0 ? State.Cancelled : fulfillment.label.state;
+      const status = {
+        id: fulfillment.payload.id,
         code: state.Status.statusCode,
         message: state.Status.statusText
       };
+      fulfillment.label.status = status;
+      fulfillment.status = status;
       return fulfillment;
     });
   };
@@ -295,86 +301,93 @@ export namespace DHL
       this.version = this.cfg?.get('stubs:DHL:ordering:version') || [3, 4, 0];
     }
 
-    protected AggregatedFulfillmentRequests2DHLShipmentOrderRequest(requests: FlatAggregatedFulfillment[]): ShipmentOrderRequest {
+    protected AggregatedFulfillmentRequests2DHLShipmentOrderRequest(
+      requests: FlatAggregatedFulfillment[]
+    ): ShipmentOrderRequest {
       return {
         Version: {
           majorRelease: this.version[0],
           minorRelease: this.version[1]
         },
-        ShipmentOrder: requests.map((request, i): ShipmentOrder => ({
-          sequenceNumber: i,
-          Shipment: {
-            Shipper: {
-              Name: {
-                name1: request.packing.sender.address.residential_address?.family_name || request.packing.sender.address.business_address?.name,
-                name2: request.packing.sender.address.residential_address?.given_name,
-                name3: request.packing.sender.address.residential_address?.mid_name,
-              },
-              Address: {
-                streetName: request.packing.sender.address?.street,
-                streetNumber: request.packing.sender.address?.building_number,
-                zip: request.packing.sender.address?.postcode,
-                city: request.packing.sender.address?.region,
-                Origin: {
-                  country: request.packing.sender.country?.name,
-                  countryISOCode: request.packing.sender.country?.country_code
+        ShipmentOrder: requests.map((request, i): ShipmentOrder => {
+          const packaging = request.payload.packaging;
+          return {
+            sequenceNumber: i,
+            Shipment: {
+              Shipper: {
+                Name: {
+                  name1: packaging.sender.address.residential_address?.family_name || packaging.sender.address.business_address?.name,
+                  name2: packaging.sender.address.residential_address?.given_name,
+                  name3: packaging.sender.address.residential_address?.mid_name,
+                },
+                Address: {
+                  streetName: packaging.sender.address?.street,
+                  streetNumber: packaging.sender.address?.building_number,
+                  zip: packaging.sender.address?.postcode,
+                  city: packaging.sender.address?.region,
+                  Origin: {
+                    country: request.sender_country?.name,
+                    countryISOCode: request.sender_country?.country_code
+                  }
+                },
+                Communication: {
+                  contactPerson: packaging.sender?.contact?.name,
+                  email: packaging.sender?.contact.email,
+                  phone: packaging.sender?.contact.phone,
                 }
               },
-              Communication: {
-                contactPerson: request.packing.sender?.contact?.name,
-                email: request.packing.sender?.contact.email,
-                phone: request.packing.sender?.contact.phone,
-              }
-            },
-            Receiver: {
-              name1: request.packing.receiver.address.residential_address?.family_name || request.packing.receiver.address.business_address?.name,
-              Address: {
-                name2: request.packing.receiver.address.residential_address?.given_name,
-                name3: request.packing.receiver.address.residential_address?.mid_name,
-                streetName: request.packing.receiver.address?.street,
-                streetNumber: request.packing.receiver.address?.building_number,
-                zip: request.packing.receiver.address?.postcode,
-                city: request.packing.receiver.address?.region,
-                Origin: {
-                  country: request.packing.receiver.country.name,
-                  countryISOCode: request.packing.receiver.country.country_code
+              Receiver: {
+                name1: packaging.receiver.address.residential_address?.family_name || packaging.receiver.address.business_address?.name,
+                Address: {
+                  name2: packaging.receiver.address.residential_address?.given_name,
+                  name3: packaging.receiver.address.residential_address?.mid_name,
+                  streetName: packaging.receiver.address?.street,
+                  streetNumber: packaging.receiver.address?.building_number,
+                  zip: packaging.receiver.address?.postcode,
+                  city: packaging.receiver.address?.region,
+                  Origin: {
+                    country: request.receiver_country?.name,
+                    countryISOCode: request.receiver_country?.country_code
+                  },
                 },
+                Communication: {
+                  contactPerson: packaging.receiver.contact?.name,
+                  email: packaging.receiver.contact?.email,
+                  phone: packaging.receiver.contact?.phone,
+                }
               },
-              Communication: {
-                contactPerson: request.packing.receiver.contact?.name,
-                email: request.packing.receiver.contact?.email,
-                phone: request.packing.receiver.contact?.phone,
-              }
-            },
-            ShipmentDetails: {
-              shipmentDate: new Date().toISOString().slice(0,10),
-              costCenter: '',
-              customerReference: request.packing.reference_id,
-              product: request.product.attributes.find(att => att.id == 'urn:restorecommerce:fufs:names:product:attr:dhl:productName').value,
-              accountNumber: request.product.attributes.find(att => att.id == 'urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber').value,
-              // Service: parseService(request.packing.parcels[0].attributes),
-              ShipmentItem: {
-                heightInCM: request.packing.parcels[0].package.size_in_cm.height,
-                lengthInCM: request.packing.parcels[0].package.size_in_cm.length,
-                widthInCM: request.packing.parcels[0].package.size_in_cm.width,
-                weightInKG: request.packing.parcels[0].package.weight_in_kg,
-              },
-              Notification: {
-                recipientEmailAddress: request.packing.notify
+              ShipmentDetails: {
+                shipmentDate: new Date().toISOString().slice(0,10),
+                costCenter: '',
+                customerReference: packaging.reference_id,
+                product: request.product.attributes.find(att => att.id === this.cfg.get('urns').productName).value,
+                accountNumber: request.product.attributes.find(att => att.id === this.cfg.get('urns').accountNumber).value,
+                // Service: parseService(request.parcel.attributes),
+                ShipmentItem: {
+                  heightInCM: request.parcel.package.size_in_cm.height,
+                  lengthInCM: request.parcel.package.size_in_cm.length,
+                  widthInCM: request.parcel.package.size_in_cm.width,
+                  weightInKG: request.parcel.package.weight_in_kg,
+                },
+                Notification: {
+                  recipientEmailAddress: packaging.notify
+                }
               }
             }
           }
-        }))
+        })
       };
     }
 
-    protected AggregatedFulfillment2DHLShipmentCancelRequest(requests: FlatAggregatedFulfillment[]): ShipmentCancelRequest{
+    protected AggregatedFulfillment2DHLShipmentCancelRequest(
+      requests: FlatAggregatedFulfillment[]
+    ): ShipmentCancelRequest{
       return {
         Version: {
           majorRelease: this.version[0],
           minorRelease: this.version[1]
         },
-        shipmentNumber: requests.map(request => request.labels[0].shipment_number)
+        shipmentNumber: requests.map(request => request.label.shipment_number)
       };
     }
 
@@ -406,8 +419,81 @@ export namespace DHL
       return this.clients[courier.id];
     };
 
-    async submit (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-      fulfillments = fulfillments.filter(request => request?.courier?.id === this.courier.id);
+    protected override async evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+      if (fulfillments.length === 0) return [];
+      const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
+      const client = await this.registerSoapClient();
+      return new Promise<FlatAggregatedFulfillment[]>((resolve): void => {
+        try {
+          client.GVAPI_2_0_de.GKVAPISOAP11port0.evaluateShipmentOrder(dhl_order_request, (err: any, result: any): any => {
+            if (err) {
+              if (result?.html) {
+                this.logger?.error(`${this.constructor.name}: ${result.html.head.title}`);
+                const status: Status = {
+                  id: null,
+                  code: result.statusCode,
+                  message: result.html.head.title
+                };
+                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
+              }
+              else {
+                const message = err?.root?.Envelope?.Body?.Fault?.faultstring || err?.response?.statusText || err?.toString() || 'Server Error!'
+                this.logger?.error(`${this.constructor.name}: ${message}`);
+                const status: Status = {
+                  id: null,
+                  code: err?.response?.status || 500,
+                  message
+                };
+                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
+              }
+            }
+            else if (result?.html) {
+              this.logger?.error(`${this.constructor.name}: ${result.html}`);
+              const status: Status = {
+                id: null,
+                code: result.statusCode,
+                message: result.html
+              };
+              resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
+            }
+            else if (result) {
+              if (result.Status.statusCode != 0) {
+                const message = JSON.stringify(result, null, 2);
+                this.logger?.error(`${this.constructor.name}: ${message}`);
+                const status: Status = {
+                  id: null,
+                  code: result.Status.statusCode,
+                  message
+                };
+                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
+              }
+              else {
+                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, result));
+              }
+            }
+            else {
+              // Shouldn't get to here!?
+              const status: Status = {
+                id: null,
+                code: 500,
+                message: 'Unexpected Error: No Response!'
+              };
+              resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
+            }
+          });
+        }
+        catch (err) {
+          const status: Status = {
+            id: null,
+            code: 500,
+            message: `Internal Error: ${JSON.stringify(err, null, 2)}`
+          };
+          resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
+        }
+      });
+    }
+
+    protected override async submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       if (fulfillments.length === 0) return [];
       const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
       const client = await this.registerSoapClient();
@@ -481,8 +567,7 @@ export namespace DHL
       });
     }
 
-    async track (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-      fulfillments = fulfillments.filter(request => request.courier?.id == this.courier.id);
+    protected override async trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       if (fulfillments.length === 0) return [];
       const promises = fulfillments.map(async item => {
         try {
@@ -507,7 +592,7 @@ export namespace DHL
           const attributes = {
             appname: client.appname,
             password: client.password,
-            'piece-code': item.labels[0].shipment_number,
+            'piece-code': item.payload.labels[0].shipment_number,
             'language-code': options?.['language-code'] ?? 'de',
             request: options?.request ?? 'd-get-piece-detail'
           };
@@ -521,11 +606,11 @@ export namespace DHL
           );
         } catch (err) {
           this.logger?.error(`${this.constructor.name}: ${err}`);
-          item.labels[0].state = State.Invalid;
+          item.label.state = State.Invalid;
           return {
             ...item,
             status: {
-              id: item.id,
+              id: item.payload.id,
               code: 500,
               message: JSON.stringify(err)
             }
@@ -536,11 +621,10 @@ export namespace DHL
       return await Promise.all(promises);
     };
 
-    async cancel (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-      fulfillments = fulfillments.filter(request => request?.courier?.id === this.courier.id);
+    protected override async cancelImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       if (fulfillments.length === 0) return [];
       const fulfillment_map: { [k: string]: FlatAggregatedFulfillment } = {};
-      fulfillments.forEach(a => fulfillment_map[a.labels[0].shipment_number] = a);
+      fulfillments.forEach(a => fulfillment_map[a.label.shipment_number] = a);
       const dhl_cancel_request = this.AggregatedFulfillment2DHLShipmentCancelRequest(fulfillments);
       const client = await this.registerSoapClient();
       return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject: (v: FlatAggregatedFulfillment[]) => void): void => {
@@ -563,8 +647,8 @@ export namespace DHL
       });
     };
 
-    async getZoneFor(address: ShippingAddress): Promise<string> {
-      return 'DE'; //address?.address?.country_id;
+    async getTariffCode(fulfillment: FlatAggregatedFulfillment): Promise<string> {
+      return fulfillment.receiver_country.country_code;
     }
   };
 

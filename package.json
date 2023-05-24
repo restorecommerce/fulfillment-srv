@@ -9,12 +9,11 @@
     "url": "https://github.com/restorecommerce/fulfillment-srv"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.6.7",
     "@grpc/proto-loader": "^0.6.13",
     "@restorecommerce/cart": "^0.3.5",
     "@restorecommerce/chassis-srv": "^1.0.2",
     "@restorecommerce/cluster-service": "^1.0.0",
-    "@restorecommerce/grpc-client": "^1.0.0",
+    "@restorecommerce/grpc-client": "^2.0.0",
     "@restorecommerce/kafka-client": "^1.0.1",
     "@restorecommerce/logger": "^1.0.0",
     "@restorecommerce/rc-grpc-clients": "^1.0.1",
