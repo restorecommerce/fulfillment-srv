@@ -9,7 +9,7 @@ import { FulfillmentCourier as Courier } from '@restorecommerce/rc-grpc-clients/
 import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 import {
   FlatAggregatedFulfillment,
-  Stub
+  Stub,
 } from '..';
 
 export namespace DHL

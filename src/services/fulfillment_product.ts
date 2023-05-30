@@ -203,17 +203,6 @@ export class FulfillmentProductService
   async find(request: ProductQueryList, context?: any): Promise<PackingSolutionListResponse> {
     const queries = buildQueryTotals(request.items);
     const promises = queries.map(async query => {
-      const goods = query.items.map((good): IItem => ({
-        desc: `${good.product_id}\t${good.variant_id}`,
-        quantity: good.quantity,
-        weight: good.package.weight_in_kg,
-        width: good.package.size_in_cm.width,
-        height: good.package.size_in_cm.height,
-        depth: good.package.size_in_cm.length,
-        price: 0.0, //good.price,
-        taxType: 'vat_standard'
-      }));
-
       const stubs = await this.findCouriers(
         queries,
         request.subject,
@@ -258,6 +247,17 @@ export class FulfillmentProductService
           }
         ))
       );
+
+      const goods = query.items.map((good): IItem => ({
+        desc: `${good.product_id}\t${good.variant_id}`,
+        quantity: good.quantity,
+        weight: good.package.weight_in_kg,
+        width: good.package.size_in_cm.width,
+        height: good.package.size_in_cm.height,
+        depth: good.package.size_in_cm.length,
+        price: 0.0,
+        taxType: 'vat_standard'
+      }));
 
       const packer = new Packer({
         source: JSON.stringify({ zones: [] }),

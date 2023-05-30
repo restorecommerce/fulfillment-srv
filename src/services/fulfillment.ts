@@ -41,7 +41,7 @@ import {
   CountryResponse,
   CountryServiceDefinition,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
-import { TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
+import { TaxResponse, TaxServiceDefinition, VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
 import { TaxTypeServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax_type';
 import { 
   FulfillmentCourierService,
@@ -58,6 +58,9 @@ import {
   CourierResponseMap,
   StateRank,
   CountryResponseMap,
+  TaxResponseMap,
+  applyVat,
+  getVat,
 } from '..';
 
 const FULFILLMENT_SUBMIT_EVENT = 'fulfillmentSubmitted';
@@ -142,6 +145,60 @@ export class FulfillmentService
         message: e?.message ?? e?.details ?? e?.toString(),
       }
     };
+  }
+
+  private getTaxesByCountryIDs(
+    ids: string[],
+    subject?: Subject,
+    context?: any
+  ): Promise<DeepPartial<ProductResponseList>> {
+    ids = [...new Set(ids).values()];
+    if (ids.length > 1000) {
+      throw {
+        code: 500,
+        message: 'Query for taxes exceeds limit of 1000!'
+      } as OperationStatus
+    }
+
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filter: [{
+          field: 'country_id',
+          operation: Filter_Operation.in,
+          value: JSON.stringify(ids),
+          type: Filter_ValueType.ARRAY
+        }]
+      }],
+      subject
+    });
+    return this.tax_service.read(request, context);
+  }
+
+  private getTaxTypesByIDs(
+    ids: string[],
+    subject?: Subject,
+    context?: any
+  ): Promise<DeepPartial<ProductResponseList>> {
+    ids = [...new Set(ids).values()];
+    if (ids.length > 1000) {
+      throw {
+        code: 500,
+        message: 'Query for taxes exceeds limit of 1000!'
+      } as OperationStatus
+    }
+
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filter: [{
+          field: 'id',
+          operation: Filter_Operation.in,
+          value: JSON.stringify(ids),
+          type: Filter_ValueType.ARRAY
+        }]
+      }],
+      subject
+    });
+    return this.tax_type_service.read(request, context);
   }
 
   private getProductsByIDs(
@@ -317,10 +374,34 @@ export class FulfillmentService
     );
   }
 
+  private getTaxMap(country_ids: string[], subject?: Subject, context?: any): Promise<TaxResponseMap> {
+    return this.getProductsByIDs(
+      country_ids,
+      subject,
+      context
+    ).then(
+      response => {
+        if (response.operation_status?.code === 200) {
+          return response.items.reduce(
+            (a, b) => {
+              a[b.payload?.id ?? b.status?.id] = b as TaxResponse;
+              return a;
+            },
+            {} as TaxResponseMap
+          );
+        }
+        else {
+          throw response.operation_status;
+        }
+      }
+    ); 
+  }
+
   private async aggregateFulfillments(
     fulfillments: Fulfillment[],
-    subject: Subject,
-    context?: any
+    subject?: Subject,
+    context?: any,
+    evaluate?: boolean,
   ): Promise<AggregatedFulfillment[]> {
     const country_map = await this.getCountryMap(
       [
@@ -370,6 +451,49 @@ export class FulfillmentService
         ...products.map(p => p.status),
         ...couriers.map(c => c.status),
       ] as Status[];
+
+      if (evaluate) {
+        const tax_map = this.getTaxMap(
+          [sender_country.payload.id, receiver_country.payload.id],
+          subject,
+          context,
+        );
+
+        const tax_type_map = {};
+
+        item.packaging.parcels.forEach(
+          p => {
+            const product = product_map[p.product_id]?.payload;
+            const variant = product?.variants.find(
+              v => v.id === p.variant_id
+            );
+            const taxes = product.tax_ids.map(
+              tax_id => tax_map[tax_id]
+            ).filter(
+              tax => !!tax
+            );
+
+            p.price = variant.price + taxes.reduce(
+              (sum, tax) => sum + applyVat(
+                variant.price,
+                tax.payload?.rate ?? 0,
+                tax_type_map[tax.payload?.id].behavior,
+              ),
+              0
+            ),
+            p.vats = taxes.map(
+              tax => ({
+                tax_id: tax.id,
+                vat: getVat(
+                  variant.price,
+                  tax.payload?.rate,
+                  tax_type_map[tax.payload?.id].behavior,
+                )
+              })
+            );
+          }
+        );
+      }
 
       return {
         payload: item,
