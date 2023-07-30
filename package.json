@@ -21,7 +21,7 @@
     "@types/node-fetch": "^2.6.2",
     "@types/soap": "^0.21.0",
     "@types/xml-js": "^1.0.0",
-    "@grpc/grpc-js": "^1.6.7",
+    "@grpc/grpc-js": "^1.8.21",
     "@grpc/proto-loader": "^0.6.13",
     "protobufjs": "^6.11.3",
     "co": "^4.6.0",
