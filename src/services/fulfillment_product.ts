@@ -9,25 +9,22 @@ import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-in
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
-import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
+import { ReadRequest } from '@restorecommerce/types/server/io/restorecommerce/resource_base';
 import {
   FilterOp_Operator,
   Filter_Operation,
   Filter_ValueType
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter';
+} from '@restorecommerce/types/server/io/restorecommerce/filter';
 import { Courier as Packer, Offer } from '@restorecommerce/cart/lib/model/impl/Courier';
 import { Container } from '@restorecommerce/cart/lib/model/impl/bin/Container';
 import { IItem } from '@restorecommerce/cart/lib/model/IItem';
 import {
-  TaxServiceDefinition, VAT,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
-import {
-  TaxTypeServiceDefinition,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax_type';
+  TaxServiceDefinition,
+} from '@restorecommerce/types/server/io/restorecommerce/tax';
 import {
   Parcel,
-  FulfillmentItem as Item,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+  Item,
+} from '@restorecommerce/types/server/io/restorecommerce/fulfillment';
 import {
   ProductQuery,
   ProductQueryList,
@@ -37,14 +34,36 @@ import {
   FulfillmentProductListResponse,
   PackingSolutionResponse,
   FulfillmentProductServiceImplementation,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_product';
 import {
-  FulfillmentCourier,
   FulfillmentCourierListResponse
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_courier';
 import { FulfillmentCourierService } from '.';
-import { Courier, ProductResponse, ProductResponseMap, Stub } from '..';
-import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
+import {
+  CRUDClient,
+  Courier,
+  ProductResponse,
+  ProductResponseMap,
+  TaxResponseMap,
+  Stub,
+  CountryResponseMap,
+  ShopResponseMap,
+  OrganizationResponseMap,
+  ContactPointResponseMap,
+  AddressResponseMap,
+  CustomerResponseMap,
+  COUNTRY_CODES_EU,
+  filterTax,
+} from '..';
+import { Subject } from '@restorecommerce/types/server/io/restorecommerce/auth';
+import { Amount, VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount';
+import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
+import { CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
+import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
+import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
+import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
+import { ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
+import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
 
 
 interface ProductQueryTotals extends ProductQuery {
@@ -90,8 +109,42 @@ export class FulfillmentProductService
   extends ServiceBase<FulfillmentProductListResponse, FulfillmentProductList> 
   implements FulfillmentProductServiceImplementation
 {
+  private readonly status_codes: {
+    OK: {
+      id: string;
+      code: 200;
+      message: 'OK';
+    };
+    NOT_FOUND: {
+      id: string;
+      code: 404;
+      message: '{entity} {id} not found!';
+    };
+  };
+
+  private readonly operation_status_codes: {
+    SUCCESS: {
+      code: 200;
+      message: 'SUCCESS';
+    };
+    PARTIAL: {
+      code: 400;
+      message: 'Patrial executed with errors!';
+    };
+    LIMIT_EXHAUSTED: {
+      code: 500;
+      message: 'Query limit 1000 exhausted!';
+    };
+  };
+
+  private readonly legal_address_type_id: string;
+  private readonly customer_service: Client<CustomerServiceDefinition>;
+  private readonly shop_service: Client<ShopServiceDefinition>;
+  private readonly organization_service: Client<OrganizationServiceDefinition>;
+  private readonly contact_point_service: Client<ContactPointServiceDefinition>;
+  private readonly address_service: Client<AddressServiceDefinition>;
+  private readonly country_service: Client<CountryServiceDefinition>;
   private readonly tax_service: Client<TaxServiceDefinition>;
-  private readonly tax_type_service: Client<TaxTypeServiceDefinition>;
 
   constructor(
     private readonly courier_srv: FulfillmentCourierService,
@@ -108,6 +161,72 @@ export class FulfillmentProductService
       true
     );
 
+    this.status_codes = {
+      ...this.status_codes,
+      ...cfg.get('statusCodes'),
+    };
+
+    this.operation_status_codes = {
+      ...this.operation_status_codes,
+      ...cfg.get('operationStatusCodes'),
+    };
+
+    this.legal_address_type_id = this.cfg.get('ids:legalAddressTypeId');
+
+    this.customer_service = createClient(
+      {
+        ...cfg.get('client:customer'),
+        logger
+      } as GrpcClientConfig,
+      CustomerServiceDefinition,
+      createChannel(cfg.get('client:customer').address)
+    );
+
+    this.shop_service = createClient(
+      {
+        ...cfg.get('client:shop'),
+        logger
+      } as GrpcClientConfig,
+      ShopServiceDefinition,
+      createChannel(cfg.get('client:shop').address)
+    );
+
+    this.organization_service = createClient(
+      {
+        ...cfg.get('client:organization'),
+        logger
+      } as GrpcClientConfig,
+      OrganizationServiceDefinition,
+      createChannel(cfg.get('client:organization').address)
+    );
+
+    this.contact_point_service = createClient(
+      {
+        ...cfg.get('client:contact_point'),
+        logger
+      } as GrpcClientConfig,
+      ContactPointServiceDefinition,
+      createChannel(cfg.get('client:contact_point').address)
+    );
+
+    this.address_service = createClient(
+      {
+        ...cfg.get('client:address'),
+        logger
+      } as GrpcClientConfig,
+      AddressServiceDefinition,
+      createChannel(cfg.get('client:address').address)
+    );
+    
+    this.country_service = createClient(
+      {
+        ...cfg.get('client:country'),
+        logger
+      } as GrpcClientConfig,
+      CountryServiceDefinition,
+      createChannel(cfg.get('client:country').address)
+    );
+
     this.tax_service = createClient(
       {
         ...cfg.get('client:tax'),
@@ -116,18 +235,49 @@ export class FulfillmentProductService
       TaxServiceDefinition,
       createChannel(cfg.get('client:tax').address)
     );
-
-    this.tax_type_service = createClient(
-      {
-        ...cfg.get('client:tax_type'),
-        logger
-      } as GrpcClientConfig,
-      TaxTypeServiceDefinition,
-      createChannel(cfg.get('client:tax_type').address)
-    );
   }
 
-  private handleError(e: any) {
+  private buildStatusCode(
+    entity: string,
+    id: string,
+    status: Status,
+    error?: string,
+  ): Status {
+    return {
+      id,
+      code: status?.code ?? 500,
+      message: status?.message?.replace(
+        '{error}', error
+      ).replace(
+        '{entity}', entity
+      ).replace(
+        '{id}', id
+      ) ?? 'Unknown status',
+    };
+  }
+
+  private buildOperationStatusCode(
+    entity: string,
+    status: OperationStatus,
+  ): OperationStatus {
+    return {
+      code: status?.code ?? 500,
+      message: status?.message?.replace(
+        '{entity}', entity
+      ) ?? 'Unknown status',
+    };
+  }
+
+  private handleStatusError(id: string, e: any) {
+    this.logger.warn(e);
+    return {
+      id,
+      code: e?.code ?? 500,
+      message: e?.message ?? e?.details ?? e?.toString(),
+    };
+  }
+
+  private handleOperationError(e: any) {
     this.logger.error(e);
     return {
       items: [],
@@ -139,6 +289,76 @@ export class FulfillmentProductService
     };
   }
 
+  private get<T>(
+    ids: string[],
+    service: CRUDClient,
+    subject?: Subject,
+    context?: any,
+  ): Promise<T> {
+    ids = [...new Set<string>(ids)];
+    const entity = typeof ({} as T);
+
+    if (ids.length > 1000) {
+      throw this.buildOperationStatusCode(
+        entity,
+        this.operation_status_codes.LIMIT_EXHAUSTED,
+      );
+    }
+
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filters: [
+          {
+            field: 'id',
+            operation: Filter_Operation.in,
+            value: JSON.stringify(ids),
+            type: Filter_ValueType.ARRAY,
+          }
+        ]
+      }],
+      limit: ids.length,
+      subject,
+    });
+
+    return service.read(
+      request,
+      context,
+    ).then(
+      response => {
+        if (response.operation_status?.code === 200) {
+          return response.items?.reduce(
+            (a: any, b: any) => {
+              a[b.payload?.id] = b;
+              return a;
+            }, {} as T
+          );
+        }
+        else {
+          throw response.operation_status;
+        }
+      }
+    );
+  }
+
+  async getById<T>(map: { [id:string]: T }, id: string): Promise<T> {
+    if (id in map) {
+      return map[id];
+    }
+    else {
+      throw this.buildStatusCode(
+        typeof({} as T),
+        id,
+        this.status_codes.NOT_FOUND
+      );
+    }
+  }
+
+  async getByIds<T>(map: { [id:string]: T }, ids: string[]): Promise<T[]> {
+    return Promise.all(ids.map(
+      id => this.getById(map, id)
+    ));
+  }
+
   private async findCouriers(
     queries: ProductQueryTotals[],
     subject?: Subject,
@@ -146,7 +366,7 @@ export class FulfillmentProductService
   ): Promise<DeepPartial<FulfillmentCourierListResponse>> {
     const call = ReadRequest.fromPartial({
       filters: [{
-        filter: queries.flatMap(
+        filters: queries.flatMap(
           item => item.preferences.couriers.map(
             att => ({
               field: att.id,
@@ -186,7 +406,7 @@ export class FulfillmentProductService
 
     const call = ReadRequest.fromPartial({
       filters: [{
-        filter: [{
+        filters: [{
           field: 'courier_id',
           operation: Filter_Operation.in,
           value: JSON.stringify(stubs.map(stub => stub.courier.id)),
@@ -201,8 +421,70 @@ export class FulfillmentProductService
   }
 
   async find(request: ProductQueryList, context?: any): Promise<PackingSolutionListResponse> {
-    const queries = buildQueryTotals(request.items);
-    const promises = queries.map(async query => {
+    try {
+      const queries = buildQueryTotals(request.items);
+
+      const customer_map = await this.get<CustomerResponseMap>(
+        queries.map(q => q.customer_id),
+        this.customer_service,
+        request.subject,
+        context,
+      );
+
+      const shop_map = await this.get<ShopResponseMap>(
+        queries.map(q => q.shop_id),
+        this.shop_service,
+        request.subject,
+        context,
+      );
+
+      const orga_map = await this.get<OrganizationResponseMap>(
+        [
+          ...Object.values(shop_map).map(
+            item => item.payload?.organization_id
+          ),
+          ...Object.values(customer_map).map(
+            item => item.payload?.commercial?.organization_id
+              ?? item.payload?.public_sector?.organization_id
+          ),
+        ],
+        this.organization_service,
+        request.subject,
+        context,
+      );
+
+      const contact_point_map = await this.get<ContactPointResponseMap>(
+        [
+          ...Object.values(orga_map).flatMap(
+            item => item.payload?.contact_point_ids
+          ),
+          ...Object.values(customer_map).flatMap(
+            item => item.payload?.private?.contact_point_ids
+          ),
+        ],
+        this.contact_point_service,
+        request.subject,
+        context,
+      );
+  
+      const address_map = await this.get<AddressResponseMap>(
+        Object.values(contact_point_map).map(
+          item => item.payload?.physical_address_id
+        ),
+        this.address_service,
+        request.subject,
+        context,
+      );
+
+      const country_map = await this.get<CountryResponseMap>(
+        Object.values(address_map).map(
+          item => item.payload?.country_id
+        ),
+        this.country_service,
+        request.subject,
+        context,
+      );
+
       const stubs = await this.findCouriers(
         queries,
         request.subject,
@@ -234,110 +516,247 @@ export class FulfillmentProductService
         )
       );
 
-      const offer_lists = Object.values(product_map).map((product): Offer[] =>
-        product.payload?.variants?.map((variant): Offer => (
-          {
-            name: `${product.payload?.id}\t${variant.id}`,
-            price: variant.price,
-            maxWeight: variant.max_weight,
-            width: variant.max_size.width,
-            height: variant.max_size.height,
-            depth: variant.max_size.length,
-            type: 'parcel'
-          }
-        ))
+      const tax_map = await this.get<TaxResponseMap>(
+        Object.values(product_map).flatMap(
+          p => p.payload.tax_ids
+        ),
+        this.tax_service,
+        request.subject,
+        context,
       );
 
-      const goods = query.items.map((good): IItem => ({
-        desc: `${good.product_id}\t${good.variant_id}`,
-        quantity: good.quantity,
-        weight: good.package.weight_in_kg,
-        width: good.package.size_in_cm.width,
-        height: good.package.size_in_cm.height,
-        depth: good.package.size_in_cm.length,
-        price: 0.0,
-        taxType: 'vat_standard'
-      }));
-
-      const packer = new Packer({
-        source: JSON.stringify({ zones: [] }),
-        shipping: null
-      });
-
-      const solutions: PackingSolution[] = offer_lists.map(
-        offers => packer.canFit(offers, goods)
-      ).map(
-        containers => {
-          const parcels = containers.map((container): Parcel => {
-            const product_id = container.getOffer().name.split('\t')[0];
-            const variant_id = container.getOffer().name.split('\t')[1];
-            return {
-              id: randomUUID(),
-              product_id,
-              variant_id,
-              items: countItems(query.items, container),
-              package: {
-                rotatable: !query.items.some(i => !i.package?.rotatable),
-                size_in_cm: {
-                  height: container.getStackHeight(),
-                  width: container.getWidth(),
-                  length: container.getDepth()
-                },
-                weight_in_kg: container.getStackWeight(),
-              },
-              price: container.getOffer().price,
-              vats: product_map[product_id]?.payload?.tax_ids.map(
-                id => ({
-                  tax_id: id,
-                  vat: 0,
-                })
-              ),
+      const offer_lists = Object.values(product_map).map(
+        (product): Offer[] => product.payload?.variants?.map(
+          (variant): Offer => (
+            {
+              name: `${product.payload?.id}\t${variant.id}`,
+              price: variant.price.sale ? variant.price.sale_price : variant.price.regular_price,
+              maxWeight: variant.max_weight,
+              width: variant.max_size.width,
+              height: variant.max_size.height,
+              depth: variant.max_size.length,
+              type: 'parcel'
             }
-          });
-
-          return {
-            parcels,
-            price: parcels.reduce((a, b) => a + b.price, 0),
-            vats: Object.values(parcels.flatMap(p => p.vats).reduce(
-              (a, b) => {
-                const c = a[b.tax_id];
-                if (c) {
-                  c.vat += b.vat;
-                }
-                a[b.tax_id] = b;
-                return a;
-              },
-              {} as { [id: string]: VAT }
-            )),
-            compactness: 1,
-            homogeneity: 1,
-            score: 1,
-            reference_id: query.reference_id
-          }
-        }
+          )
+        )
       );
 
-      const solution: PackingSolutionResponse = {
-        reference_id: query.reference_id,
-        solutions,
-        status: {
-          id: query.reference_id,
-          code: 200,
-          message: `Best Solution: ${Math.min(...solutions.map((s) => s.price))}`
+      const promises = queries.map(async query => {
+        try {
+          const goods = query.items.map((good): IItem => ({
+            desc: `${good.product_id}\t${good.variant_id}`,
+            quantity: good.quantity,
+            weight: good.package.weight_in_kg,
+            width: good.package.size_in_cm.width,
+            height: good.package.size_in_cm.height,
+            depth: good.package.size_in_cm.length,
+            price: 0.0, // placeholder
+            taxType: 'vat_standard' // placeholder
+          }));
+  
+          const packer = new Packer({
+            source: JSON.stringify({ zones: [] }),
+            shipping: null
+          });
+  
+          const shop_country = await this.getById(
+            shop_map,
+            query.shop_id
+          ).then(
+            shop => this.getById(
+              orga_map,
+              shop.payload.organization_id
+            )
+          ).then(
+            orga => this.getByIds(
+              contact_point_map,
+              orga.payload.contact_point_ids
+            ).then(
+              cpts => cpts.find(
+                cpt => cpt.payload.contact_point_type_ids.indexOf(
+                  this.legal_address_type_id
+                ) >= 0
+              )
+            )
+          ).then(
+            contact_point => this.getById(
+              address_map,
+              contact_point.payload.physical_address_id
+            )
+          ).then(
+            address => this.getById(country_map, address.payload.country_id)
+          );
+  
+          const customer = await this.getById(
+            customer_map,
+            query.customer_id
+          );
+  
+          const customer_country = await this.getByIds(
+            contact_point_map,
+            [
+              ...customer.payload.private?.contact_point_ids,
+              ...(await this.getById(
+                orga_map,
+                customer.payload.commercial?.organization_id
+              )).payload.contact_point_ids,
+              ...(await this.getById(
+                orga_map,
+                customer.payload.public_sector?.organization_id
+              )).payload.contact_point_ids,
+            ]
+          ).then(
+            cps => cps.find(
+              cp => cp.payload.contact_point_type_ids.indexOf(
+                this.legal_address_type_id
+              )
+            )
+          ).then(
+            cp => this.getById(
+              address_map,
+              cp.payload.physical_address_id,
+            )
+          ).then(
+            address => this.getById(
+              country_map,
+              address.payload.country_id
+            )
+          );
+  
+          const solutions: PackingSolution[] = offer_lists.map(
+            offers => packer.canFit(offers, goods)
+          ).map(
+            containers => {
+              const parcels = containers.map((container): Parcel => {
+                const [product_id, variant_id] = container.getOffer().name.split('\t');
+                const product = product_map[product_id].payload;
+                const variant = product.variants.find(
+                  variant => variant.id === variant_id
+                );
+                const price = variant?.price;
+                const taxes = product.tax_ids.map(
+                  id => tax_map[id]?.payload
+                ).filter(
+                  tax => filterTax(
+                    tax,
+                    shop_country.payload,
+                    customer_country.payload,
+                    !!customer.payload.private?.user_id,
+                  )
+                )
+                const gross = price.sale ? price.sale_price : price.regular_price;
+                const vats = taxes.map((tax): VAT => ({
+                  tax_id: tax.id,
+                  vat: gross * tax.rate,
+                }));
+                const net = vats.reduce((a, b) => a + b.vat, gross);
+  
+                return {
+                  id: randomUUID(),
+                  product_id,
+                  variant_id,
+                  items: countItems(query.items, container),
+                  package: {
+                    rotatable: !query.items.some(i => !i.package?.rotatable),
+                    size_in_cm: {
+                      height: container.getStackHeight(),
+                      width: container.getWidth(),
+                      length: container.getDepth()
+                    },
+                    weight_in_kg: container.getStackWeight(),
+                  },
+                  price,
+                  amount: {
+                    currency_id: price.currency_id,
+                    gross,
+                    net,
+                    vats,
+                  }
+                }
+              });
+  
+              const amounts = Object.values(
+                parcels.reduce((a, b) => {
+                  const c = a[b.amount.currency_id];
+                  if (c) {
+                    c.gross += b.amount.gross;
+                    c.net += b.amount.net;
+                    c.vats.push(...b.amount.vats);
+                  }
+                  else {
+                    a[b.amount.currency_id] = { ...b.amount };
+                  }
+                  return a;
+                },
+                {} as { [key: string]: Amount })
+              );
+  
+              amounts.forEach(amount => {
+                amount.vats = Object.values(amount.vats.reduce(
+                  (a, b) => {
+                    const c = a[b.tax_id];
+                    if (c) {
+                      c.vat += b.vat;
+                    }
+                    a[b.tax_id] = { ...b };
+                    return a;
+                  },
+                  {} as { [id: string]: VAT }
+                ))
+              });
+  
+              return {
+                parcels,
+                amounts,
+                compactness: 1,
+                homogeneity: 1,
+                score: 1,
+                reference: query.reference,
+              }
+            }
+          );
+  
+          const solution: PackingSolutionResponse = {
+            solutions,
+            status: {
+              id: query.reference.instance_id,
+              code: 200,
+              message: `Best Solution: ${
+                Math.min(
+                  ...solutions.flatMap(
+                    (s) => s.amounts.map(a => a.net)
+                  )
+                )
+              }`
+            }
+          };
+  
+          return solution;
         }
+        catch (e) {
+          const solution: PackingSolutionResponse = {
+            solutions: [],
+            status: this.handleStatusError(
+              query.reference.instance_id,
+              e,
+            ),
+          };
+          return solution;
+        }
+      });        
+
+      const items = await Promise.all(promises);
+      return {
+        items,
+        total_count: items.length,
+        operation_status: this.buildOperationStatusCode(
+          this.name,
+          this.operation_status_codes.SUCCESS,
+        )
       };
-
-      return solution;
-    });
-
-    const items = await Promise.all(promises);
-    return {
-      items,
-      total_count: items.length,
-      operation_status: {
-        code: 200,
-        message: 'success'
-      }
-    };
+    }
+    catch (e) {
+      this.handleOperationError(e);
+    }
   }
 }

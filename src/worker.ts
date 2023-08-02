@@ -35,20 +35,22 @@ import {
   protoMetadata as FulfillmentProductMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 import { 
-  ServiceDefinition as CommandInterfaceServiceDefinition,
+  CommandInterfaceServiceDefinition,
   protoMetadata as CommandInterfaceMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface';
 import { HealthDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/grpc/health/v1/health';
 import { ServerReflectionService } from 'nice-grpc-server-reflection';
 
+const FULFILLMENT_ACTIONS = {
+  createFulfillments: 'create',
+  updateFulfillments: 'update',
+  upsertFulfillments: 'upsert',
+  submitFulfillments: 'submit',
+  trackFulfillments: 'track',
+  cancelFulfillments: 'cancel',
+  deleteFulfillments: 'delete',
+}
 
-const CREATE_FULFILLMENTS = 'createFulfillments';
-const UPDATE_FULFILLMENTS = 'updateFulfillments';
-const UPSERT_FULFILLMENTS = 'upsertFulfillments';
-const SUBMIT_FULFILLMENTS = 'submitFulfillments';
-const TRACK_FULFILLMENTS = 'trackFulfillments';
-const CANCEL_FULFILLMENTS = 'cancelFulfillments';
-const DELETE_FULFILLMENTS = 'deleteFulfillments';
 const QUEUED_JOB = 'queuedJob';
 
 registerProtoMeta(
@@ -107,43 +109,37 @@ export class Worker {
     this.redisClient = createClient(redisConfig);
 
     const that = this;
-    const serviceActions = {
-      [CREATE_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) => {
-        return fulfillmentService.create(msg, context).then(
+    const serviceActions = Object.entries(FULFILLMENT_ACTIONS).reduce(
+      (actions, [key, value]) => {
+        actions[key] = (
+          msg: any,
+          context?: any,
+          config?: any,
+          eventName?: string
+        ) => fulfillmentService[value](msg, context).then(
           () => that.logger.info(`Event ${eventName} done.`),
-          err => that.logger.error(`Event ${eventName} failed: ${err}`)
+          (err: any) => that.logger.error(`Event ${eventName} failed: ${err}`)
         );
+        return actions;
       },
-      [SUBMIT_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) => {
-        return fulfillmentService.submit(msg, context).then(
-          () => that.logger.info(`Event ${eventName} done.`),
-          err => that.logger.error(`Event ${eventName} failed: ${err}`)
-        );
-      },
-      [TRACK_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) => {
-        return fulfillmentService.track(msg, context).then(
-          () => that.logger.info(`Event ${eventName} done.`),
-          err => that.logger.error(`Event ${eventName} failed: ${err}`)
-        );
-      },
-      [CANCEL_FULFILLMENTS]: (msg: any, context: any, config: any, eventName: string) =>  {
-        return fulfillmentService.cancel(msg, context).then(
-          () => that.logger.info(`Event ${eventName} done.`),
-          err => that.logger.error(`Event ${eventName} failed: ${err}`)
-        );
-      }
-    };
+      {}
+    );
 
-    const serviceEventListeners = (msg: any, context: any, config: any, eventName: string) => {
-      if (eventName == QUEUED_JOB) {
-        return serviceActions[msg?.type](msg?.data?.payload, context, config, msg?.type).then(
-          () => that.logger.info(`Job ${msg?.type} done.`),
-          (err: any) => that.logger.error(`Job ${msg?.type} failed: ${err}`)
-        );
-      }
-      else {
-        return serviceActions[eventName](msg, context, config, eventName);
-      }
+    serviceActions[QUEUED_JOB] = (
+      msg?: any,
+      context?: any,
+      config?: any,
+      eventName?: string
+    ) => {
+      return serviceActions[msg?.type](
+        msg?.data?.payload,
+        context,
+        config,
+        msg?.type
+      ).then(
+        () => that.logger.info(`Job ${msg?.type ?? eventName} done.`),
+        (err: any) => that.logger.error(`Job ${msg?.type ?? eventName} failed: ${err}`)
+      );
     };
 
     for (let topicType of topicTypes) {
@@ -154,7 +150,7 @@ export class Worker {
       kafkaCfg.topics[topicType]?.events?.forEach(
         eventName => topic.on(
           eventName,
-          serviceEventListeners[eventName],
+          serviceActions[eventName],
           { startingOffset: offsetValue }
         )
       );

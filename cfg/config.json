@@ -12,7 +12,7 @@
       "provider": "arango",
       "host": "localhost",
       "port": 8529,
-      "database": "restorecommerce-fulfillment-srv",
+      "database": "fulfillment-srv",
       "autoCreate": true,
       "collections": [
         "fulfillments",
@@ -361,16 +361,18 @@
   },
   "stubs": {
     "DHL": {
-      "ordering": {
-        "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
-        "version": [3, 4, 0],
-        "endpoint": "https://cig.dhl.de/services/sandbox/soap",
-        "username": null,
-        "password": null,
-        "wsdl_header": {
-          "Authentification": {
-            "user": "2222222222_01",
-            "signature": "pass"
+      "dhl_sandbox": {
+        "ordering": {
+          "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
+          "version": [3, 4, 0],
+          "endpoint": "https://cig.dhl.de/services/sandbox/soap",
+          "username": null,
+          "password": null,
+          "wsdl_header": {
+            "Authentification": {
+              "user": "2222222222_01",
+              "signature": "pass"
+            }
           }
         }
       }

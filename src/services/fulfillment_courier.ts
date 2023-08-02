@@ -5,7 +5,7 @@ import {
   FulfillmentCourierListResponse,
   FulfillmentCourierList,
   FulfillmentCourierServiceImplementation,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_courier';
 
 const ENTITY_NAME = 'fulfillment_courier';
 const COLLECTION_NAME = 'fulfillment_couriers';

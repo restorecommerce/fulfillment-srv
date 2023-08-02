@@ -46,6 +46,17 @@
       "address": "localhost:50051"
     }
   },
+  "actions": {
+    "FAILED": "orderFailed",
+    "INVALID": "orderInvalid",
+    "SUBMITTED": "orderSubmitted",
+    "IN_PROCESS": "orderInProcess",
+    "DONE": "orderDone",
+    "WITHDRAWN": "orderWithdrawn",
+    "CANCELLED": "orderCancelled",
+    "CREATE_FULFILLMENTS": "createFulfillments",
+    "CREATE_INVOICES": "createInvoices"
+  },
   "events": {
     "kafka": {
       "provider": "kafka",
@@ -352,10 +363,15 @@
   },
   "fieldHandlers": {
     "fulfillment_courier": {
-      "bufferField": "configuration"
+      "bufferField": "configuration",
+      "timeStampFields": ["meta.created", "meta.modified"]
+    },
+    "fulfillment_product": {
+      "timeStampFields": ["meta.created", "meta.modified"]
     },
     "fulfillment": {
-      "bufferField": "options"
+      "bufferField": "options",
+      "timeStampFields": ["meta.created", "meta.modified"]
     }
   },
   "stubs": {
