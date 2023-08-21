@@ -5,27 +5,22 @@ import {
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
-import { ReadRequest } from '@restorecommerce/types/server/io/restorecommerce/resource_base';
+import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
 import {
   OperationStatus,
   Status,
-} from '@restorecommerce/types/server/io/restorecommerce/status';
+  StatusListResponse,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 import {
   Filter_Operation,
   Filter_ValueType,
-} from '@restorecommerce/types/server/io/restorecommerce/filter';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter';
 import {
   Client,
   GrpcClientConfig,
   createChannel,
   createClient,
 } from '@restorecommerce/grpc-client';
-import {
-  FulfillmentCourierListResponse as CourierResponseList
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_courier';
-import {
-  FulfillmentProductListResponse as ProductResponseList
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_product';
 import {
   State,
   FulfillmentListResponse,
@@ -34,14 +29,13 @@ import {
   FulfillmentIdList,
   FulfillmentServiceImplementation,
   InvoiceRequestList,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment';
-import { Subject } from '@restorecommerce/types/server/io/restorecommerce/auth';
-import { AddressServiceDefinition } from '@restorecommerce/types/server/io/restorecommerce/address';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
+import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
 import {
-  CountryListResponse,
   CountryServiceDefinition,
-} from '@restorecommerce/types/server/io/restorecommerce/country';
-import { TaxResponse, TaxServiceDefinition } from '@restorecommerce/types/server/io/restorecommerce/tax';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
+import { TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
 import { 
   FulfillmentCourierService,
   FulfillmentProductService
@@ -52,7 +46,6 @@ import {
   AggregatedFulfillment,
   mergeFulfillments,
   flatMapAggregatedFulfillments,
-  CourierResponse,
   CourierResponseMap,
   StateRank,
   CountryResponseMap,
@@ -65,62 +58,59 @@ import {
   AddressResponseMap,
   filterTax,
 } from '..';
-import { StatusListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/status';
 import { InvoiceListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice';
-import { ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
+import { ContactPointResponse, ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
 import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
 import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
 import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
 import { VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount';
 
-const FULFILLMENT_SUBMIT_EVENT = 'fulfillmentSubmitted';
-const FULFILLMENT_INVALID_EVENT = 'fulfillmentInvalid';
-const FULFILLMENT_TRACK_EVENT = 'fulfillmentTracked';
-const FULFILLMENT_FULFILL_EVENT = 'fulfillmentFulfilled';
-const FULFILLMENT_CANCEL_EVENT = 'fulfillmentCancelled';
-const FULFILLMENT_FAILED_EVENT = 'fulfillmentFailed';
-const FULFILLMENT_ERROR_EVENT = 'fulfillmentError';
-
 export class FulfillmentService
   extends ServiceBase<FulfillmentListResponse, FulfillmentList>
   implements FulfillmentServiceImplementation
 {
-  private readonly status_codes: {
+  private readonly status_codes: { [key: string]: Status } = {
     OK: {
-      id: string;
-      code: 200;
-      message: 'OK';
-    };
+      id: '',
+      code: 200,
+      message: 'OK',
+    },
     NOT_FOUND: {
-      id: string;
-      code: 404;
-      message: '{entity} {id} not found!';
-    };
+      id: '',
+      code: 404,
+      message: '{entity} {id} not found!',
+    },
+    NO_LEGAL_ADDRESS: {
+      id: '',
+      code: 404,
+      message: '{entity} {id} has no legal address!',
+    },
   };
 
-  private readonly operation_status_codes: {
+  private readonly operation_status_codes: { [key: string]: OperationStatus} = {
     SUCCESS: {
-      code: 200;
-      message: 'SUCCESS';
-    };
+      code: 200,
+      message: 'SUCCESS',
+    },
     PARTIAL: {
-      code: 400;
-      message: 'Patrial executed with errors!';
-    };
+      code: 400,
+      message: 'Patrial executed with errors!',
+    },
     LIMIT_EXHAUSTED: {
-      code: 500;
-      message: 'Query limit 1000 exhausted!';
-    };
+      code: 500,
+      message: 'Query limit 1000 exhausted!',
+    },
   };
 
-  private readonly legal_address_type_id: string;
-  private readonly customer_service: Client<CustomerServiceDefinition>;
-  private readonly shop_service: Client<ShopServiceDefinition>;
-  private readonly organization_service: Client<OrganizationServiceDefinition>;
-  private readonly contact_point_service: Client<ContactPointServiceDefinition>;
-  private readonly address_service: Client<AddressServiceDefinition>;
-  private readonly country_service: Client<CountryServiceDefinition>;
-  private readonly tax_service: Client<TaxServiceDefinition>;
+  protected readonly emitters: any;
+  protected readonly legal_address_type_id: string;
+  protected readonly customer_service: Client<CustomerServiceDefinition>;
+  protected readonly shop_service: Client<ShopServiceDefinition>;
+  protected readonly organization_service: Client<OrganizationServiceDefinition>;
+  protected readonly contact_point_service: Client<ContactPointServiceDefinition>;
+  protected readonly address_service: Client<AddressServiceDefinition>;
+  protected readonly country_service: Client<CountryServiceDefinition>;
+  protected readonly tax_service: Client<TaxServiceDefinition>;
 
   constructor(
     readonly fulfillmentCourierSrv: FulfillmentCourierService,
@@ -131,11 +121,15 @@ export class FulfillmentService
     readonly logger: any,
   ) {
     super(
-      cfg.get('database:main:entities:0'),
+      cfg.get('database:main:entities:0') ?? 'fulfillment',
       topic,
       logger,
-      new ResourcesAPIBase(db, cfg.get('database:main:collections:0')),
-      true
+      new ResourcesAPIBase(
+        db,
+        cfg.get('database:main:collections:0') ?? 'fulfillments',
+        cfg.get('fieldHandlers:fulfillment'),
+      ),
+      !!cfg.get('events:enableEvents'),
     );
 
     Stub.cfg = cfg;
@@ -151,7 +145,8 @@ export class FulfillmentService
       ...cfg.get('operationStatusCodes'),
     };
 
-    this.legal_address_type_id = this.cfg.get('ids:legalAddressTypeId');
+    this.emitters = cfg.get('events:emitters');
+    this.legal_address_type_id = this.cfg.get('preDefinedIds:legalAddressTypeId');
 
     this.customer_service = createClient(
       {
@@ -217,7 +212,7 @@ export class FulfillmentService
     );
   }
 
-  private parseStatusCode(
+  private createStatusCode(
     entity: string,
     id: string,
     status: Status,
@@ -236,7 +231,20 @@ export class FulfillmentService
     };
   }
 
-  private parseOperationStatusCode(
+  private throwStatusCode<T>(
+    entity: string,
+    id: string,
+    status: Status,
+    error?: string,
+  ): T {
+    throw this.createStatusCode(
+      entity,
+      id,
+      status,error
+    );
+  }
+
+  private createOperationStatusCode(
     entity: string,
     status: OperationStatus,
   ): OperationStatus {
@@ -248,27 +256,28 @@ export class FulfillmentService
     };
   }
 
-  private handleStatusError(id: string, e: any) {
-    this.logger.warn(e);
+  private catchStatusError<T>(id: string, e: any, payload = null): T {
+    this.logger?.warn(e);
     return {
-      id,
-      code: e?.code ?? 500,
-      message: e?.message ?? e?.details ?? e?.toString(),
-    };
+      payload,
+      status: {
+        id,
+        code: e?.code ?? 500,
+        message: e?.message ?? e?.details ?? e?.toString(),
+      }
+    } as T;
   }
 
-  private handleOperationError(e: any) {
-    const error = {
+  private catchOperationError<T>(e: any): T {
+    this.logger?.error(e);
+    return {
       items: [],
       total_count: 0,
       operation_status: {
         code: e?.code ?? 500,
         message: e?.message ?? e?.details ?? e?.toString(),
       }
-    };
-    this.logger.error(error);
-    this.topic.emit(FULFILLMENT_ERROR_EVENT, error);
-    return error;
+    } as T;
   }
 
   private get<T>(
@@ -281,7 +290,7 @@ export class FulfillmentService
     const entity = typeof ({} as T);
 
     if (ids.length > 1000) {
-      throw this.parseOperationStatusCode(
+      throw this.createOperationStatusCode(
         entity,
         this.operation_status_codes.LIMIT_EXHAUSTED,
       );
@@ -327,8 +336,8 @@ export class FulfillmentService
       return map[id];
     }
     else {
-      throw this.parseStatusCode(
-        typeof({} as T),
+      this.throwStatusCode<T>(
+        'Object',
         id,
         this.status_codes.NOT_FOUND
       );
@@ -339,60 +348,6 @@ export class FulfillmentService
     return Promise.all(ids.map(
       id => this.getById(map, id)
     ));
-  }
-
-  private getTaxesByCountryIDs(
-    ids: string[],
-    subject?: Subject,
-    context?: any
-  ): Promise<DeepPartial<ProductResponseList>> {
-    ids = [...new Set(ids).values()];
-    if (ids.length > 1000) {
-      throw {
-        code: 500,
-        message: 'Query for taxes exceeds limit of 1000!'
-      } as OperationStatus
-    }
-
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filters: [{
-          field: 'country_id',
-          operation: Filter_Operation.in,
-          value: JSON.stringify(ids),
-          type: Filter_ValueType.ARRAY
-        }]
-      }],
-      subject
-    });
-    return this.tax_service.read(request, context);
-  }
-
-  private getProductsByIDs(
-    ids: string[],
-    subject?: Subject,
-    context?: any
-  ): Promise<DeepPartial<ProductResponseList>> {
-    ids = [...new Set(ids).values()];
-    if (ids.length > 1000) {
-      throw {
-        code: 500,
-        message: 'Query for products exceeds limit of 1000!'
-      } as OperationStatus
-    }
-
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filters: [{
-          field: 'id',
-          operation: Filter_Operation.in,
-          value: JSON.stringify(ids),
-          type: Filter_ValueType.ARRAY
-        }]
-      }],
-      subject
-    });
-    return this.fulfillmentProductSrv.read(request, context);
   }
 
   private getFulfillmentsByIDs(ids: string[], subject?: Subject, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
@@ -416,29 +371,6 @@ export class FulfillmentService
       subject
     });
     return this.read(request, context);
-  }
-
-  private getTaxMap(country_ids: string[], subject?: Subject, context?: any): Promise<TaxResponseMap> {
-    return this.getProductsByIDs(
-      country_ids,
-      subject,
-      context
-    ).then(
-      response => {
-        if (response.operation_status?.code === 200) {
-          return response.items.reduce(
-            (a, b) => {
-              a[b.payload?.id ?? b.status?.id] = b as TaxResponse;
-              return a;
-            },
-            {} as TaxResponseMap
-          );
-        }
-        else {
-          throw response.operation_status;
-        }
-      }
-    ); 
   }
 
   private async aggregateFulfillments(
@@ -518,17 +450,17 @@ export class FulfillmentService
     );
 
     const courier_map = await this.get<CourierResponseMap>(
-      fulfillments.flatMap(
-        f => f.packaging.parcels.map(p => p.product_id)
+      Object.values(product_map).map(
+        p => p.payload?.courier_id
       ),
-      this.fulfillmentProductSrv,
+      this.fulfillmentCourierSrv,
       subject,
       context,
     );
 
     const tax_map = await this.get<TaxResponseMap>(
       Object.values(product_map).flatMap(
-        p => p.payload.tax_ids
+        p => p.payload?.tax_ids
       ),
       this.tax_service,
       subject,
@@ -536,139 +468,165 @@ export class FulfillmentService
     );
 
     const promises = fulfillments.map(async (item): Promise<AggregatedFulfillment> => {
-      const sender_country = country_map[item.packaging.sender.address.country_id];
-      const recipient_country = country_map[item.packaging.sender.address.country_id];
-      const products = item.packaging.parcels.map(
-        parcel => product_map[parcel.product_id]
-      );
-      const couriers = products.flatMap(
-        product => courier_map[product.payload.courier_id]
-      );
-      const status: Status[] = [
-        sender_country.status,
-        recipient_country.status,
-        ...products.map(p => p.status),
-        ...couriers.map(c => c.status),
-      ];
+      try {
+        const sender_country = await this.getById(
+          country_map,
+          item.packaging.sender?.address?.country_id,
+        );
 
-      const shop_country = await this.getById(
-        shop_map,
-        item.shop_id
-      ).then(
-        shop => this.getById(
-          orga_map,
-          shop.payload.organization_id
-        )
-      ).then(
-        orga => this.getByIds(
-          contact_point_map,
-          orga.payload.contact_point_ids
+        const recipient_country = await this.getById(
+          country_map,
+          item.packaging.recipient?.address?.country_id,
+        );
+
+        const products = await this.getByIds(
+          product_map,
+          item.packaging.parcels.map(
+            parcel => parcel?.product_id
+          ),
+        );
+
+        const couriers = await this.getByIds(
+          courier_map,
+          products.map(
+            product => product.payload?.courier_id
+          )
+        );
+
+        const status: Status[] = [
+          sender_country?.status,
+          recipient_country?.status,
+          ...products?.map(p => p?.status),
+          ...couriers?.map(c => c?.status),
+        ];
+
+        const shop_country = await this.getById(
+          shop_map,
+          item.shop_id
+        ).then(
+          shop => this.getById(
+            orga_map,
+            shop.payload?.organization_id
+          )
+        ).then(
+          orga => this.getByIds(
+            contact_point_map,
+            orga.payload?.contact_point_ids
+          )
         ).then(
           cpts => cpts.find(
-            cpt => cpt.payload.contact_point_type_ids.indexOf(
+            cpt => cpt.payload?.contact_point_type_ids.indexOf(
               this.legal_address_type_id
             ) >= 0
+          ) ?? this.throwStatusCode<ContactPointResponse>(
+            typeof(item),
+            item.id,
+            this.status_codes.NO_LEGAL_ADDRESS,
           )
-        )
-      ).then(
-        contact_point => this.getById(
-          address_map,
-          contact_point.payload.physical_address_id
-        )
-      ).then(
-        address => this.getById(country_map, address.payload.country_id)
-      );
-
-      const customer = await this.getById(
-        customer_map,
-        item.customer_id
-      );
-
-      const customer_country = await this.getByIds(
-        contact_point_map,
-        [
-          ...customer.payload.private?.contact_point_ids,
-          ...(await this.getById(
-            orga_map,
-            customer.payload.commercial?.organization_id
-          )).payload.contact_point_ids,
-          ...(await this.getById(
-            orga_map,
-            customer.payload.public_sector?.organization_id
-          )).payload.contact_point_ids,
-        ]
-      ).then(
-        cps => cps.find(
-          cp => cp.payload.contact_point_type_ids.indexOf(
-            this.legal_address_type_id
+        ).then(
+          contact_point => this.getById(
+            address_map,
+            contact_point.payload?.physical_address_id,
           )
-        )
-      ).then(
-        cp => this.getById(
-          address_map,
-          cp.payload.physical_address_id,
-        )
-      ).then(
-        address => this.getById(
-          country_map,
-          address.payload.country_id
-        )
-      );
-
-      if (evaluate) {
-        item.packaging.parcels.forEach(
-          p => {
-            const product = product_map[p.product_id].payload;
-            const variant = product.variants.find(
-              v => v.id === p.variant_id
-            );
-            const price = variant?.price;
-            const taxes = product.tax_ids.map(
-              id => tax_map[id]?.payload
-            ).filter(
-              tax => filterTax(
-                tax,
-                shop_country.payload,
-                customer_country.payload,
-                !!customer.payload.private?.user_id,
-              )
-            )
-            const gross = price.sale ? price.sale_price : price.regular_price;
-            const vats = taxes.map((tax): VAT => ({
-              tax_id: tax.id,
-              vat: gross * tax.rate,
-            }));
-            const net = vats.reduce((a, b) => a + b.vat, gross);
-
-            p.price = variant.price;
-            p.amount = {
-              currency_id: price.currency_id,
-              gross,
-              net,
-              vats,
-            }
-          }
+        ).then(
+          address => this.getById(
+            country_map,
+            address.payload?.country_id
+          )
         );
+
+        const customer = await this.getById(
+          customer_map,
+          item.customer_id
+        );
+
+        const customer_country = await this.getByIds(
+          contact_point_map,
+          [
+            customer.payload.private?.contact_point_ids,
+            orga_map[customer.payload.commercial?.organization_id]?.payload.contact_point_ids,
+            orga_map[customer.payload.public_sector?.organization_id]?.payload.contact_point_ids,
+          ].flatMap(id => id).filter(id => id)
+        ).then(
+          cps => cps.find(
+            cp => cp.payload?.contact_point_type_ids.indexOf(
+              this.legal_address_type_id
+            ) >= 0
+          ) ?? this.throwStatusCode<ContactPointResponse>(
+            typeof(item),
+            item.id,
+            this.status_codes.NO_LEGAL_ADDRESS,
+          )
+        ).then(
+          cp => this.getById(
+            address_map,
+            cp.payload.physical_address_id,
+          )
+        ).then(
+          address => this.getById(
+            country_map,
+            address.payload.country_id
+          )
+        );
+
+        if (evaluate) {
+          item.packaging.parcels.forEach(
+            p => {
+              const product = product_map[p.product_id].payload;
+              const variant = product.variants.find(
+                v => v.id === p.variant_id
+              );
+              const price = variant?.price;
+              const taxes = product.tax_ids.map(
+                id => tax_map[id]?.payload
+              ).filter(
+                tax => filterTax(
+                  tax,
+                  shop_country.payload,
+                  customer_country.payload,
+                  !!customer.payload.private?.user_id,
+                )
+              )
+              const gross = price.sale ? price.sale_price : price.regular_price;
+              const vats = taxes.map((tax): VAT => ({
+                tax_id: tax.id,
+                vat: gross * tax.rate,
+              }));
+              const net = vats.reduce((a, b) => a + b.vat, gross);
+
+              p.price = variant.price;
+              p.amount = {
+                currency_id: price.currency_id,
+                gross,
+                net,
+                vats,
+              }
+            }
+          );
+        }
+
+        const aggreagatedFulfillment: AggregatedFulfillment = {
+          payload: item,
+          products,
+          couriers,
+          sender_country,
+          recipient_country,
+          options: null,
+          status: status.reduce(
+            (a, b) => b.code > a.code ? b : a,
+            {
+              id: item.id,
+              code: 200,
+              message: 'OK'
+            }
+          )
+        };
+
+        return aggreagatedFulfillment;
       }
-
-      const aggreagatedFulfillment: AggregatedFulfillment = {
-        payload: item,
-        products,
-        couriers,
-        sender_country,
-        recipient_country,
-        options: null,
-        status: status.reduce(
-          (a, b) => b.code > a.code ? b : a,
-          {
-            id: item.id,
-            code: 200,
-            message: 'OK'
-          }
-        )
-      };
-
-      return aggreagatedFulfillment;
+      catch (error) {
+        return this.catchStatusError<AggregatedFulfillment>(item?.id, error, item);
+      }
     });
 
     return await Promise.all(promises);
@@ -699,7 +657,7 @@ export class FulfillmentService
       };
     }
     catch (e) {
-      return this.handleOperationError(e);
+      return this.catchOperationError<FulfillmentListResponse>(e);
     }
   }
 
@@ -715,6 +673,7 @@ export class FulfillmentService
       );
       const promises = Stub.submit(flat_fulfillments.filter(f => f.status?.code === 200));
       const responses = (await Promise.all(promises)).flatMap(f => f);
+      console.log(responses);
       const items = mergeFulfillments([
         ...responses,
         ...invalid_fulfillments,
@@ -731,11 +690,14 @@ export class FulfillmentService
       }, context);
 
       upsert_results.items.forEach(item => {
-        if (item.payload.state === State.INVALID) {
-          this.topic.emit(FULFILLMENT_INVALID_EVENT, item)
-        }
-        else {
-          this.topic.emit(FULFILLMENT_SUBMIT_EVENT, item)
+        if (item.payload.state in this.emitters) {
+          switch (item.payload.state) {
+            case State.INVALID, State.FAILED:
+              this.topic.emit(this.emitters[item.payload.state], item);
+            default:
+              this.topic.emit(this.emitters[item.payload.state], item.payload);
+              break;
+          }
         }
       });
 
@@ -746,7 +708,7 @@ export class FulfillmentService
       return upsert_results;
     }
     catch (e) {
-      return this.handleOperationError(e);
+      return this.catchOperationError<FulfillmentListResponse>(e);
     }
   }
 
@@ -841,14 +803,14 @@ export class FulfillmentService
       }, context);
   
       update_results.items.forEach(item => {
-        if (item.payload.state === State.FULFILLED) {
-          this.topic.emit(FULFILLMENT_FULFILL_EVENT, item);
-        }
-        else if (item.payload.state === State.FAILED) {
-          this.topic.emit(FULFILLMENT_FAILED_EVENT, item);
-        }
-        else {
-          this.topic.emit(FULFILLMENT_TRACK_EVENT, item);
+        if (item.payload.state in this.emitters) {
+          switch (item.payload.state) {
+            case State.INVALID, State.FAILED:
+              this.topic.emit(this.emitters[item.payload.state], item);
+            default:
+              this.topic.emit(this.emitters[item.payload.state], item.payload);
+              break;
+          }
         }
       });
   
@@ -859,7 +821,7 @@ export class FulfillmentService
       return update_results;
     }
     catch (e) {
-      return this.handleOperationError(e);
+      return this.catchOperationError<FulfillmentListResponse>(e);
     }
   }
 
@@ -957,11 +919,14 @@ export class FulfillmentService
       }, context);
   
       update_results.items.forEach(item => {
-        if (item.payload.state === State.INVALID) {
-          this.topic.emit(FULFILLMENT_INVALID_EVENT, item)
-        }
-        else {
-          this.topic.emit(FULFILLMENT_CANCEL_EVENT, item);
+        if (item.payload.state in this.emitters) {
+          switch (item.payload.state) {
+            case State.INVALID, State.FAILED:
+              this.topic.emit(this.emitters[item.payload.state], item);
+            default:
+              this.topic.emit(this.emitters[item.payload.state], item.payload);
+              break;
+          }
         }
       });
   
@@ -972,7 +937,7 @@ export class FulfillmentService
       return update_results;
     }
     catch (e) {
-      return this.handleOperationError(e);
+      return this.catchOperationError<FulfillmentListResponse>(e);
     }
   }
 

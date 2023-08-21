@@ -2,7 +2,7 @@
   "logger": {
     "console": {
       "handleExceptions": false,
-      "level": "crit",
+      "level": "silly",
       "colorize": true,
       "prettyPrint": true
     }
@@ -21,8 +21,8 @@
       ],
       "entities": [
         "fulfillment",
-        "fulfillment_courier",
-        "fulfillment_product"
+        "fulfillmentCourier",
+        "fulfillmentProduct"
       ]
     }
   },
@@ -33,28 +33,138 @@
   },
   "client": {
     "fulfillment": {
-      "address": "localhost:50067"
+      "address": "localhost:50065"
     },
     "fulfillment_courier": {
-      "address": "localhost:50067"
+      "address": "localhost:50065"
     },
     "fulfillment_product": {
-      "address": "localhost:50067"
+      "address": "localhost:50065"
     },
-    "reflection": {
-      "address": "localhost:50051"
+    "customer": {
+      "address": "localhost:50066",
+      "mock": {
+        "protoPath": "io/restorecommerce/customer.proto",
+        "packageName": "io.restorecommerce.customer",
+        "serviceName": "CustomerService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
     },
-    "commandinterface": {
-      "address": "localhost:50051"
+    "shop": {
+      "address": "localhost:50067",
+      "mock": {
+        "protoPath": "io/restorecommerce/shop.proto",
+        "packageName": "io.restorecommerce.shop",
+        "serviceName": "ShopService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "organization": {
+      "address": "localhost:50068",
+      "mock": {
+        "protoPath": "io/restorecommerce/organization.proto",
+        "packageName": "io.restorecommerce.organization",
+        "serviceName": "OrganizationService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "contact_point": {
+      "address": "localhost:50069",
+      "mock": {
+        "protoPath": "io/restorecommerce/contact_point.proto",
+        "packageName": "io.restorecommerce.contact_point",
+        "serviceName": "ContactPointService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "address": {
+      "address": "localhost:50070",
+      "mock": {
+        "protoPath": "io/restorecommerce/address.proto",
+        "packageName": "io.restorecommerce.address",
+        "serviceName": "AddressService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "country": {
+      "address": "localhost:50071",
+      "mock": {
+        "protoPath": "io/restorecommerce/country.proto",
+        "packageName": "io.restorecommerce.country",
+        "serviceName": "CountryService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "tax": {
+      "address": "localhost:50072",
+      "mock": {
+        "protoPath": "io/restorecommerce/tax.proto",
+        "packageName": "io.restorecommerce.tax",
+        "serviceName": "TaxService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "product": {
+      "address": "localhost:50073",
+      "mock": {
+        "protoPath": "io/restorecommerce/product.proto",
+        "packageName": "io.restorecommerce.product",
+        "serviceName": "ProductService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
     }
   },
   "events": {
+    "enableEvents": true,
+    "emitters": {
+      "FAILED": "fulfillmentFailed",
+      "INVALID": "fulfillmentInvalid",
+      "SUBMITTED": "fulfillmentSubmitted",
+      "IN_TRANSFER": "fulfillmentInTransfer",
+      "FULFILLED": "fulfillmentFulfilled",
+      "WITHDRAWN": "fulfillmentWithdrawn",
+      "CANCELLED": "fulfillmentCancelled",
+      "CREATE_FULFILLMENTS": "createFulfillments",
+      "CREATE_INVOICES": "createInvoices"
+    },
     "kafka": {
       "provider": "kafka",
-      "groupId": "restore-fulfillment-srv-test",
+      "groupId": "restore-fulfillment-srv",
       "latestOffset": false,
       "kafka": {
-        "clientId": "restore-fulfillment-srv-test",
+        "clientId": "restore-fulfillment-srv",
         "brokers": [
           "localhost:29092"
         ]
@@ -65,29 +175,23 @@
       "fulfillmentModified": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
-      "fulfillmentCancelled": {
+      "fulfillmentSubmitted": {
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
+      },
+      "fulfillmentFailed": {
+        "messageObject": "io.restorecommerce.fulfillment.FulfillmentResponse"
+      },
+      "fulfillmentInvalid": {
+        "messageObject": "io.restorecommerce.fulfillment.FulfillmentResponse"
+      },
+      "fulfillmentWithdrawn": {
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
+      },
+      "fulfillmentCanceled": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
       "fulfillmentDeleted": {
         "messageObject": "io.restorecommerce.fulfillment.Deleted"
-      },
-      "fulfillmentFulfilled": {
-        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
-      },
-      "fulfillmentLabelSubmitted": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelInvalid": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelShipping": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelDone": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
-      },
-      "fulfillmentLabelFailed": {
-        "messageObject": "io.restorecommerce.fulfillment.Label"
       },
       "fulfillmentCourierCreated": {
         "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
@@ -97,6 +201,15 @@
       },
       "fulfillmentCourierDeleted": {
         "messageObject": "io.restorecommerce.fulfillment_courier.Deleted"
+      },
+      "fulfillmentProductCreated": {
+        "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
+      },
+      "fulfillmentProductModified": {
+        "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
+      },
+      "fulfillmentProductDeleted": {
+        "messageObject": "io.restorecommerce.fulfillment_product.Deleted"
       },
       "jobScheduled": {
         "protos": [
@@ -119,61 +232,32 @@
         "protoRoot": "node_modules/@restorecommerce/protos/",
         "messageObject": "io.restorecommerce.job.JobFailed"
       },
-      "healthCheckCommand": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
-      },
-      "healthCheckResponse": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
-      },
-      "versionCommand": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
-      },
-      "versionResponse": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
-      },
       "restoreCommand": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
         "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
       },
       "restoreResponse": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
+        "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
+      },
+      "healthCheckCommand": {
+        "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
+      },
+      "healthCheckResponse": {
+        "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
+      },
+      "versionCommand": {
+        "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
+      },
+      "versionResponse": {
         "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
       },
       "resetCommand": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
         "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
       },
       "resetResponse": {
-        "protos": [
-          "io/restorecommerce/commandinterface.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
         "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
+      },
+      "renderRequest": {
+        "messageObject": "io.restorecommerce.rendering.RenderRequest"
       },
       "topics": {
         "command": {
@@ -187,159 +271,58 @@
         },
         "jobs": {
           "topic": "io.restorecommerce.jobs",
-          "events": [
-            "queuedJob"
-          ]
+          "events": {
+            "queuedJob": "jobService.handleQueuedJob"
+          }
         },
         "fulfillment_courier.resource": {
-          "topic": "io.restorecommerce.fulfillment_courier.resource"
+          "topic": "io.restorecommerce.fulfillment_courier.resource",
+          "events": {
+            "createFulfillmentCouriers": "fulfillmentCourierService.create",
+            "updateFulfillmentCouriers": "fulfillmentCourierService.update",
+            "upsertFulfillmentCouriers": "fulfillmentCourierService.upsert",
+            "deleteFulfillmentCouriers": "fulfillmentCourierService.delete"
+          }
         },
         "fulfillment_product.resource": {
-          "topic": "io.restorecommerce.fulfillment_product.resource"
+          "topic": "io.restorecommerce.fulfillment_product.resource",
+          "events": {
+            "createFulfillmentProducts": "fulfillmentProductService.create",
+            "updateFulfillmentProducts": "fulfillmentProductService.update",
+            "upsertFulfillmentProducts": "fulfillmentProductService.upsert",
+            "deleteFulfillmentProducts": "fulfillmentProductService.delete"
+          }
         },
         "fulfillment.resource": {
           "topic": "io.restorecommerce.fulfillment.resource",
-          "events": [
-            "createFulfillments",
-            "trackFulfillments",
-            "cancelFulfillments"
-          ]
+          "events": {
+            "createFulfillments": "fulfillmentService.create",
+            "updateFulfillments": "fulfillmentService.update",
+            "upsertFulfillments": "fulfillmentService.upsert",
+            "submitFulfillments": "fulfillmentService.submit",
+            "trackFulfillments": "fulfillmentService.track",
+            "withdrawFulfillments": "fulfillmentService.withdraw",
+            "cancelFulfillments": "fulfillmentService.cancel",
+            "deleteFulfillments": "fulfillmentService.delete"
+          }
         }
       }
-    },
-    "enableEvents": true
+    }
   },
-  "fulfillmentTrackingJob": "fulfillmentTrackingJob",
   "urns": {
     "ownerEntity": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
     "ownerInstance": "urn:restorecommerce:acs:names:ownerInstance",
     "organization": "urn:restorecommerce:acs:model:organization.Organization",
     "user": "urn:restorecommerce:acs:model:user.User",
-    "productName": "urn:restorecommerce:fufs:names:product:attr:productName",
-    "accountNumber": "urn:restorecommerce:fufs:names:product:attr:accountNumber"
+    "productName": "urn:restorecommerce:fulfillment:product:attribute:dhl:productName",
+    "accountNumber": "urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber"
   },
   "server": {
-    "services": {
-      "io-restorecommerce-fulfillment-srv": {
-        "create": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "track": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "cancel": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "delete": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        }
-      },
-      "io-restorecommerce-fulfillment-courier-srv": {
-        "create": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "update": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "upsert": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "delete": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        }
-      },
-      "io-restorecommerce-fulfillment-product-srv": {
-        "find": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "create": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "update": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "upsert": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "delete": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        }
-      },
-      "io-restorecommerce-fulfillment-reflection": {
-        "serverReflectionInfo": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        }
-      },
-      "io-restorecommerce-fulfillment-cis": {
-        "command": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        }
-      },
-      "grpc-health-v1": {
-        "check": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        },
-        "watch": {
-          "transport": [
-            "grpcFulfillmentSrv"
-          ]
-        }
-      }
-    },
     "transports": [
       {
         "name": "grpcFulfillmentSrv",
         "provider": "grpc",
-        "services": {
-          "io-restorecommerce-fulfillment-srv": "io.restorecommerce.fulfillment.Service",
-          "io-restorecommerce-fulfillment-courier-srv": "io.restorecommerce.fulfillment_courier.Service",
-          "io-restorecommerce-fulfillment-product-srv": "io.restorecommerce.fulfillment_product.Service",
-          "io-restorecommerce-fulfillment-reflection": "grpc.reflection.v1alpha.ServerReflection",
-          "io-restorecommerce-fulfillment-cis": "io.restorecommerce.commandinterface.Service",
-          "grpc-health-v1": "grpc.health.v1.Health"
-        },
-        "protos": [
-          "io/restorecommerce/fulfillment.proto",
-          "io/restorecommerce/fulfillment_courier.proto",
-          "io/restorecommerce/fulfillment_product.proto",
-          "grpc/reflection/v1alpha/reflection.proto",
-          "io/restorecommerce/commandinterface.proto",
-          "grpc/health/v1/health.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "addr": "localhost:50067"
+        "addr": "0.0.0.0:50065"
       }
     ]
   },
@@ -352,16 +335,24 @@
     "health": "grpc-health-v1"
   },
   "fieldHandlers": {
-    "fulfillment_courier": {
-      "bufferField": "configuration"
-    },
     "fulfillment": {
-      "bufferField": "options"
+      "bufferField": "options",
+      "timeStampFields": ["meta.created", "meta.modified"]
+    },
+    "fulfillment_courier": {
+      "bufferField": "configuration",
+      "timeStampFields": ["meta.created", "meta.modified"]
+    },
+    "fulfillment_product": {
+      "timeStampFields": ["meta.created", "meta.modified"]
     }
   },
+  "preDefinedIds": {
+    "legalAddressTypeId": "legal_address"
+  },
   "stubs": {
-    "DHL": {
-      "dhl_sandbox": {
+    "DHLSoapStub": {
+      "defaults": {
         "ordering": {
           "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
           "version": [3, 4, 0],
@@ -374,6 +365,13 @@
               "signature": "pass"
             }
           }
+        },
+        "tracking": {
+          "version": [3, 4, 0],
+          "appname": "zt12345",
+          "endpoint": "https://cig.dhl.de/services/sandbox/soap",
+          "username": null,
+          "password": null
         }
       }
     }

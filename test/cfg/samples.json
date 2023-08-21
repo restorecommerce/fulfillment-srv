@@ -92,10 +92,10 @@
         "destination_zones": ["DE"],
         "tax_id": ["tax1"],
         "attributes": [{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:productName",
           "value": "V01PAK" 
         },{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber",
           "value": "22222222220104"
         }],
         "variants": [{
@@ -137,10 +137,10 @@
         "courier_id": "dhl-1",
         "tax_id": ["tax1"],
         "attributes": [{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:productName",
           "value": "V01PAK" 
         },{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber",
           "value": "22222222220104"
         }],
         "variants": [{
@@ -184,10 +184,10 @@
         "destination_zones": ["DE"],
         "tax_id": ["tax1"],
         "attributes": [{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:productName",
           "value": "V01PAK" 
         },{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber",
           "value": "22222222220104"
         }],
         "variants": [{
@@ -231,10 +231,10 @@
         "destination_zones": ["DE", "FR", "IT", "ES"],
         "tax_id": ["tax1"],
         "attributes": [{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:productName",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:productName",
           "value": "V01PAK" 
         },{
-          "id": "urn:restorecommerce:fufs:names:product:attr:dhl:accountNumber",
+          "id": "urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber",
           "value": "22222222220104"
         }],
         "variants": [{

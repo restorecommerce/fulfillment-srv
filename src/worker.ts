@@ -2,7 +2,6 @@ import {
   Server,
   OffsetStore,
   database,
-  CommandInterface,
   buildReflectionService,
   Health
 } from '@restorecommerce/chassis-srv';
@@ -13,11 +12,6 @@ import {
 } from '@restorecommerce/kafka-client';
 import { createLogger } from '@restorecommerce/logger';
 import { createServiceConfig } from '@restorecommerce/service-config';
-import {
-  FulfillmentService,
-  FulfillmentCourierService,
-  FulfillmentProductService
-} from './services/';
 import { RedisClientType as RedisClient, createClient } from 'redis';
 import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
 import { Logger } from 'winston';
@@ -25,10 +19,13 @@ import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transp
 import { 
   FulfillmentServiceDefinition,
   protoMetadata as FulfillmentMeta,
+  FulfillmentList,
+  FulfillmentIdList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
   FulfillmentCourierServiceDefinition,
   protoMetadata as FulfillmentCourierMeta,
+  FulfillmentCourierList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import {
   FulfillmentProductServiceDefinition,
@@ -40,18 +37,13 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface';
 import { HealthDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/grpc/health/v1/health';
 import { ServerReflectionService } from 'nice-grpc-server-reflection';
-
-const FULFILLMENT_ACTIONS = {
-  createFulfillments: 'create',
-  updateFulfillments: 'update',
-  upsertFulfillments: 'upsert',
-  submitFulfillments: 'submit',
-  trackFulfillments: 'track',
-  cancelFulfillments: 'cancel',
-  deleteFulfillments: 'delete',
-}
-
-const QUEUED_JOB = 'queuedJob';
+import {
+  FulfillmentService,
+  FulfillmentCourierService,
+  FulfillmentProductService,
+  FulfillmentCommandInterface
+} from './services';
+import { DeleteRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
 
 registerProtoMeta(
   FulfillmentMeta,
@@ -60,28 +52,116 @@ registerProtoMeta(
   CommandInterfaceMeta
 );
 
-class FulfillmentCommandInterface extends CommandInterface {
-  logger: any;
-  cfg: any;
-  events: Events;
-  constructor(server: Server, cfg: any, logger: Logger, events: Events, redisClient: RedisClient) {
-    super(server, cfg, logger, events, redisClient);
-    this.logger = logger;
-  }
-}
-
 export class Worker {
   private _cfg: any;
-  offsetStore: OffsetStore;
-  server: Server;
-  events: Events;
-  logger: Logger;
-  topics: Map<string, Topic>;
-  cis: FulfillmentCommandInterface;
-  redisClient: RedisClient;
+  private _offsetStore: OffsetStore;
+  private _server: Server;
+  private _events: Events;
+  private _logger: Logger;
+  private _redisClient: RedisClient;
+  private _fulfillmentService: FulfillmentService;
+  private _fulfillmentCourierService: FulfillmentCourierService;
+  private _fulfillmentProductService: FulfillmentProductService;
+  private _fulfillmentCommandInterface: FulfillmentCommandInterface;
 
-  get cfg(): any {
+  get cfg() {
     return this._cfg;
+  }
+
+  protected set cfg(value: any) {
+    this._cfg = value;
+  }
+
+  get offsetStore() {
+    return this._offsetStore;
+  }
+
+  protected set offsetStore(value: OffsetStore) {
+    this._offsetStore = value;
+  }
+
+  get server() {
+    return this._server;
+  }
+
+  protected set server(value: Server) {
+    this._server = value;
+  }
+
+  get events() {
+    return this._events;
+  }
+
+  protected set events(value: Events) {
+    this._events = value;
+  }
+
+  get logger() {
+    return this._logger;
+  }
+
+  protected set logger(value: Logger) {
+    this._logger = value;
+  }
+
+  get redisClient() {
+    return this._redisClient;
+  }
+
+  protected set redisClient(value: RedisClient) {
+    this._redisClient = value;
+  }
+
+  get fulfillmentService() {
+    return this._fulfillmentService;
+  }
+
+  protected set fulfillmentService(value: FulfillmentService) {
+    this._fulfillmentService = value;
+  }
+
+  get fulfillmentProductService() {
+    return this._fulfillmentProductService;
+  }
+
+  protected set fulfillmentProductService(value: FulfillmentProductService) {
+    this._fulfillmentProductService = value;
+  }
+
+  get fulfillmentCourierService() {
+    return this._fulfillmentCourierService;
+  }
+
+  protected set fulfillmentCourierService(value: FulfillmentCourierService) {
+    this._fulfillmentCourierService = value;
+  }
+
+  get fulfillmentCommandInterface() {
+    return this._fulfillmentCommandInterface;
+  }
+
+  protected set fulfillmentCommandInterface(value: FulfillmentCommandInterface) {
+    this._fulfillmentCommandInterface = value;
+  }
+
+  protected readonly topics = new Map<string, Topic>();
+  protected readonly serviceActions = new Map<string, ((msg: any, context: any, config: any, eventName: string) => Promise<void>)>();
+  protected readonly jobService = {
+    handleQueuedJob: (msg: any, context: any, config: any, eventName: string) => {
+      return this.serviceActions.get(msg?.type)(msg?.data?.payload, context, config, msg?.type).then(
+        () => this.logger.info(`Job ${msg?.type} done.`),
+        (err: any) => this.logger.error(`Job ${msg?.type} failed: ${err}`)
+      );
+    }
+  }
+  
+  bindHandler(serviceName: string, functionName: string) {
+    return (msg: any, context: any, config: any, eventName: string): Promise<any> => { 
+      return this[serviceName]?.[functionName]?.(msg, context).then(
+        () => this.logger.info(`Event ${eventName} handled.`),
+        (err: any) => this.logger.error(`Error while handling event ${eventName}: ${err}`),
+      );
+    };
   }
 
   async start(cfg?: any, logger?: any): Promise<any> {
@@ -100,94 +180,75 @@ export class Worker {
     this.events = new Events(kafkaCfg, logger);
     await this.events.start();
     this.offsetStore = new OffsetStore(this.events, cfg, logger);
-
-    const topicTypes = Object.keys(kafkaCfg.topics);
-    this.topics = new Map<string, Topic>();
-
     const redisConfig = cfg.get('redis');
     redisConfig.db = this.cfg.get('redis:db-indexes:db-subject');
     this.redisClient = createClient(redisConfig);
 
-    const that = this;
-    const serviceActions = Object.entries(FULFILLMENT_ACTIONS).reduce(
-      (actions, [key, value]) => {
-        actions[key] = (
-          msg: any,
-          context?: any,
-          config?: any,
-          eventName?: string
-        ) => fulfillmentService[value](msg, context).then(
-          () => that.logger.info(`Event ${eventName} done.`),
-          (err: any) => that.logger.error(`Event ${eventName} failed: ${err}`)
-        );
-        return actions;
-      },
-      {}
-    );
-
-    serviceActions[QUEUED_JOB] = (
-      msg?: any,
-      context?: any,
-      config?: any,
-      eventName?: string
-    ) => {
-      return serviceActions[msg?.type](
-        msg?.data?.payload,
-        context,
-        config,
-        msg?.type
-      ).then(
-        () => that.logger.info(`Job ${msg?.type ?? eventName} done.`),
-        (err: any) => that.logger.error(`Job ${msg?.type ?? eventName} failed: ${err}`)
-      );
-    };
-
-    for (let topicType of topicTypes) {
-      const topicName = kafkaCfg.topics[topicType].topic;
+    await Promise.all(Object.keys(kafkaCfg.topics).map(async key => {
+      const topicName = kafkaCfg.topics[key].topic;
       const topic = await this.events.topic(topicName);
       const offsetValue: number = await this.offsetStore.getOffset(topicName);
       logger.info('subscribing to topic with offset value', topicName, offsetValue);
-      kafkaCfg.topics[topicType]?.events?.forEach(
-        eventName => topic.on(
-          eventName,
-          serviceActions[eventName],
-          { startingOffset: offsetValue }
-        )
+      Object.entries(kafkaCfg.topics[key]?.events as { [key: string]: string } ?? {}).forEach(
+        ([eventName, handler]) => {
+          const [serviceName, functionName] = handler.split('.');
+          this.serviceActions.set(eventName, this.bindHandler(serviceName, functionName));
+          topic.on(
+            eventName as string,
+            this.serviceActions.get(eventName),
+            { startingOffset: offsetValue }
+          )
+        }
       );
-      this.topics.set(topicType, topic);
-    }
+      this.topics.set(key, topic);
+    }));
 
-    const fulfillmentCourierService = new FulfillmentCourierService(
-      this.topics.get('fulfillment_courier.resource'), db, cfg, logger
+    logger.verbose('Setting up command interface services');
+    this.fulfillmentCommandInterface = new FulfillmentCommandInterface(
+      this.server,
+      this.events,
+      this.redisClient,
+      cfg, logger,
     );
-    const fulfillmentProductService = new FulfillmentProductService(
-      fulfillmentCourierService, this.topics.get('fulfillment_product.resource'), db, cfg, logger
+    logger.verbose('Setting up fulfillment courier services');
+    this.fulfillmentCourierService = new FulfillmentCourierService(
+      this.topics.get('fulfillment_courier.resource'),
+      db, cfg, logger,
     );
-    const fulfillmentService = new FulfillmentService(
-      fulfillmentCourierService, fulfillmentProductService, this.topics.get('fulfillment.resource'), db, cfg, logger
+    logger.verbose('Setting up fulfillment product services');
+    this.fulfillmentProductService = new FulfillmentProductService(
+      this.fulfillmentCourierService,
+      this.topics.get('fulfillment_product.resource'),
+      db, cfg, logger,
     );
-    this.cis = new FulfillmentCommandInterface(this.server, cfg, logger, this.events, this.redisClient);
+    logger.verbose('Setting up fulfillment services');
+    this.fulfillmentService = new FulfillmentService(
+      this.fulfillmentCourierService,
+      this.fulfillmentProductService,
+      this.topics.get('fulfillment.resource'),
+      db, cfg, logger,
+    );
 
     const serviceNamesCfg = cfg.get('serviceNames');
 
     await this.server.bind(serviceNamesCfg.fulfillment, {
       service: FulfillmentServiceDefinition,
-      implementation: fulfillmentService
+      implementation: this.fulfillmentService
     } as BindConfig<FulfillmentServiceDefinition>);
 
     await this.server.bind(serviceNamesCfg.fulfillment_courier, {
       service: FulfillmentCourierServiceDefinition,
-      implementation: fulfillmentCourierService,
+      implementation: this.fulfillmentCourierService,
     } as BindConfig<FulfillmentCourierServiceDefinition>);
 
     await this.server.bind(serviceNamesCfg.fulfillment_product, {
       service: FulfillmentProductServiceDefinition,
-      implementation: fulfillmentProductService,
+      implementation: this.fulfillmentProductService,
     } as BindConfig<FulfillmentProductServiceDefinition>);
 
     await this.server.bind(serviceNamesCfg.cis, {
       service: CommandInterfaceServiceDefinition,
-      implementation: this.cis
+      implementation: this.fulfillmentCommandInterface,
     } as BindConfig<CommandInterfaceServiceDefinition>);
 
     // Add reflection service
@@ -205,12 +266,15 @@ export class Worker {
 
     await this.server.bind(serviceNamesCfg.health, {
       service: HealthDefinition,
-      implementation: new Health(this.cis, {
-        logger,
-        cfg,
-        dependencies: [],
-        readiness: async () => !!await (db as Arango).db.version()
-      })
+      implementation: new Health(
+        this.fulfillmentCommandInterface,
+        {
+          logger,
+          cfg,
+          dependencies: [],
+          readiness: async () => !!await (db as Arango).db.version()
+        }
+      )
     } as BindConfig<HealthDefinition>);
 
     // start server
@@ -220,13 +284,15 @@ export class Worker {
 
   async stop(): Promise<any> {
     this.logger.info('Shutting down');
-    await this.server.stop();
-    await this.events.stop();
-    await this.offsetStore.stop();
+    await Promise.allSettled([
+      this.server?.stop(),
+      this.events?.stop(),
+      this.offsetStore?.stop(),
+    ]);
   }
 }
 
-if (require.main == module) {
+if (require.main === module) {
   const service = new Worker();
   const logger = service.logger;
   service.start().then().catch((err) => {

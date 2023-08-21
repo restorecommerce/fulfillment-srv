@@ -4,17 +4,17 @@ import {
   Event,
   State,
   Tracking,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
   FulfillmentCourier as Courier
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_courier';
-import { Status } from '@restorecommerce/types/server/io/restorecommerce/status';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 import {
   FlatAggregatedFulfillment,
   Stub,
 } from '..';
 
-export namespace DHL
+export namespace DHL_Soap
 {
   interface Origin
   {
@@ -185,7 +185,7 @@ export namespace DHL
     response: any,
     err?: any
   ): Promise<FlatAggregatedFulfillment> => {
-    if (err || response?.status != 200) {
+    if (err ?? response?.status != 200) {
       fulfillment.label.state = State.INVALID;
       fulfillment.payload.trackings = [{
         shipment_number: fulfillment.label.shipment_number,
@@ -193,8 +193,8 @@ export namespace DHL
         details: null,
         status: {
           id: fulfillment.label.shipment_number,
-          code: response?.status || err?.code || 500,
-          message: response?.statusText || err?.message || err?.msg || JSON.stringify(err, null, 2)
+          code: response?.status ?? err?.code ?? 500,
+          message: response?.statusText ?? err?.message ?? err?.msg ?? JSON.stringify(err, null, 2)
         }
       }];
     }
@@ -206,7 +206,7 @@ export namespace DHL
             const status = {
               id: fulfillment.label.shipment_number,
               code: response.elements[0].attributes.code,
-              message: response.elements[0].attributes.error || response.elements[0].elements[0].attributes.status
+              message: response.elements[0].attributes.error ?? response.elements[0].elements[0].attributes.status
             };
             fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.FULFILLED : State.IN_TRANSIT;
             fulfillment.label.status = status;
@@ -229,8 +229,8 @@ export namespace DHL
               details: null,
               status: {
                 id: fulfillment.label.shipment_number,
-                code: response?.elements?.[0]?.attributes?.code || 500,
-                message: response?.elements?.[0]?.attributes?.error || 'Error Unknown!'
+                code: response?.elements?.[0]?.attributes?.code ?? 500,
+                message: response?.elements?.[0]?.attributes?.error ?? 'Error Unknown!'
               }
             };
           }
@@ -243,8 +243,8 @@ export namespace DHL
             details: null,
             status: {
               id: fulfillment.label.shipment_number,
-              code: err?.code || 500,
-              message: err?.message || err?.msg || JSON.stringify(err, null, 2)
+              code: err?.code ?? 500,
+              message: err?.message ?? err?.msg ?? JSON.stringify(err, null, 2)
             }
           };
         }
@@ -263,8 +263,8 @@ export namespace DHL
       return Object.values(fulfillment_map).map(fulfillment => {
         const status = {
           id: fulfillment.payload.id,
-          code: err.code || err.statusCode || 500,
-          message: err.message || err.statusText || JSON.stringify(err)
+          code: err.code ?? err.statusCode ?? 500,
+          message: err.message ?? err.statusText ?? JSON.stringify(err)
         };
         fulfillment.label.status = status;
         fulfillment.status = status;
@@ -286,21 +286,23 @@ export namespace DHL
     });
   };
 
-  class DHLStub extends Stub {
+  class DHLSoapStub extends Stub {
     protected static _clients: { [id: string]: soap.Client } = {};
-    readonly version: number[];
+    protected readonly stub_defaults: any;
+    public readonly version: number[];
 
     get type(): string {
-      return 'DHL';
+      return this.constructor.name; //'DHLSoapStub';
     }
 
     get clients(): {} {
-      return DHLStub._clients;
+      return DHLSoapStub._clients;
     }
 
     constructor(courier?: Courier, kwargs?: { [key: string]: any }) {
       super(courier, kwargs?.cfg, kwargs?.logger);
-      this.version = this.cfg?.get('stubs:DHL:ordering:version') || [3, 4, 0];
+      this.stub_defaults = this.cfg?.get(`stubs:DHLSoapStub:${courier?.id}`) ?? this.cfg?.get('stubs:DHLSoapStub:defaults');
+      this.version = this.stub_defaults?.ordering?.version ?? [3, 4, 0];
     }
 
     protected AggregatedFulfillmentRequests2DHLShipmentOrderRequest(
@@ -318,7 +320,7 @@ export namespace DHL
             Shipment: {
               Shipper: {
                 Name: {
-                  name1: packaging.sender.address.residential_address?.family_name || packaging.sender.address.business_address?.name,
+                  name1: packaging.sender.address.residential_address?.family_name ?? packaging.sender.address.business_address?.name,
                   name2: packaging.sender.address.residential_address?.given_name,
                   name3: packaging.sender.address.residential_address?.mid_name,
                 },
@@ -339,7 +341,7 @@ export namespace DHL
                 }
               },
               Receiver: {
-                name1: packaging.recipient.address.residential_address?.family_name || packaging.recipient.address.business_address?.name,
+                name1: packaging.recipient.address.residential_address?.family_name ?? packaging.recipient.address.business_address?.name,
                 Address: {
                   name2: packaging.recipient.address.residential_address?.given_name,
                   name3: packaging.recipient.address.residential_address?.mid_name,
@@ -361,9 +363,9 @@ export namespace DHL
               ShipmentDetails: {
                 shipmentDate: new Date().toISOString().slice(0,10),
                 costCenter: '',
-                customerReference: packaging.reference.instance_id ?? request.payload.id,
-                product: request.product.attributes.find(att => att.id === this.cfg.get('urns').productName).value,
-                accountNumber: request.product.attributes.find(att => att.id === this.cfg.get('urns').accountNumber).value,
+                customerReference: request.payload.reference.instance_id ?? request.payload.id,
+                product: request.product.attributes.find(att => att.id === this.cfg.get('urns:productName')).value,
+                accountNumber: request.product.attributes.find(att => att.id === this.cfg.get('urns:accountNumber')).value,
                 // Service: parseService(request.parcel.attributes),
                 ShipmentItem: {
                   heightInCM: request.parcel.package.size_in_cm.height,
@@ -394,17 +396,17 @@ export namespace DHL
     }
 
     async registerSoapClient(courier?: Courier): Promise<soap.Client> {
-      this.courier = courier = courier || this.courier;
+      this.courier = courier = courier ?? this.courier;
       if (this.clients[courier.id]) {
         return this.clients[courier.id];
       }
 
-      const configs = JSON.parse(courier?.configuration?.value?.toString() || null)?.ordering;
-      const wsdl = configs?.wsdl || this.cfg?.get('stubs:DHL:ordering:wsdl');
-      const username = configs?.username || this.cfg?.get('stubs:DHL:ordering:username');
-      const password = configs?.password || this.cfg?.get('stubs:DHL:ordering:password');
-      const endpoint = configs?.endpoint || this.cfg?.get('stubs:DHL:ordering:endpoint');
-      const wsdlHeader = configs?.wsdl_header || this.cfg?.get('stubs:DHL:ordering:wsdl_header');
+      const configs = JSON.parse(courier?.configuration?.value?.toString() ?? null)?.ordering ?? this.stub_defaults?.ordering;
+      const wsdl = configs?.wsdl;
+      const username = configs?.username;
+      const password = configs?.password;
+      const endpoint = configs?.endpoint;
+      const wsdlHeader = configs?.wsdl_header;
       try{
         this.clients[courier.id] = await soap.createClientAsync(wsdl).then(client => {
           client.setEndpoint(endpoint);
@@ -414,7 +416,7 @@ export namespace DHL
         });
       }
       catch (err) {
-        this.logger?.error(`${this.constructor.name}:\n Failed to create Client for '${endpoint}' \n as '${username}' \n using '${wsdl}'`);
+        this.logger?.error(`${this.constructor.name}:\n Failed to create Client for '${endpoint}' \n as '${username}'`);
         this.logger?.error(`${this.constructor.name}: ${JSON.stringify(err, null, 2)}`);
         throw err;
       }
@@ -439,11 +441,11 @@ export namespace DHL
                 resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
               }
               else {
-                const message = err?.root?.Envelope?.Body?.Fault?.faultstring || err?.response?.statusText || err?.toString() || 'Server Error!'
+                const message = err?.root?.Envelope?.Body?.Fault?.faultstring ?? err?.response?.statusText ?? err?.toString() ?? 'Server Error!'
                 this.logger?.error(`${this.constructor.name}: ${message}`);
                 const status: Status = {
                   id: null,
-                  code: err?.response?.status || 500,
+                  code: err?.response?.status ?? 500,
                   message
                 };
                 resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
@@ -497,10 +499,11 @@ export namespace DHL
 
     protected override async submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       if (fulfillments.length === 0) return [];
-      const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
+      console.log("\n\n\nSUBMIT CALLED\n\n\n");
       const client = await this.registerSoapClient();
       return new Promise<FlatAggregatedFulfillment[]>((resolve): void => {
         try {
+          const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
           client.GVAPI_2_0_de.GKVAPISOAP11port0.createShipmentOrder(dhl_order_request, (err: any, result: any): any => {
             if (err) {
               if (result?.html) {
@@ -513,11 +516,11 @@ export namespace DHL
                 resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
               }
               else {
-                const message = err?.root?.Envelope?.Body?.Fault?.faultstring || err?.response?.statusText || err?.toString() || 'Server Error!'
+                const message = err?.root?.Envelope?.Body?.Fault?.faultstring ?? err?.response?.statusText ?? err?.toString() ?? 'Server Error!'
                 this.logger?.error(`${this.constructor.name}: ${message}`);
                 const status: Status = {
                   id: null,
-                  code: err?.response?.status || 500,
+                  code: err?.response?.status ?? 500,
                   message
                 };
                 resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
@@ -559,6 +562,7 @@ export namespace DHL
           });
         }
         catch (err) {
+          this.logger.error(`${this.constructor.name}: ${err}`);
           const status: Status = {
             id: null,
             code: 500,
@@ -574,13 +578,13 @@ export namespace DHL
       const promises = fulfillments.map(async item => {
         try {
           const options = JSON.parse(item?.options?.value?.toString() ?? null);
-          const config = JSON.parse(this.courier?.configuration?.value?.toString() ?? null)?.tracking;
+          const config = JSON.parse(this.courier?.configuration?.value?.toString() ?? null)?.tracking ?? this.stub_defaults?.tracking;
           const client = {
-            appname: config?.appname ?? this.cfg.get('stubs:DHL:tracking:appname'),
-            username: config?.username ?? this.cfg.get('stubs:DHL:tracking:username'),
-            password: config?.password ??  this.cfg.get('stubs:DHL:tracking:password'),
-            token: config?.token ?? this.cfg.get('stubs:DHL:tracking:token'),
-            endpoint: config?.endpoint ?? this.cfg.get('stubs:DHL:tracking:endpoint')
+            appname: config?.appname,
+            username: config?.username,
+            password: config?.password,
+            token: config?.token,
+            endpoint: config?.endpoint,
           };
           const auth = 'Basic ' + Buffer.from(`${client.username}:${client.token}`).toString('base64');
           const headers = {
@@ -654,5 +658,5 @@ export namespace DHL
     }
   };
 
-  Stub.register('DHL', DHLStub);
+  Stub.register('DHLSoapStub', DHLSoapStub);
 }

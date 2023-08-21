@@ -23,14 +23,9 @@
       "dom"
     ],
     "importHelpers": true,
-    "paths": {
-      "@restorecommerce/types/server/*": ["node_modules/@restorecommerce/rc-grpc-clients/dist/generated-server/*"],
-      "@restorecommerce/types/client/*": ["node_modules/@restorecommerce/rc-grpc-clients/dist/generated/*"]
-    }
   },
   "include": [
-    "src/**/*.ts",
-    "test/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

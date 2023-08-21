@@ -5,17 +5,23 @@ import {
   FulfillmentCourierListResponse,
   FulfillmentCourierList,
   FulfillmentCourierServiceImplementation,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_courier';
-
-const ENTITY_NAME = 'fulfillment_courier';
-const COLLECTION_NAME = 'fulfillment_couriers';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 
 export class FulfillmentCourierService
   extends ServiceBase<FulfillmentCourierListResponse, FulfillmentCourierList>
   implements FulfillmentCourierServiceImplementation
 {
   constructor(topic: Topic, db: DatabaseProvider, cfg: any, logger: any) {
-    super(ENTITY_NAME, topic, logger,
-      new ResourcesAPIBase(db, COLLECTION_NAME, cfg.get('fieldHandlers:fulfillment_courier')), true);
+    super(
+      cfg.get('database:main:entities:1') ?? 'fulfillment_courier',
+      topic,
+      logger,
+      new ResourcesAPIBase(
+        db,
+        cfg.get('database:main:collections:1') ?? 'fulfillment_couriers',
+        cfg.get('fieldHandlers:fulfillment_courier')
+      ),
+      true
+    );
   }
 }

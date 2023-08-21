@@ -27,11 +27,13 @@
     "xml-js": "^1.6.11"
   },
   "devDependencies": {
+    "@alenon/grpc-mock-server": "^3.0.21",
     "@types/ioredis": "^4.28.10",
     "@types/mocha": "^9.1.1",
     "@types/node": "^16.18.39",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "async-mutex": "^0.4.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.45.0",
     "eslint-plugin-prefer-arrow-functions": "^3.1.4",

@@ -9,35 +9,47 @@ import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-in
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
-import { ReadRequest } from '@restorecommerce/types/server/io/restorecommerce/resource_base';
+import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
 import {
   FilterOp_Operator,
   Filter_Operation,
   Filter_ValueType
-} from '@restorecommerce/types/server/io/restorecommerce/filter';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter';
 import { Courier as Packer, Offer } from '@restorecommerce/cart/lib/model/impl/Courier';
 import { Container } from '@restorecommerce/cart/lib/model/impl/bin/Container';
 import { IItem } from '@restorecommerce/cart/lib/model/IItem';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
+import { 
+  Amount,
+  VAT
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount';
+import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
+import { CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
+import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
+import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
+import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
+import { ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
+import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
 import {
   TaxServiceDefinition,
-} from '@restorecommerce/types/server/io/restorecommerce/tax';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
 import {
   Parcel,
   Item,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
-  ProductQuery,
-  ProductQueryList,
+  PackingSolutionQuery,
+  PackingSolutionQueryList,
   PackingSolution,
   PackingSolutionListResponse,
   FulfillmentProductList,
   FulfillmentProductListResponse,
   PackingSolutionResponse,
   FulfillmentProductServiceImplementation,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_product';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 import {
   FulfillmentCourierListResponse
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_courier';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import { FulfillmentCourierService } from '.';
 import {
   CRUDClient,
@@ -55,18 +67,9 @@ import {
   COUNTRY_CODES_EU,
   filterTax,
 } from '..';
-import { Subject } from '@restorecommerce/types/server/io/restorecommerce/auth';
-import { Amount, VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount';
-import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
-import { CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
-import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
-import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
-import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
-import { ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
-import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
 
 
-interface ProductQueryTotals extends ProductQuery {
+interface PackageSolutionTotals extends PackingSolutionQuery {
   volume: number;
   total_weight: number;
   max_width: number;
@@ -74,8 +77,8 @@ interface ProductQueryTotals extends ProductQuery {
   max_length: number;
 }
 
-const buildQueryTotals = (queries: ProductQuery[]): ProductQueryTotals[] => queries.map(
-  (item: ProductQuery): ProductQueryTotals => item.items.reduce((a: ProductQueryTotals, b: any) => {
+const buildQueryTotals = (queries: PackingSolutionQuery[]): PackageSolutionTotals[] => queries.map(
+  (item: PackingSolutionQuery): PackageSolutionTotals => item.items.reduce((a: PackageSolutionTotals, b: any) => {
     a.volume += b.width_in_cm * b.height_in_cm * b.length_in_cm * b.quantity;
     a.total_weight += b.weight_in_kg * b.quantity;
     a.max_width = Math.max(a.max_width, b.width_in_cm);
@@ -89,7 +92,7 @@ const buildQueryTotals = (queries: ProductQuery[]): ProductQueryTotals[] => quer
     max_width: 0.0,
     max_height: 0.0,
     max_length: 0.0
-  } as ProductQueryTotals)
+  } as PackageSolutionTotals)
 );
 
 const countItems = (goods: Item[], container: Container) => {
@@ -154,10 +157,14 @@ export class FulfillmentProductService
     logger: any
   ) {
     super(
-      cfg.get('database:main:entities:2'),
+      cfg.get('database:main:entities:2') ?? 'fulfillment_product',
       topic,
       logger,
-      new ResourcesAPIBase(db, cfg.get('database:main:collections:2')),
+      new ResourcesAPIBase(
+        db,
+        cfg.get('database:main:collections:2') ?? 'fulfillment_products',
+        cfg.get('fieldHandlers:fulfillment_product')
+      ),
       true
     );
 
@@ -269,7 +276,7 @@ export class FulfillmentProductService
   }
 
   private handleStatusError(id: string, e: any) {
-    this.logger.warn(e);
+    this.logger?.warn(e);
     return {
       id,
       code: e?.code ?? 500,
@@ -278,7 +285,7 @@ export class FulfillmentProductService
   }
 
   private handleOperationError(e: any) {
-    this.logger.error(e);
+    this.logger?.error(e);
     return {
       items: [],
       total_count: 0,
@@ -360,7 +367,7 @@ export class FulfillmentProductService
   }
 
   private async findCouriers(
-    queries: ProductQueryTotals[],
+    queries: PackageSolutionTotals[],
     subject?: Subject,
     context?: any,
   ): Promise<DeepPartial<FulfillmentCourierListResponse>> {
@@ -383,7 +390,7 @@ export class FulfillmentProductService
   }
 
   private async findProducts(
-    queries: ProductQueryTotals[],
+    queries: PackageSolutionTotals[],
     stubs?: Stub[],
     subject?: Subject,
     context?: any
@@ -420,7 +427,7 @@ export class FulfillmentProductService
     return this.read(call, context);
   }
 
-  async find(request: ProductQueryList, context?: any): Promise<PackingSolutionListResponse> {
+  async find(request: PackingSolutionQueryList, context?: any): Promise<PackingSolutionListResponse> {
     try {
       const queries = buildQueryTotals(request.items);
 

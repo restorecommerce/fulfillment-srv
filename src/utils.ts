@@ -5,54 +5,54 @@ import {
   Label,
   Parcel,
   State,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
   FulfillmentCourier,
   FulfillmentCourierResponse,
   FulfillmentCourierServiceImplementation,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_courier';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import {
   FulfillmentProduct,
   FulfillmentProductResponse,
   FulfillmentProductServiceImplementation,
-} from '@restorecommerce/types/server/io/restorecommerce/fulfillment_product';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
 import {
   UserResponse,
   UserServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/user';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user';
 import {
   CustomerResponse,
   CustomerServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/customer';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
 import {
   ShopResponse,
   ShopServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/shop';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
 import {
   OrganizationResponse,
   OrganizationServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/organization';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
 import {
   ContactPointResponse,
   ContactPointServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/contact_point';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
 import {
   Tax,
   TaxResponse,
   TaxServiceDefinition,
-} from '@restorecommerce/types/server/io/restorecommerce/tax';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
 import {
   AddressResponse,
   AddressServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/address';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
 import {
   Country,
   CountryResponse,
   CountryServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/country';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
 import {
   InvoiceServiceDefinition
-} from '@restorecommerce/types/server/io/restorecommerce/invoice';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice';
 
 export type CRUDClient = Client<TaxServiceDefinition>
 | Client<UserServiceDefinition>
@@ -169,15 +169,15 @@ export const extractCouriers = (fulfillments: FlatAggregatedFulfillment[]): Cour
 export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] => {
   return fulfillments.flatMap((fulfillment) =>
     fulfillment.payload?.packaging?.parcels.map((parcel, i): FlatAggregatedFulfillment => {
-      const uuid = fulfillment.payload.id ?? randomUUID();
-      const product = fulfillment.products[i].payload;
-      const courier = fulfillment.couriers[i].payload;
-      const label = fulfillment.payload.labels[i];
+      const uuid = fulfillment.payload?.id ?? randomUUID();
+      const product = fulfillment.products?.[i].payload;
+      const courier = fulfillment.couriers?.[i].payload;
+      const label = fulfillment.payload?.labels[i];
       return {
         payload: fulfillment.payload,
         uuid,
-        sender_country: fulfillment.sender_country.payload,
-        recipient_country: fulfillment.recipient_country.payload,
+        sender_country: fulfillment.sender_country?.payload,
+        recipient_country: fulfillment.recipient_country?.payload,
         product,
         courier,
         label,
