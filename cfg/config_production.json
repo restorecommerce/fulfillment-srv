@@ -1,7 +1,7 @@
 {
   "logger": {
     "elasticsearch": {
-      "level": "silly",
+      "level": "crit",
       "clientOpts": {
         "node": "http://elasticsearch:9200"
       },

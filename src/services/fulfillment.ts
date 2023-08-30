@@ -1,287 +1,981 @@
-import { ResourcesAPIBase, ServiceBase, FilterOperation, FilterValueType } from '@restorecommerce/resource-base-interface';
-import {
-  ServiceCall,
-  ReadRequest
-} from '@restorecommerce/resource-base-interface/lib/core/interfaces';
+import { 
+  ResourcesAPIBase,
+  ServiceBase
+} from '@restorecommerce/resource-base-interface';
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
-import { FulfillmentCourierResourceService, FulfillmentProductResourceService} from './';
+import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
+import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
 import {
-  FulfillmentCourier as Courier,
-  FulfillmentCourierResponseList as CourierResponseList
-} from '../generated/io/restorecommerce/fulfillment_courier';
+  OperationStatus,
+  Status,
+  StatusListResponse,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 import {
-  FulfillmentProduct as Product,
-  FulfillmentProductResponseList as ProductResponseList
-} from '../generated/io/restorecommerce/fulfillment_product';
+  Filter_Operation,
+  Filter_ValueType,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter';
 import {
-  FulfillmentRequest,
-  FulfillmentRequestList,
-  FulfillmentResponseList,
-  TrackingRequestList,
-  TrackingResultList,
-  TrackingRequest,
-  TrackingResult,
-  CancelRequestList,
-  State
-} from '../generated/io/restorecommerce/fulfillment';
+  Client,
+  GrpcClientConfig,
+  createChannel,
+  createClient,
+} from '@restorecommerce/grpc-client';
+import {
+  State,
+  FulfillmentListResponse,
+  Fulfillment,
+  FulfillmentList,
+  FulfillmentIdList,
+  FulfillmentServiceImplementation,
+  InvoiceRequestList,
+  FulfillmentResponse,
+  FulfillmentId,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
+import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
+import {
+  CountryServiceDefinition,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
+import { TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
+import { 
+  FulfillmentCourierService,
+  FulfillmentProductService
+} from './';
 import {
   Stub,
-  AggregatedFulfillmentRequest,
-  AggregatedTrackingRequest,
-  mergeFulfillments,
-  FlatAggregatedFulfillment,
-  flattenAggregatedFulfillmentRequest,
-  flattenAggregatedTrackingRequest,
-  mergeTrackingResults,
+  ProductResponseMap,
   AggregatedFulfillment,
-  flattenFulfillments
+  mergeFulfillments,
+  flatMapAggregatedFulfillments,
+  CourierResponseMap,
+  StateRank,
+  CountryResponseMap,
+  TaxResponseMap,
+  CRUDClient,
+  CustomerResponseMap,
+  ShopResponseMap,
+  OrganizationResponseMap,
+  ContactPointResponseMap,
+  AddressResponseMap,
+  filterTax,
+  throwOperationStatusCode,
+  throwStatusCode,
+  createStatusCode,
+  createOperationStatusCode,
 } from '..';
+import { InvoiceListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice';
+import {
+  ContactPointResponse,
+  ContactPointServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
+import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
+import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
+import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
+import { VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount';
 
-const COLLECTION_NAME = 'fulfillment';
+export class FulfillmentService
+  extends ServiceBase<FulfillmentListResponse, FulfillmentList>
+  implements FulfillmentServiceImplementation
+{
+  protected readonly status_codes: { [key: string]: Status } = {
+    OK: {
+      id: '',
+      code: 200,
+      message: 'OK',
+    },
+    NOT_FOUND: {
+      id: '',
+      code: 404,
+      message: '{entity} {id} not found!',
+    },
+    NO_LEGAL_ADDRESS: {
+      id: '',
+      code: 404,
+      message: '{entity} {id} has no legal address!',
+    },
+    NO_LABEL: {
+      id: '',
+      code: 404,
+      message: '{entity} {id} has no label!',
+    },
+    NOT_SUBMITTED: {
+      id: '',
+      code: 400,
+      message: '{entity} {id} is not submitted!',
+    },
+  };
 
-export class FulfillmentResourceService extends ServiceBase {
-  private _topic: Topic;
-  private _cfg: any;
-  private _fulfillment_couriers: FulfillmentCourierResourceService;
-  private _fulfillment_products: FulfillmentProductResourceService;
+  protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
+    SUCCESS: {
+      code: 200,
+      message: 'SUCCESS',
+    },
+    PARTIAL: {
+      code: 400,
+      message: 'Patrial executed with errors!',
+    },
+    LIMIT_EXHAUSTED: {
+      code: 500,
+      message: 'Query limit 1000 exhausted!',
+    },
+  };
 
-  get topic(): Topic {
-    return this._topic;
-  }
-
-  get cfg(): any {
-    return this._cfg;
-  }
-
-  get fulfillment_couriers(): FulfillmentCourierResourceService {
-    return this._fulfillment_couriers;
-  }
-
-  get fulfillment_products(): FulfillmentCourierResourceService {
-    return this._fulfillment_products;
-  }
+  protected readonly emitters: any;
+  protected readonly legal_address_type_id: string;
+  protected readonly customer_service: Client<CustomerServiceDefinition>;
+  protected readonly shop_service: Client<ShopServiceDefinition>;
+  protected readonly organization_service: Client<OrganizationServiceDefinition>;
+  protected readonly contact_point_service: Client<ContactPointServiceDefinition>;
+  protected readonly address_service: Client<AddressServiceDefinition>;
+  protected readonly country_service: Client<CountryServiceDefinition>;
+  protected readonly tax_service: Client<TaxServiceDefinition>;
 
   constructor(
-    fulfillment_couriers: FulfillmentCourierResourceService,
-    fulfillment_products: FulfillmentProductResourceService,
-    topic: Topic,
-    db: DatabaseProvider,
-    cfg: any,
-    logger: any
+    readonly fulfillmentCourierSrv: FulfillmentCourierService,
+    readonly fulfillmentProductSrv: FulfillmentProductService,
+    readonly topic: Topic,
+    readonly db: DatabaseProvider,
+    readonly cfg: any,
+    readonly logger: any,
   ) {
     super(
-      COLLECTION_NAME,
+      cfg.get('database:main:entities:0') ?? 'fulfillment',
       topic,
       logger,
-      new ResourcesAPIBase(db, COLLECTION_NAME),
-      true
-    );
-    this._topic = topic;
-    this._cfg = cfg;
-    this._fulfillment_couriers = fulfillment_couriers;
-    this._fulfillment_products = fulfillment_products;
-  }
-
-  private getProductsByIDs(ids: string[], context?: any): Promise<ProductResponseList> {
-    const call: ServiceCall<ReadRequest> = {
-      request: {
-        filters: [{
-          filter: [{
-            field: 'id',
-            operation: FilterOperation.in,
-            value: JSON.stringify(ids),
-            type: FilterValueType.ARRAY
-          }]
-        }]
-      }
-    };
-    return this.fulfillment_products.read(call, context);
-  }
-
-  private getCouriersByIDs(ids: string[], context?: any): Promise<CourierResponseList> {
-    const call: ServiceCall<ReadRequest> = {
-      request: {
-        filters: [{
-          filter: [{
-            field: 'id',
-            operation: FilterOperation.in,
-            value: JSON.stringify(ids),
-            type: FilterValueType.ARRAY
-          }]
-        }]
-      }
-    };
-    return this.fulfillment_couriers.read(call, context);
-  }
-
-  private getFulfillmentsByIDs(ids: string[], context?: any): Promise<FulfillmentResponseList> {
-    const call: ServiceCall<ReadRequest> = {
-      request: {
-        filters: [{
-          filter: [{
-            field: 'id',
-            operation: FilterOperation.in,
-            value: JSON.stringify(ids),
-            type: FilterValueType.ARRAY
-          }]
-        }]
-      }
-    };
-    return this.read(call, context);
-  }
-
-  private getAllUnfulfilledFulfillments(context?: any): Promise<FulfillmentResponseList> {
-    const call: ServiceCall<ReadRequest> = {
-      request: {
-        filters: [{
-          filter: [{
-            field: 'fulfilled',
-            operation: FilterOperation.neq,
-            value: 'true',
-            type: FilterValueType.BOOLEAN
-          }]
-        }]
-      }
-    };
-    return this.read(call, context);
-  }
-
-  private async aggregateFulfillmentRequest(orders: FulfillmentRequest[], context?: any): Promise<AggregatedFulfillmentRequest[]>
-  {
-    const product_map: {[id: string]: Product} = {};
-    const product_ids = [].concat(...orders.map(item => item.order.parcels.map(product => product.product_id)));
-    await this.getProductsByIDs(product_ids, context).then(response =>
-      Object.assign(product_map, ...response.items.map(item => ({ [item.payload.id]:item.payload })))
+      new ResourcesAPIBase(
+        db,
+        cfg.get('database:main:collections:0') ?? 'fulfillments',
+        cfg.get('fieldHandlers:fulfillment'),
+      ),
+      !!cfg.get('events:enableEvents'),
     );
 
-    const courier_map: {[id: string]: Courier} = {};
-    const courier_ids = Object.values(product_map).map(product => product.courier_id);
+    Stub.cfg = cfg;
+    Stub.logger = logger;
 
-    await this.getCouriersByIDs(courier_ids, context).then(response =>
-      Object.assign(courier_map, ...response.items.map(item => ({ [item.payload.id]:item.payload })))
+    this.status_codes = {
+      ...this.status_codes,
+      ...cfg.get('statusCodes'),
+    };
+
+    this.operation_status_codes = {
+      ...this.operation_status_codes,
+      ...cfg.get('operationStatusCodes'),
+    };
+
+    this.emitters = cfg.get('events:emitters');
+    this.legal_address_type_id = this.cfg.get('preDefinedIds:legalAddressTypeId');
+
+    this.customer_service = createClient(
+      {
+        ...cfg.get('client:customer'),
+        logger
+      } as GrpcClientConfig,
+      CustomerServiceDefinition,
+      createChannel(cfg.get('client:customer').address)
     );
 
-    const aggregatedFulfillmentRequests = orders.map((item): AggregatedFulfillmentRequest => {
-      const products = item.order.parcels.map(parcel => product_map[parcel.product_id]);
-      const couriers = products.map(product => courier_map[product.courier_id]);
-      return Object.assign({ products, couriers }, item);
+    this.shop_service = createClient(
+      {
+        ...cfg.get('client:shop'),
+        logger
+      } as GrpcClientConfig,
+      ShopServiceDefinition,
+      createChannel(cfg.get('client:shop').address)
+    );
+
+    this.organization_service = createClient(
+      {
+        ...cfg.get('client:organization'),
+        logger
+      } as GrpcClientConfig,
+      OrganizationServiceDefinition,
+      createChannel(cfg.get('client:organization').address)
+    );
+
+    this.contact_point_service = createClient(
+      {
+        ...cfg.get('client:contact_point'),
+        logger
+      } as GrpcClientConfig,
+      ContactPointServiceDefinition,
+      createChannel(cfg.get('client:contact_point').address)
+    );
+
+    this.address_service = createClient(
+      {
+        ...cfg.get('client:address'),
+        logger
+      } as GrpcClientConfig,
+      AddressServiceDefinition,
+      createChannel(cfg.get('client:address').address)
+    );
+    
+    this.country_service = createClient(
+      {
+        ...cfg.get('client:country'),
+        logger
+      } as GrpcClientConfig,
+      CountryServiceDefinition,
+      createChannel(cfg.get('client:country').address)
+    );
+
+    this.tax_service = createClient(
+      {
+        ...cfg.get('client:tax'),
+        logger
+      } as GrpcClientConfig,
+      TaxServiceDefinition,
+      createChannel(cfg.get('client:tax').address)
+    );
+  }
+
+  protected handleStatusError<T>(id: string, e: any, payload = null): T {
+    this.logger?.warn(e);
+    return {
+      payload,
+      status: {
+        id,
+        code: e?.code ?? 500,
+        message: e?.message ?? e?.details ?? e?.toString(),
+      }
+    } as T;
+  }
+
+  protected handleOperationError<T>(e: any): T {
+    this.logger?.error(e);
+    return {
+      items: [],
+      total_count: 0,
+      operation_status: {
+        code: e?.code ?? 500,
+        message: e?.message ?? e?.details ?? e?.toString(),
+      }
+    } as T;
+  }
+
+  protected get<T>(
+    ids: string[],
+    service: CRUDClient,
+    subject?: Subject,
+    context?: any,
+  ): Promise<T> {
+    ids = [...new Set<string>(ids)];
+    const entity = typeof ({} as T);
+
+    if (ids.length > 1000) {
+      throwOperationStatusCode(
+        entity,
+        this.operation_status_codes.LIMIT_EXHAUSTED,
+      );
+    }
+
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filters: [
+          {
+            field: 'id',
+            operation: Filter_Operation.in,
+            value: JSON.stringify(ids),
+            type: Filter_ValueType.ARRAY,
+          }
+        ]
+      }],
+      limit: ids.length,
+      subject,
     });
 
-    this.registerStubsFor(aggregatedFulfillmentRequests);
-    return aggregatedFulfillmentRequests;
-  }
-
-  private registerStubsFor(requests: AggregatedFulfillmentRequest[]): void
-  {
-    requests.forEach(request =>
-      request.couriers.forEach(courier =>
-        Stub.instantiate(courier, { cfg:this.cfg, logger:this.logger })
-      )
+    return service.read(
+      request,
+      context,
+    ).then(
+      response => {
+        if (response.operation_status?.code === 200) {
+          return response.items?.reduce(
+            (a, b) => {
+              a[b.payload?.id] = b;
+              return a;
+            }, {} as T
+          );
+        }
+        else {
+          throw response.operation_status;
+        }
+      }
     );
   }
 
-  private async aggregateFulfillments(ids: string[], context?: any): Promise<{[id: string]: AggregatedFulfillment}> {
-    const fulfillments = await this.getFulfillmentsByIDs(ids);
-    const product_map: {[id: string]: Product} = {};
-    const product_ids = [].concat(...fulfillments.items.map(item => item.payload.order.parcels.map(product => product.product_id)));
-    await this.getProductsByIDs(product_ids, context).then(response =>
-      Object.assign(product_map, ...response.items.map(item => ({ [item.payload.id]:item.payload })))
-    );
-
-    const courier_map: {[id: string]: Courier} = {};
-    const courier_ids = Object.values(product_map).map(product => product.courier_id);
-    await this.getCouriersByIDs(courier_ids, context).then(response =>
-      Object.assign(courier_map, ...response.items.map(item => ({ [item.payload.id]:item.payload })))
-    );
-
-    const aggregatedFulfillments = Object.assign({}, ...fulfillments.items.map((item): any => {
-      const products = item.payload.order.parcels.map(parcel => product_map[parcel.product_id]);
-      const couriers = products.map(product => courier_map[product.courier_id]);
-      return { [item.payload.id] : Object.assign(item.payload, { products, couriers }) };
-    }));
-
-    return aggregatedFulfillments;
+  async getById<T>(map: { [id:string]: T }, id: string): Promise<T> {
+    if (id in map) {
+      return map[id];
+    }
+    else {
+      throwStatusCode<T>(
+        'Object',
+        id,
+        this.status_codes.NOT_FOUND
+      );
+    }
   }
 
-  private async aggregateTracking(tracking: TrackingRequest[], context?: any): Promise<AggregatedTrackingRequest[]> {
-    const aggregatedFulfillments = tracking ?
-      await this.aggregateFulfillments(tracking.map((item: TrackingRequest) => item.fulfillment_id), context) :
-      await this.getAllUnfulfilledFulfillments(context);
-    const aggregatedTrackingRequests = tracking.map(item =>
-      Object.assign(item, {
-        fulfillment: aggregatedFulfillments[item.fulfillment_id],
-        shipment_numbers: item.shipment_numbers.concat(
-          aggregatedFulfillments[item.fulfillment_id].labels.map((label: any) => label.shipment_number)
-        )
-      })
-    );
-
-    return aggregatedTrackingRequests;
-  }
-
-  async create(call: ServiceCall<FulfillmentRequestList>, context?: any): Promise<FulfillmentResponseList> {
-    const requests = await this.aggregateFulfillmentRequest(call.request.items, context);
-    const flat_requests = flattenAggregatedFulfillmentRequest(requests);
-    const promises = Object.values(Stub.REGISTER).map(stub => stub.order(flat_requests));
-    const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
-    const items = mergeFulfillments(responses);
-
-    await Promise.all(items.map(item =>
-      Promise.all(item.labels.map(label =>
-        this.topic.emit(`fulfillmentLabel${State[label.state]}`, label)
-      ))
+  async getByIds<T>(map: { [id:string]: T }, ids: string[]): Promise<T[]> {
+    return Promise.all(ids.map(
+      id => this.getById(map, id)
     ));
-
-    return super.create({
-      request: {
-        items
-      }
-    }, context);
   }
 
-  async track(call: ServiceCall<TrackingRequestList>, context?: any): Promise<TrackingResultList> {
-    const requests = await this.aggregateTracking(call.request?.items, context);
-    const flat_requests = flattenAggregatedTrackingRequest(requests);
-    const promises = Object.values(Stub.REGISTER).map(stub => stub.track(flat_requests));
-    const response: TrackingResult[] = [].concat(...await Promise.all(promises));
-    const items = mergeTrackingResults(response);
+  protected getFulfillmentsByIDs(ids: string[], subject?: Subject, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+    ids = [...new Set(ids).values()];
+    if (ids.length > 1000) {
+      throw {
+        code: 500,
+        message: 'Query for fulfillments exceeds limit of 1000!'
+      } as OperationStatus
+    }
 
-    await Promise.all(items.map(async item => {
-      await Promise.all(item.fulfillment.labels.map(label =>
-        this.topic.emit(`fulfillmentLabel${State[label.state]}`, label)
-      ));
-      if (item.fulfillment.fulfilled) {
-        await this.topic.emit(`fulfillmentFulfilled`, item.fulfillment);
-      }
-    }));
-
-    const update_results = await super.update({
-      request: {
-        items: items.map(item => item.fulfillment)
-      }
-    }, context);
-    return {
-      items,
-      operation_status: update_results.operation_status
-    };
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filters: [{
+          field: 'id',
+          operation: Filter_Operation.in,
+          value: JSON.stringify(ids),
+          type: Filter_ValueType.ARRAY
+        }]
+      }],
+      subject
+    });
+    return this.read(request, context);
   }
 
-  async cancel(call: ServiceCall<CancelRequestList>, context?: any): Promise<FulfillmentResponseList> {
-    const fulfillments = await this.aggregateFulfillments(call.request.ids);
-    const flat_fulfillments = flattenFulfillments(Object.values(fulfillments));
-    const promises = Object.values(Stub.REGISTER).map(stub => stub.cancel(flat_fulfillments));
-    const responses: FlatAggregatedFulfillment[] = [].concat(...await Promise.all(promises));
-    const items = mergeFulfillments(responses);
-
-    items.forEach(item =>
-      this.topic.emit(`fulfillmentCancelled`, item)
+  protected async aggregateFulfillments(
+    fulfillments: Fulfillment[],
+    subject?: Subject,
+    context?: any,
+    evaluate?: boolean,
+  ): Promise<AggregatedFulfillment[]> {
+    const customer_map = await this.get<CustomerResponseMap>(
+      fulfillments.map(q => q.customer_id),
+      this.customer_service,
+      subject,
+      context,
     );
 
-    return super.update({
-      request: {
-        items
+    const shop_map = await this.get<ShopResponseMap>(
+      fulfillments.map(q => q.shop_id),
+      this.shop_service,
+      subject,
+      context,
+    );
+
+    const orga_map = await this.get<OrganizationResponseMap>(
+      [
+        ...Object.values(shop_map).map(
+          item => item.payload?.organization_id
+        ),
+        ...Object.values(customer_map).map(
+          item => item.payload?.commercial?.organization_id
+            ?? item.payload?.public_sector?.organization_id
+        ),
+      ],
+      this.organization_service,
+      subject,
+      context,
+    );
+
+    const contact_point_map = await this.get<ContactPointResponseMap>(
+      [
+        ...Object.values(orga_map).flatMap(
+          item => item.payload?.contact_point_ids
+        ),
+        ...Object.values(customer_map).flatMap(
+          item => item.payload?.private?.contact_point_ids
+        ),
+      ],
+      this.contact_point_service,
+      subject,
+      context,
+    );
+
+    const address_map = await this.get<AddressResponseMap>(
+      Object.values(contact_point_map).map(
+        item => item.payload?.physical_address_id
+      ),
+      this.address_service,
+      subject,
+      context,
+    );
+
+    const country_map = await this.get<CountryResponseMap>(
+      Object.values(address_map).map(
+        item => item.payload?.country_id
+      ),
+      this.country_service,
+      subject,
+      context,
+    );
+
+    const product_map = await this.get<ProductResponseMap>(
+      fulfillments.flatMap(
+        f => f.packaging.parcels.map(p => p.product_id)
+      ),
+      this.fulfillmentProductSrv,
+      subject,
+      context,
+    );
+
+    const courier_map = await this.get<CourierResponseMap>(
+      Object.values(product_map).map(
+        p => p.payload?.courier_id
+      ),
+      this.fulfillmentCourierSrv,
+      subject,
+      context,
+    );
+
+    const tax_map = await this.get<TaxResponseMap>(
+      Object.values(product_map).flatMap(
+        p => p.payload?.tax_ids
+      ),
+      this.tax_service,
+      subject,
+      context,
+    );
+
+    const promises = fulfillments.map(async (item): Promise<AggregatedFulfillment> => {
+      try {
+        const sender_country = await this.getById(
+          country_map,
+          item.packaging.sender?.address?.country_id,
+        );
+
+        const recipient_country = await this.getById(
+          country_map,
+          item.packaging.recipient?.address?.country_id,
+        );
+
+        const products = await this.getByIds(
+          product_map,
+          item.packaging.parcels.map(
+            parcel => parcel?.product_id
+          ),
+        );
+
+        const couriers = await this.getByIds(
+          courier_map,
+          products.map(
+            product => product.payload?.courier_id
+          )
+        );
+
+        const status: Status[] = [
+          sender_country?.status,
+          recipient_country?.status,
+          ...products?.map(p => p?.status),
+          ...couriers?.map(c => c?.status),
+        ];
+
+        const shop_country = await this.getById(
+          shop_map,
+          item.shop_id
+        ).then(
+          shop => this.getById(
+            orga_map,
+            shop.payload?.organization_id
+          )
+        ).then(
+          orga => this.getByIds(
+            contact_point_map,
+            orga.payload?.contact_point_ids
+          )
+        ).then(
+          cpts => cpts.find(
+            cpt => cpt.payload?.contact_point_type_ids.indexOf(
+              this.legal_address_type_id
+            ) >= 0
+          ) ?? throwStatusCode<ContactPointResponse>(
+            typeof(item),
+            item.id,
+            this.status_codes.NO_LEGAL_ADDRESS,
+          )
+        ).then(
+          contact_point => this.getById(
+            address_map,
+            contact_point.payload?.physical_address_id,
+          )
+        ).then(
+          address => this.getById(
+            country_map,
+            address.payload?.country_id
+          )
+        );
+
+        const customer = await this.getById(
+          customer_map,
+          item.customer_id
+        );
+
+        const customer_country = await this.getByIds(
+          contact_point_map,
+          [
+            customer.payload.private?.contact_point_ids,
+            orga_map[customer.payload.commercial?.organization_id]?.payload.contact_point_ids,
+            orga_map[customer.payload.public_sector?.organization_id]?.payload.contact_point_ids,
+          ].flatMap(id => id).filter(id => id)
+        ).then(
+          cps => cps.find(
+            cp => cp.payload?.contact_point_type_ids.indexOf(
+              this.legal_address_type_id
+            ) >= 0
+          ) ?? throwStatusCode<ContactPointResponse>(
+            typeof(item),
+            item.id,
+            this.status_codes.NO_LEGAL_ADDRESS,
+          )
+        ).then(
+          cp => this.getById(
+            address_map,
+            cp.payload.physical_address_id,
+          )
+        ).then(
+          address => this.getById(
+            country_map,
+            address.payload.country_id
+          )
+        );
+
+        if (evaluate) {
+          item.packaging.parcels.forEach(
+            p => {
+              const product = product_map[p.product_id].payload;
+              const variant = product.variants.find(
+                v => v.id === p.variant_id
+              );
+              const price = variant?.price;
+              const taxes = product.tax_ids.map(
+                id => tax_map[id]?.payload
+              ).filter(
+                tax => filterTax(
+                  tax,
+                  shop_country.payload,
+                  customer_country.payload,
+                  !!customer.payload.private?.user_id,
+                )
+              )
+              const gross = price.sale ? price.sale_price : price.regular_price;
+              const vats = taxes.map((tax): VAT => ({
+                tax_id: tax.id,
+                vat: gross * tax.rate,
+              }));
+              const net = vats.reduce((a, b) => a + b.vat, gross);
+
+              p.price = variant.price;
+              p.amount = {
+                currency_id: price.currency_id,
+                gross,
+                net,
+                vats,
+              }
+            }
+          );
+        }
+
+        const aggreagatedFulfillment: AggregatedFulfillment = {
+          payload: item,
+          products,
+          couriers,
+          sender_country,
+          recipient_country,
+          options: null,
+          status: status.reduce(
+            (a, b) => b.code > a.code ? b : a,
+            {
+              id: item.id,
+              code: 200,
+              message: 'OK'
+            }
+          )
+        };
+
+        return aggreagatedFulfillment;
       }
-    }, context);
+      catch (error) {
+        return this.handleStatusError<AggregatedFulfillment>(item?.id, error, item);
+      }
+    });
+
+    return await Promise.all(promises);
+  }
+
+  async evaluate(
+    request: FulfillmentList,
+    context?: any,
+  ): Promise<DeepPartial<FulfillmentListResponse>> {
+    try {
+      const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
+      const flat_fulfillments = flatMapAggregatedFulfillments(fulfillments);
+      const invalid_fulfillments = flat_fulfillments.filter(f => f.status?.code !== 200);
+      const responses = await Stub.evaluate(flat_fulfillments.filter(f => f.status?.code === 200));
+      const items = mergeFulfillments([
+        ...responses,
+        ...invalid_fulfillments,
+      ]);
+
+      return {
+        items,
+        total_count: items.length,
+        operation_status: createOperationStatusCode(
+          this.name,
+          this.operation_status_codes.SUCCESS,
+        )
+      };
+    }
+    catch (e) {
+      return this.handleOperationError<FulfillmentListResponse>(e);
+    }
+  }
+
+  async submit(
+    request: FulfillmentList,
+    context?: any
+  ): Promise<DeepPartial<FulfillmentListResponse>> {
+    try {
+      const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
+      const flattened = flatMapAggregatedFulfillments(fulfillments);
+      const valids = flattened.filter(
+        f => {
+          if (f.status?.code !== 200) {
+            return false;
+          }
+          else if (StateRank[f.payload?.state] >= StateRank[State.SUBMITTED]) {
+            f.status = createStatusCode(
+              this.name,
+              f.payload?.id,
+              this.status_codes.ALREADY_SUBMITTED,
+            );
+            return false;
+          }
+          return true;
+        }
+      );
+      const invalids = flattened.filter(
+        f => f.status?.code !== 200 || StateRank[f.payload?.state] >= StateRank[State.SUBMITTED]
+      );
+      const responses = await Stub.submit(valids);
+      const merged = mergeFulfillments([
+        ...responses,
+        ...invalids,
+      ]);
+      const items = merged.filter(
+        item => item.payload?.labels?.length > 0
+      ).map(
+        item => item.payload
+      );
+
+      const upsert_results = await super.upsert({
+        items,
+        total_count: items.length,
+        subject: request.subject
+      }, context);
+
+      upsert_results.items.forEach(item => {
+        if (item.payload.state in this.emitters) {
+          switch (item.payload.state) {
+            case State.INVALID:
+            case State.FAILED:
+              this.topic.emit(this.emitters[item.payload.state], item);
+            default:
+              this.topic.emit(this.emitters[item.payload.state], item.payload);
+              break;
+          }
+        }
+      });
+
+      upsert_results.items.push(
+        ...merged.filter(item => item.payload?.labels?.length === 0)
+      );
+      upsert_results.total_count = upsert_results.items.length;
+      return upsert_results;
+    }
+    catch (e) {
+      return this.handleOperationError<FulfillmentListResponse>(e);
+    }
+  }
+
+  async track(
+    request: FulfillmentIdList,
+    context?: any
+  ): Promise<DeepPartial<FulfillmentListResponse>> {
+    try {
+      const request_map: { [id: string]: FulfillmentId } = request.items.reduce(
+        (a, b) => {
+          a[b.id] = b;
+          return a;
+        },
+        {},
+      );
+
+      const response_map: { [id: string]: FulfillmentResponse } = request.items.reduce(
+        (a, b) => {
+          a[b.id] = {
+            payload: null,
+            status: createStatusCode(
+              this.name,
+              b.id,
+              this.status_codes.NOT_FOUND,
+            )
+          };
+          return a;
+        },
+        {},
+      );
+  
+      await this.getFulfillmentsByIDs(
+        request.items.map(item => item.id),
+        request.subject,
+        context,
+      ).then(
+        response => response.items.filter(
+          item => {
+            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            return item.status?.code === 200;
+          }
+        ).map(
+          item => item.payload as Fulfillment
+        )
+      ).then(
+        fulfillments => this.aggregateFulfillments(
+          fulfillments,
+          request.subject,
+          context,
+        ),
+      ).then(
+        aggregated => flatMapAggregatedFulfillments(
+          aggregated.filter(
+            item => {
+              response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+              return item.status?.code === 200
+            }
+          )
+        ).filter(
+          f => {
+            const request = request_map[f.payload?.id];
+            if (
+              request.shipment_numbers?.length > 0 &&
+              request.shipment_numbers.indexOf(f.label.shipment_number) < 0
+            ) {
+              return false;
+            }
+              
+            if (!f.label) {
+              f.status = createStatusCode(
+                this.name,
+                f.payload?.id,
+                this.status_codes.NO_LABEL
+              );
+              return false;
+            }
+              
+            switch (f.label.state) {
+              case State.SUBMITTED:
+              case State.IN_TRANSIT:
+                return true;
+              default:
+                f.label.status = createStatusCode(
+                  this.name,
+                  f.payload?.id,
+                  this.status_codes.NOT_SUBMITTED
+                );
+                f.status = f.label.status;
+                return false;
+            }
+          }
+        )
+      ).then(
+        flat_fulfillments => {
+          return Stub.track(flat_fulfillments);
+        }
+      ).then(
+        tracked_fulfillments => mergeFulfillments(tracked_fulfillments)
+      ).then(
+        merged_fulfillments => merged_fulfillments.filter(
+          item => {
+            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            return item.status.code === 200;
+          }
+        ).map(
+          item => item.payload
+        )
+      ).then(
+        items => super.update(
+          {
+            items,
+            total_count: items.length,
+            subject: request.subject
+          },
+          context
+        )
+      ).then(
+        updates => updates.items.forEach(
+          item => {
+            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            if (item.payload.state in this.emitters) {
+              switch (item.payload.state) {
+                case State.INVALID:
+                case State.FAILED:
+                  this.topic.emit(this.emitters[item.payload.state], item);
+                default:
+                  this.topic.emit(this.emitters[item.payload.state], item.payload);
+                  break;
+              }
+            }
+          }
+        )
+      );
+
+      const items = Object.values(response_map);
+
+      return {
+        items,
+        total_count: items.length,
+        operation_status: createOperationStatusCode(
+          this.name,
+          this.operation_status_codes.SUCCESS,
+        ),
+      }
+    }
+    catch (e) {
+      return this.handleOperationError<FulfillmentListResponse>(e);
+    }
+  }
+
+  async withdraw(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+    return null;
+  }
+
+  async cancel(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+    try {
+      const request_map = request.items.reduce(
+        (a, b) => {
+          a[b.id] = b.shipment_numbers;
+          return a;
+        },
+        {}
+      );
+  
+      const fulfillments = await this.getFulfillmentsByIDs(
+        request.items.map(item => item.id),
+        request.subject,
+        context
+      ).then(
+        response => response.items.map(
+          item => item.payload as Fulfillment
+        )
+      );
+  
+      const agg_fulfillments = await this.aggregateFulfillments(
+        fulfillments,
+        request.subject,
+        context
+      );
+  
+      const flat_fulfillments = flatMapAggregatedFulfillments(
+        agg_fulfillments,
+      ).map(
+        f => {
+          const id = f.status?.id;
+          if (!f.payload?.labels?.length) {
+            f.status = {
+              id: id,
+              code: 400,
+              message: `Fulfillment ${id} has no labels!`
+            }
+          }
+          else if (f.payload?.state !== State.SUBMITTED && f.payload?.state !== State.IN_TRANSIT) {
+            f.status = {
+              id: id,
+              code: 400,
+              message: `For canceling Fulfillment ${
+                id
+              } is expected to be ${
+                State.SUBMITTED
+              } or ${
+                State.IN_TRANSIT
+              } but is ${
+                f.payload?.state
+              }!`
+            }
+          }
+  
+          return f;
+        }
+      );
+      
+      const invalid_fulfillments = flat_fulfillments.filter(
+        f => f.status?.code !== 200
+      );
+  
+      const response = await Stub.track(flat_fulfillments.filter(
+        f => {
+          const shipment_numbers = request_map[f.payload?.id];
+          return f.status?.code === 200 &&
+            !shipment_numbers?.length ||
+            shipment_numbers.find(
+            s => s === f.payload?.labels[0]?.shipment_number
+          )
+        }
+      ));
+      
+      const items = mergeFulfillments([
+        ...response,
+        ...invalid_fulfillments,
+      ]);
+  
+      const update_results = await super.update({
+        items: items.filter(
+          f => f.status?.code === 200
+        ).map(
+          f => f.payload
+        ),
+        total_count: items.length,
+        subject: request.subject
+      }, context);
+  
+      update_results.items.forEach(item => {
+        if (item.payload.state in this.emitters) {
+          switch (item.payload.state) {
+            case State.INVALID:
+            case State.FAILED:
+              this.topic.emit(this.emitters[item.payload.state], item);
+            default:
+              this.topic.emit(this.emitters[item.payload.state], item.payload);
+              break;
+          }
+        }
+      });
+  
+      update_results.items.push(
+        ...items.filter(i => i.status?.code !== 200)
+      );
+      update_results.total_count = update_results.items.length;
+      return update_results;
+    }
+    catch (e) {
+      return this.handleOperationError<FulfillmentListResponse>(e);
+    }
+  }
+
+  async createInvoice(
+    request: InvoiceRequestList,
+    context: any
+  ): Promise<DeepPartial<InvoiceListResponse>> {
+    return null;
+  }
+  
+  async triggerInvoice(
+    request: InvoiceRequestList,
+    context: any
+  ): Promise<DeepPartial<StatusListResponse>> {
+    return null;
   }
 }

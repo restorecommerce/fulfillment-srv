@@ -229,7 +229,7 @@ requesting client is developed.</xs:documentation>
 				</xs:annotation>
 				<xs:element name="majorRelease">
 					<xs:annotation>
-						<xs:documentation>The number of the major release. E.g. the '3' in version "3.1.".</xs:documentation>
+						<xs:documentation>The number of the major release. E.g. the '3' in version "3.2.".</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -239,7 +239,7 @@ requesting client is developed.</xs:documentation>
 				</xs:element>
 				<xs:element name="minorRelease" minOccurs="0">
 					<xs:annotation>
-						<xs:documentation>The number of the minor release. E.g. the '3' in version "3.1.".</xs:documentation>
+						<xs:documentation>The number of the minor release. E.g. the '3' in version "3.2.".</xs:documentation>
 					</xs:annotation>
 					<xs:simpleType>
 						<xs:restriction base="xs:string">
@@ -376,11 +376,7 @@ requesting client is developed.</xs:documentation>
 			</xs:element>
 			<xs:element ref="cis:zip"/>
 			<xs:element ref="cis:city"/>
-			<xs:element name="Origin" type="cis:NewCountryType" minOccurs="0">
-				<xs:annotation>
-					<xs:documentation>Country.</xs:documentation>
-				</xs:annotation>
-			</xs:element>
+			<xs:element ref="cis:Origin" minOccurs="0"/>
 		</xs:sequence>
 	</xs:complexType>
 	<xs:complexType name="ReceiverNativeAddressType">
@@ -432,11 +428,7 @@ requesting client is developed.</xs:documentation>
 			<xs:element ref="cis:zip"/>
 			<xs:element ref="cis:city"/>
 			<xs:element ref="cis:province" minOccurs="0"/>
-			<xs:element name="Origin" type="cis:NewCountryType" minOccurs="0">
-				<xs:annotation>
-					<xs:documentation>Country.</xs:documentation>
-				</xs:annotation>
-			</xs:element>
+			<xs:element ref="cis:Origin" minOccurs="0"/>
 		</xs:sequence>
 	</xs:complexType>
 	<xs:complexType name="PickupAddressType">
@@ -651,7 +643,9 @@ requesting client is developed.</xs:documentation>
 			</xs:annotation>
 			<xs:element name="phone" minOccurs="0">
 				<xs:annotation>
-					<xs:documentation>Phone number.</xs:documentation>
+					<xs:documentation>Phone number.
+					
+					If you are using delivery type CDP, the phone number and/or e-mail address are mandatory</xs:documentation>
 				</xs:annotation>
 				<xs:simpleType>
 					<xs:restriction base="xs:string">
@@ -661,7 +655,9 @@ requesting client is developed.</xs:documentation>
 			</xs:element>
 			<xs:element name="email" minOccurs="0">
 				<xs:annotation>
-					<xs:documentation>Emailaddress. </xs:documentation>
+					<xs:documentation>Emailaddress.
+					
+					If you are using delivery type CDP, the phone number and/or e-mail address are mandatory</xs:documentation>
 				</xs:annotation>
 				<xs:simpleType>
 					<xs:restriction base="xs:string">
@@ -809,11 +805,7 @@ requesting client is developed.</xs:documentation>
 			</xs:element>
 			<xs:element ref="cis:zip"/>
 			<xs:element ref="cis:city"/>
-			<xs:element name="Origin" type="cis:NewCountryType" minOccurs="0">
-				<xs:annotation>
-					<xs:documentation>Country.</xs:documentation>
-				</xs:annotation>
-			</xs:element>
+			<xs:element ref="cis:Origin" minOccurs="0"/>
 		</xs:sequence>
 	</xs:complexType>
 	<xs:complexType name="ParcelShopType">
@@ -977,31 +969,6 @@ requesting client is developed.</xs:documentation>
 					</xs:restriction>
 				</xs:simpleType>
 			</xs:element>
-			<xs:element name="countryISOCode" type="cis:countryISOType" minOccurs="1">
-				<xs:annotation>
-					<xs:documentation>Country's ISO-Code (ISO-2-Alpha).</xs:documentation>
-				</xs:annotation>
-			</xs:element>
-			<xs:element name="state" minOccurs="0">
-				<xs:annotation>
-					<xs:documentation>Name of state.</xs:documentation>
-				</xs:annotation>
-				<xs:simpleType>
-					<xs:restriction base="xs:string">
-						<xs:maxLength value="35"/>
-					</xs:restriction>
-				</xs:simpleType>
-			</xs:element>
-		</xs:sequence>
-	</xs:complexType>
-	<xs:complexType name="NewCountryType">
-		<xs:annotation>
-			<xs:documentation>Type of country</xs:documentation>
-		</xs:annotation>
-		<xs:sequence>
-			<xs:annotation>
-				<xs:documentation>includes</xs:documentation>
-			</xs:annotation>
 			<xs:element name="countryISOCode" type="cis:countryISOType" minOccurs="1">
 				<xs:annotation>
 					<xs:documentation>Country's ISO-Code (ISO-2-Alpha).</xs:documentation>

@@ -5,9 +5,9 @@
 *.env
 
 !setupTopics.js
+!jest.config.js
 !.eslintrc.js
 
-./test/*.js
 .directory
 .DS_Store
 .env
@@ -17,6 +17,7 @@
 .settings
 .vscode/*
 
+build
 dist
 coverage
 lib
