@@ -19,13 +19,10 @@ import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transp
 import { 
   FulfillmentServiceDefinition,
   protoMetadata as FulfillmentMeta,
-  FulfillmentList,
-  FulfillmentIdList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
   FulfillmentCourierServiceDefinition,
   protoMetadata as FulfillmentCourierMeta,
-  FulfillmentCourierList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
 import {
   FulfillmentProductServiceDefinition,
@@ -43,7 +40,6 @@ import {
   FulfillmentProductService,
   FulfillmentCommandInterface
 } from './services';
-import { DeleteRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
 
 registerProtoMeta(
   FulfillmentMeta,
