@@ -8,6 +8,12 @@ import {
   Client
 } from '@restorecommerce/grpc-client';
 import { Events, Topic } from '@restorecommerce/kafka-client';
+import { State } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
+import { Fulfillment } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import { FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
+import { FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_courier';
+import { FulfillmentProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_product';
+import { GrpcMockServer } from '@alenon/grpc-mock-server';
 import { Worker } from '../src/worker';
 import {
   cfg,
@@ -18,12 +24,6 @@ import {
   connectTopics,
   mockServices
 } from '.';
-import { State } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
-import { Fulfillment } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
-import { FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
-import { FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_courier';
-import { FulfillmentProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_product';
-import { GrpcMockServer } from '@alenon/grpc-mock-server';
 
 /*
  * Note: To run this test, a running ArangoDB and Kafka instance is required.
