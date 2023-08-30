@@ -24,6 +24,7 @@ import {
   CustomerListResponse, CustomerResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/customer';
 import {
+  FulfillmentIdList,
   FulfillmentList,
   State as FulfillmentState
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
@@ -32,6 +33,7 @@ import { InvoiceListResponse, PaymentState } from '@restorecommerce/rc-grpc-clie
 import { DeepPartial } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/resource_base';
 import { FulfillmentProductList, PackingSolutionQueryList } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_product';
 import { FulfillmentCourierList } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_courier';
+import { State } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 
 type Address = ShippingAddress & BillingAddress;
 
@@ -48,8 +50,11 @@ const residentialAddresses: Address[] = [{
       givenName: 'Jack',
       familyName: 'Black',
     },
-    street: 'Some Where',
-    buildingNumber: '66',
+    street: 'Vegesacker Heerstr.',
+    buildingNumber: '111',
+    postcode: '28757',
+    locality: 'Bremen',
+    region: 'Bremen',
     countryId: 'germany',
   },
   contact: {
@@ -66,9 +71,12 @@ const businessAddresses: Address[] = [{
     businessAddress: {
       name: 'Restorecommerce GmbH',
     },
-    street: 'Somewhere',
-    buildingNumber: '66',
-    countryId: 'germany'
+    street: 'Vegesacker Heerstr.',
+    buildingNumber: '111',
+    postcode: '28757',
+    locality: 'Bremen',
+    region: 'Bremen',
+    countryId: 'germany',
   },
   contact: {
     email: 'info@restorecommerce.io'
@@ -283,33 +291,6 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
         shopIds: [
           'shop_1'
         ],
-        configuration: {
-          typeUrl: '',
-          value: Buffer.from(JSON.stringify(
-            {
-              ordering: {
-                wsdl: './wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl',
-                version: [3, 4, 0],
-                endpoint: 'https://cig.dhl.de/services/sandbox/soap',
-                username: '******',
-                password: '******',
-                wsdl_header: {
-                  Authentification: {
-                    user: '2222222222_01',
-                    signature: 'pass'
-                  }
-                }
-              },
-              tracking: {
-                version: [3, 4, 0],
-                appname: 'zt12345',
-                endpoint: 'https://cig.dhl.de/services/sandbox/soap',
-                username: null,
-                password: null
-              }
-            }
-          ))
-        },
         meta: {
           created: new Date(),
           modified: new Date(),
@@ -361,9 +342,6 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
     ],
     totalCount: 2,
     subject: {
-      id: '',
-      scope: '',
-      token: '',
       unauthenticated: true
     }
   }
@@ -640,9 +618,6 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
     ],
     totalCount: 4,
     subject: {
-      id: '',
-      scope: '',
-      token: '',
       unauthenticated: true
     }
   }
@@ -675,9 +650,6 @@ const validPackingSolutionQueries: { [key: string]: PackingSolutionQueryList } =
       }
     ],
     subject: {
-      id: '',
-      scope: '',
-      token: '',
       unauthenticated: true
     }
   }
@@ -750,13 +722,127 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
             }
           ]
         }
+      },
+      {
+        id: 'validFulfillment_2',
+        userId: 'user_2',
+        customerId: customers[0].payload?.id,
+        shopId: shops[0].payload?.id,
+        reference: {
+          instanceType: 'urn:restorecommerce:io:order:Order',
+          instanceId: 'order_1',
+        },
+        packaging: {
+          sender: businessAddresses[0],
+          recipient: residentialAddresses[0],
+          parcels: [
+            {
+              id: '1',
+              productId: validFulfillmentProducts.dhl_1.items[0].id,
+              variantId: validFulfillmentProducts.dhl_1.items[0].variants[0].id,
+              items: [
+                {
+                  productId: products[0].payload?.id,
+                  variantId: products[0].payload?.product?.physical?.variants[0].id,
+                  package: products[0].payload?.product?.physical?.variants[0].package,
+                  quantity: 5,
+                }
+              ],
+              price: validFulfillmentProducts.dhl_1.items[0].variants[0].price,
+              amount: undefined,
+              package: {
+                sizeInCm: {
+                  height: 5.0,
+                  length: 5.0,
+                  width: 5.0,
+                },
+                weightInKg: 1.0,
+              },
+            },
+            {
+              id: '2',
+              productId: validFulfillmentProducts.dhl_1.items[0].id,
+              variantId: validFulfillmentProducts.dhl_1.items[0].variants[0].id,
+              items: [
+                {
+                  productId: products[0].payload?.id,
+                  variantId: products[0].payload?.product?.physical?.variants[0].id,
+                  package: products[0].payload?.product?.physical?.variants[0].package,
+                  quantity: 5,
+                }
+              ],
+              price: validFulfillmentProducts.dhl_1.items[0].variants[0].price,
+              amount: undefined,
+              package: {
+                sizeInCm: {
+                  height: 5.0,
+                  length: 5.0,
+                  width: 5.0,
+                },
+                weightInKg: 1.0,
+              },
+            }
+          ],
+          exportDescription: '',
+          exportType: '',
+          invoiceNumber: '',
+          notify: 'someone@nowhere.com'
+        },
+        labels: [
+          {
+            parcelId: '1',
+            shipmentNumber: '00340434161094015902',
+            state: State.SUBMITTED,
+            status: {
+              id: 'validFulfillment_2',
+              code: 200,
+              message: 'OK',
+            }
+          }
+        ],
+        trackings: [],
+        totalAmounts: [],
+        state: FulfillmentState.CREATED,
+        meta: {
+          created: new Date(),
+          modified: new Date(),
+          modifiedBy: 'SYSTEM',
+          acls: [],
+          owners: [
+            {
+              id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
+              value: 'urn:restorecommerce:acs:model:user.User',
+              attributes: []
+            },
+            {
+              id: 'urn:restorecommerce:acs:names:ownerInstance',
+              value: 'UserID',
+              attributes: []
+            }
+          ]
+        }
+      },
+    ],
+    totalCount: 2,
+    subject: {
+      unauthenticated: true
+    }
+  }
+};
+
+const validTrackingRequests: { [key: string]: FulfillmentIdList } = {
+  dhl_1: {
+    items: [
+      {
+        id: validFulfillments.dhl_1.items[1].id,
+        shipmentNumbers: [
+          '00340434161094015902'
+        ],
+        subject: {},
       }
     ],
     totalCount: 1,
     subject: {
-      id: '',
-      scope: '',
-      token: '',
       unauthenticated: true
     }
   }
@@ -779,6 +865,10 @@ export const samples = {
   },
   fulfillments: {
     valid: validFulfillments,
+    invalid: [],
+  },
+  trackingRequests: {
+    valid: validTrackingRequests,
     invalid: [],
   },
 };

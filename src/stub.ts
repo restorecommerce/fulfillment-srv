@@ -4,6 +4,7 @@ import {
     FlatAggregatedFulfillment,
     extractCouriers,
 } from './utils';
+import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 
 export abstract class Stub
 {
@@ -20,42 +21,94 @@ export abstract class Stub
     public logger?: Logger
   ) {}
 
+  public abstract getTariffCode(fulfillment: FlatAggregatedFulfillment): Promise<string>;
+  
   protected abstract evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract cancelImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
 
-  /**
-   * Evaluate the tarife code
-   * @param address 
-   */
-  abstract getTariffCode(fulfillment: FlatAggregatedFulfillment): Promise<string>;
+  protected createStatusCode(
+    entity: string,
+    id: string,
+    status: Status,
+    details?: string,
+  ): Status {
+    return {
+      id,
+      code: status?.code ?? 500,
+      message: status?.message?.replace(
+        '{details}', details
+      ).replace(
+        '{entity}', entity
+      ).replace(
+        '{id}', id
+      ) ?? 'Unknown status',
+    };
+  }
+
+  protected throwStatusCode<T>(
+    entity: string,
+    id: string,
+    status: Status,
+    error?: string,
+  ): T {
+    throw this.createStatusCode(
+      entity,
+      id,
+      status,error
+    );
+  }
+
+  protected handleStatusError<T>(id: string, error: any, payload = null): T {
+    this.logger?.warn(error);
+    return {
+      payload,
+      status: {
+        id,
+        code: error?.code ?? 500,
+        message: error?.message ?? error?.details ?? error?.toString(),
+      }
+    } as T;
+  }
+
+  protected handleOperationError<T>(error: any, items = []): T {
+    this.logger?.error(error);
+    return {
+      items: items ?? [],
+      total_count: items?.length ?? 0,
+      operation_status: {
+        code: error?.code ?? 500,
+        message: error?.message ?? error?.details ?? error?.toString(),
+      }
+    } as T;
+  }
   
-  readonly evaluate = (fulfillments: FlatAggregatedFulfillment[]) => this.evaluateImpl(
+  public readonly evaluate = (fulfillments: FlatAggregatedFulfillment[]) => this.evaluateImpl(
     fulfillments.filter(f => f.product?.courier_id === this.courier.id)
   );
 
-  readonly submit = (fulfillments: FlatAggregatedFulfillment[]) => this.submitImpl(
+  public readonly submit = (fulfillments: FlatAggregatedFulfillment[]) => this.submitImpl(
     fulfillments.filter(f => f.product?.courier_id === this.courier.id)
   );
 
-  readonly track = (fulfillments: FlatAggregatedFulfillment[]) => this.trackImpl(
+  public readonly track = (fulfillments: FlatAggregatedFulfillment[]) => this.trackImpl(
     fulfillments.filter(f => f.product?.courier_id === this.courier.id)
   );
 
-  readonly cancel = (fulfillments: FlatAggregatedFulfillment[]) => this.cancelImpl(
+  public readonly cancel = (fulfillments: FlatAggregatedFulfillment[]) => this.cancelImpl(
     fulfillments.filter(f => f.product?.courier_id === this.courier.id)
   );
 
-  static all() {
+  public static all() {
     return Object.values(Stub.REGISTER);
   }
 
-  static evaluate(
+  public static async evaluate(
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Object.values(extractCouriers(fulfillments)).map(
+    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -66,14 +119,16 @@ export abstract class Stub
       ).evaluate(
         fulfillments
       )
+    )).then(
+      response => response.flatMap(r => r)
     );
   }
 
-  static submit(
+  public static async submit(
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Object.values(extractCouriers(fulfillments)).map(
+    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -84,14 +139,16 @@ export abstract class Stub
       ).submit(
         fulfillments
       )
+    )).then(
+      response => response.flatMap(r => r)
     );
   }
 
-  static track(
+  public static async track(
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Object.values(extractCouriers(fulfillments)).map(
+    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -102,14 +159,16 @@ export abstract class Stub
       ).track(
         fulfillments
       )
+    )).then(
+      response => response.flatMap(r => r)
     );
   }
 
-  static cancel(
+  public static async cancel(
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Object.values(extractCouriers(fulfillments)).map(
+    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -120,17 +179,19 @@ export abstract class Stub
       ).cancel(
         fulfillments
       )
+    )).then(
+      response => response.flatMap(r => r)
     );
   }
 
-  static register<T extends Stub>(
+  public static register<T extends Stub>(
     typeName: string,
     type: (new (courier: Courier, kwargs?: { [key: string]: any }) => T)
   ) {
     Stub.STUB_TYPES[typeName] = type;
   }
   
-  static getInstance(courier: Courier, kwargs?: { [key: string]: any }): Stub
+  public static getInstance(courier: Courier, kwargs?: { [key: string]: any }): Stub
   {
     let stub = Stub.REGISTER[courier.id];
     if (!stub && (courier.stub_type in Stub.STUB_TYPES))

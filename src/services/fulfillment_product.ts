@@ -28,7 +28,7 @@ import { CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/
 import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
 import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
 import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
-import { ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
+import { ContactPointResponse, ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
 import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
 import {
   TaxServiceDefinition,
@@ -112,48 +112,53 @@ export class FulfillmentProductService
   extends ServiceBase<FulfillmentProductListResponse, FulfillmentProductList> 
   implements FulfillmentProductServiceImplementation
 {
-  private readonly status_codes: {
+  protected readonly status_codes: { [key: string]: Status } = {
     OK: {
-      id: string;
-      code: 200;
-      message: 'OK';
-    };
+      id: '',
+      code: 200,
+      message: 'OK',
+    },
     NOT_FOUND: {
-      id: string;
-      code: 404;
-      message: '{entity} {id} not found!';
-    };
+      id: '',
+      code: 404,
+      message: '{entity} {id} not found!',
+    },
+    NO_LEGAL_ADDRESS: {
+      id: '',
+      code: 404,
+      message: '{entity} {id} has no legal address!',
+    },
   };
 
-  private readonly operation_status_codes: {
+  protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
     SUCCESS: {
-      code: 200;
-      message: 'SUCCESS';
-    };
+      code: 200,
+      message: 'SUCCESS',
+    },
     PARTIAL: {
-      code: 400;
-      message: 'Patrial executed with errors!';
-    };
+      code: 400,
+      message: 'Patrial executed with errors!',
+    },
     LIMIT_EXHAUSTED: {
-      code: 500;
-      message: 'Query limit 1000 exhausted!';
-    };
+      code: 500,
+      message: 'Query limit 1000 exhausted!',
+    },
   };
 
-  private readonly legal_address_type_id: string;
-  private readonly customer_service: Client<CustomerServiceDefinition>;
-  private readonly shop_service: Client<ShopServiceDefinition>;
-  private readonly organization_service: Client<OrganizationServiceDefinition>;
-  private readonly contact_point_service: Client<ContactPointServiceDefinition>;
-  private readonly address_service: Client<AddressServiceDefinition>;
-  private readonly country_service: Client<CountryServiceDefinition>;
-  private readonly tax_service: Client<TaxServiceDefinition>;
+  protected readonly legal_address_type_id: string;
+  protected readonly customer_service: Client<CustomerServiceDefinition>;
+  protected readonly shop_service: Client<ShopServiceDefinition>;
+  protected readonly organization_service: Client<OrganizationServiceDefinition>;
+  protected readonly contact_point_service: Client<ContactPointServiceDefinition>;
+  protected readonly address_service: Client<AddressServiceDefinition>;
+  protected readonly country_service: Client<CountryServiceDefinition>;
+  protected readonly tax_service: Client<TaxServiceDefinition>;
 
   constructor(
-    private readonly courier_srv: FulfillmentCourierService,
+    protected readonly courier_srv: FulfillmentCourierService,
     topic: Topic,
     db: DatabaseProvider,
-    private readonly cfg: any,
+    protected readonly cfg: any,
     logger: any
   ) {
     super(
@@ -178,7 +183,7 @@ export class FulfillmentProductService
       ...cfg.get('operationStatusCodes'),
     };
 
-    this.legal_address_type_id = this.cfg.get('ids:legalAddressTypeId');
+    this.legal_address_type_id = this.cfg.get('preDefinedIds:legalAddressTypeId');
 
     this.customer_service = createClient(
       {
@@ -244,7 +249,7 @@ export class FulfillmentProductService
     );
   }
 
-  private buildStatusCode(
+  protected createStatusCode(
     entity: string,
     id: string,
     status: Status,
@@ -263,7 +268,20 @@ export class FulfillmentProductService
     };
   }
 
-  private buildOperationStatusCode(
+  protected throwStatusCode<T>(
+    entity: string,
+    id: string,
+    status: Status,
+    error?: string,
+  ): T {
+    throw this.createStatusCode(
+      entity,
+      id,
+      status,error
+    );
+  }
+
+  protected createOperationStatusCode(
     entity: string,
     status: OperationStatus,
   ): OperationStatus {
@@ -275,7 +293,7 @@ export class FulfillmentProductService
     };
   }
 
-  private handleStatusError(id: string, e: any) {
+  protected catchStatusError(id: string, e: any) {
     this.logger?.warn(e);
     return {
       id,
@@ -284,7 +302,7 @@ export class FulfillmentProductService
     };
   }
 
-  private handleOperationError(e: any) {
+  protected catchOperationError(e: any) {
     this.logger?.error(e);
     return {
       items: [],
@@ -296,7 +314,7 @@ export class FulfillmentProductService
     };
   }
 
-  private get<T>(
+  protected get<T>(
     ids: string[],
     service: CRUDClient,
     subject?: Subject,
@@ -306,7 +324,7 @@ export class FulfillmentProductService
     const entity = typeof ({} as T);
 
     if (ids.length > 1000) {
-      throw this.buildOperationStatusCode(
+      throw this.createOperationStatusCode(
         entity,
         this.operation_status_codes.LIMIT_EXHAUSTED,
       );
@@ -331,7 +349,7 @@ export class FulfillmentProductService
       request,
       context,
     ).then(
-      response => {
+      (response: any) => {
         if (response.operation_status?.code === 200) {
           return response.items?.reduce(
             (a: any, b: any) => {
@@ -352,7 +370,7 @@ export class FulfillmentProductService
       return map[id];
     }
     else {
-      throw this.buildStatusCode(
+      throw this.createStatusCode(
         typeof({} as T),
         id,
         this.status_codes.NOT_FOUND
@@ -366,7 +384,7 @@ export class FulfillmentProductService
     ));
   }
 
-  private async findCouriers(
+  protected async findCouriers(
     queries: PackageSolutionTotals[],
     subject?: Subject,
     context?: any,
@@ -389,7 +407,7 @@ export class FulfillmentProductService
     return this.courier_srv.read(call, context);
   }
 
-  private async findProducts(
+  protected async findProducts(
     queries: PackageSolutionTotals[],
     stubs?: Stub[],
     subject?: Subject,
@@ -578,12 +596,16 @@ export class FulfillmentProductService
             orga => this.getByIds(
               contact_point_map,
               orga.payload.contact_point_ids
-            ).then(
-              cpts => cpts.find(
-                cpt => cpt.payload.contact_point_type_ids.indexOf(
-                  this.legal_address_type_id
-                ) >= 0
-              )
+            )
+          ).then(
+            cpts => cpts.find(
+              cpt => cpt.payload?.contact_point_type_ids.indexOf(
+                this.legal_address_type_id
+              ) >= 0
+            ) ?? this.throwStatusCode<ContactPointResponse>(
+              query.reference.instance_type,
+              query.reference.instance_id,
+              this.status_codes.NO_LEGAL_ADDRESS,
             )
           ).then(
             contact_point => this.getById(
@@ -602,21 +624,19 @@ export class FulfillmentProductService
           const customer_country = await this.getByIds(
             contact_point_map,
             [
-              ...customer.payload.private?.contact_point_ids,
-              ...(await this.getById(
-                orga_map,
-                customer.payload.commercial?.organization_id
-              )).payload.contact_point_ids,
-              ...(await this.getById(
-                orga_map,
-                customer.payload.public_sector?.organization_id
-              )).payload.contact_point_ids,
-            ]
+              customer.payload.private?.contact_point_ids,
+              orga_map[customer.payload.commercial?.organization_id]?.payload.contact_point_ids,
+              orga_map[customer.payload.public_sector?.organization_id]?.payload.contact_point_ids,
+            ].flatMap(id => id).filter(id => id)
           ).then(
             cps => cps.find(
-              cp => cp.payload.contact_point_type_ids.indexOf(
+              cp => cp.payload?.contact_point_type_ids.indexOf(
                 this.legal_address_type_id
-              )
+              ) >= 0
+            ) ?? this.throwStatusCode<ContactPointResponse>(
+              query.reference.instance_type,
+              query.reference.instance_id,
+              this.status_codes.NO_LEGAL_ADDRESS,
             )
           ).then(
             cp => this.getById(
@@ -741,9 +761,10 @@ export class FulfillmentProductService
           return solution;
         }
         catch (e) {
+          console.error(e);
           const solution: PackingSolutionResponse = {
             solutions: [],
-            status: this.handleStatusError(
+            status: this.catchStatusError(
               query.reference.instance_id,
               e,
             ),
@@ -756,14 +777,15 @@ export class FulfillmentProductService
       return {
         items,
         total_count: items.length,
-        operation_status: this.buildOperationStatusCode(
+        operation_status: this.createOperationStatusCode(
           this.name,
           this.operation_status_codes.SUCCESS,
         )
       };
     }
     catch (e) {
-      this.handleOperationError(e);
+      console.error(e);
+      this.catchOperationError(e);
     }
   }
 }

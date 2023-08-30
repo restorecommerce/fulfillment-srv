@@ -1,21 +1,29 @@
 import * as soap from 'soap';
 import { xml2js, js2xml } from 'xml-js';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {
   Event,
+  Label,
   State,
   Tracking,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
   FulfillmentCourier as Courier
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
-import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
+import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 import {
-  FlatAggregatedFulfillment,
   Stub,
+  FlatAggregatedFulfillment,
+  throwOperationStatusCode,
 } from '..';
+
+dayjs.extend(customParseFormat);
 
 export namespace DHL_Soap
 {
+  export type ClientMap = { [id: string]: soap.Client };
+
   interface Origin
   {
     country: string;
@@ -128,50 +136,12 @@ export namespace DHL_Soap
       })))}
   }));
 
-  function DHLShipmentLabels2FulfillmentResponses (
-    requests: FlatAggregatedFulfillment[],
-    response: any,
-    status?: any,
-  ): FlatAggregatedFulfillment[] {
-    return requests.map((request, i) => {
-      const dhl_state = response?.CreationState?.find((state: any) => state.sequenceNumber == i);
-      if (status) {
-        status.id = request.payload.id;
-      }
-      else {
-        status = request.status
-      }
-
-      const state = dhl_state?.LabelData.Status.statusCode == 0 ? State.SUBMITTED : State.INVALID;
-      
-      const label = {
-        parcel_id: request.parcel.id,
-        shipment_number: dhl_state?.shipmentNumber,
-        url: dhl_state?.LabelData.labelUrl,
-        png: undefined,
-        pdf: undefined,
-        state,
-        status
-      };
-
-      request.payload.state = state;
-
-      const fulfillment = {
-        ...request,
-        label,
-        status,
-      };
-
-      return fulfillment;
-    });
-  }
-
   const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
-    timestamp: attributes['event-timestamp'],
+    timestamp: dayjs(attributes['event-timestamp'], 'DD.MM.YYYY HH:mm').toDate(),
     location: attributes['event-location'],
     details: {
       type_url: null,
-      value: Buffer.from(JSON.stringify(attributes)) // because Any
+      value: Buffer.from(JSON.stringify(attributes)),
     },
     status: {
       id: attributes['event-short-status'],
@@ -182,30 +152,41 @@ export namespace DHL_Soap
 
   const DHLTracking2FulfillmentTracking = async (
     fulfillment: FlatAggregatedFulfillment,
-    response: any,
-    err?: any
+    response: Response,
+    error?: any
   ): Promise<FlatAggregatedFulfillment> => {
-    if (err ?? response?.status != 200) {
-      fulfillment.label.state = State.INVALID;
-      fulfillment.payload.trackings = [{
+    if (error) {
+      fulfillment.tracking = {
         shipment_number: fulfillment.label.shipment_number,
         events: null,
         details: null,
         status: {
-          id: fulfillment.label.shipment_number,
-          code: response?.status ?? err?.code ?? 500,
-          message: response?.statusText ?? err?.message ?? err?.msg ?? JSON.stringify(err, null, 2)
+          id: fulfillment.payload.id,
+          code: error?.code ?? 500,
+          message: error?.message ?? error.details ?? error?.msg ?? JSON.stringify(error, null, 2)
         }
-      }];
+      };
+    }
+    else if (response?.status !== 200) {
+      fulfillment.tracking = {
+        shipment_number: fulfillment.label.shipment_number,
+        events: null,
+        details: null,
+        status: {
+          id: fulfillment.payload.id,
+          code: response?.status ?? 500,
+          message: await response.text().catch(() => response?.statusText) ?? 'Unknown Error!',
+        }
+      };
     }
     else {
-      fulfillment.payload.trackings = [await response.text().then(
-        (response_text): Tracking => {
-          const response = xml2js(response_text);
-          if (response?.elements?.[0]?.attributes?.code == 0) {
+      fulfillment.tracking = await response.text().then(
+        (text: string): Tracking => {
+          const response = xml2js(text);
+          if (response?.elements?.[0]?.attributes?.code === '0') {
             const status = {
-              id: fulfillment.label.shipment_number,
-              code: response.elements[0].attributes.code,
+              id: fulfillment.payload.id,
+              code: 200,
               message: response.elements[0].attributes.error ?? response.elements[0].elements[0].attributes.status
             };
             fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? State.FULFILLED : State.IN_TRANSIT;
@@ -222,13 +203,12 @@ export namespace DHL_Soap
             };
           }
           else {
-            fulfillment.label.state = State.INVALID;
             return {
               shipment_number: fulfillment.label.shipment_number,
               events: null,
               details: null,
               status: {
-                id: fulfillment.label.shipment_number,
+                id: fulfillment.payload.id,
                 code: response?.elements?.[0]?.attributes?.code ?? 500,
                 message: response?.elements?.[0]?.attributes?.error ?? 'Error Unknown!'
               }
@@ -236,21 +216,21 @@ export namespace DHL_Soap
           }
         },
         (err: any): Tracking => {
-          fulfillment.label.state = State.INVALID;
           return {
             shipment_number: fulfillment.label.shipment_number,
             events: null,
             details: null,
             status: {
-              id: fulfillment.label.shipment_number,
+              id: fulfillment.payload.id,
               code: err?.code ?? 500,
-              message: err?.message ?? err?.msg ?? JSON.stringify(err, null, 2)
+              message: err?.message ?? err?.msg ?? err?.details ?? JSON.stringify(err, null, 2)
             }
           };
         }
-      )];
+      );
     }
 
+    fulfillment.status = fulfillment.tracking.status;
     return fulfillment;
   };
 
@@ -287,15 +267,53 @@ export namespace DHL_Soap
   };
 
   class DHLSoapStub extends Stub {
-    protected static _clients: { [id: string]: soap.Client } = {};
+    protected static _clients: ClientMap = {};
     protected readonly stub_defaults: any;
     public readonly version: number[];
+
+    protected readonly status_codes: { [key: string]: Status } = {
+      OK: {
+        id: '',
+        code: 200,
+        message: 'OK',
+      },
+      NOT_FOUND: {
+        id: '',
+        code: 404,
+        message: '{entity} {id} not found! {details}',
+      },
+      INVALID_ADDRESS: {
+        id: '',
+        code: 400,
+        message: '{entity} {id} address invalid! {details}',
+      },
+      UNKNOWN_ERROR: {
+        id: '',
+        code: 500,
+        message: '{entity} {id} caused unknown error! {details}',
+      },
+    };
+  
+    protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
+      SUCCESS: {
+        code: 200,
+        message: 'SUCCESS',
+      },
+      PARTIAL: {
+        code: 400,
+        message: 'Patrial executed with errors!',
+      },
+      LIMIT_EXHAUSTED: {
+        code: 500,
+        message: 'Query limit 1000 exhausted!',
+      },
+    };
 
     get type(): string {
       return this.constructor.name; //'DHLSoapStub';
     }
 
-    get clients(): {} {
+    get clients(): ClientMap {
       return DHLSoapStub._clients;
     }
 
@@ -303,6 +321,132 @@ export namespace DHL_Soap
       super(courier, kwargs?.cfg, kwargs?.logger);
       this.stub_defaults = this.cfg?.get(`stubs:DHLSoapStub:${courier?.id}`) ?? this.cfg?.get('stubs:DHLSoapStub:defaults');
       this.version = this.stub_defaults?.ordering?.version ?? [3, 4, 0];
+
+      this.status_codes = {
+        ...this.status_codes,
+        ...this.cfg?.get('statusCodes'),
+      };
+  
+      this.operation_status_codes = {
+        ...this.operation_status_codes,
+        ...this.cfg?.get('operationStatusCodes'),
+      };
+    }
+
+    protected DHLCode2StatusCode(
+      code: number,
+      id: string,
+      details?: string
+    ) {
+      switch (code) {
+        case 0: return this.createStatusCode(
+          'Fulfillment',
+          id,
+          this.status_codes.OK,
+          details,
+        );
+        default: return this.createStatusCode(
+          'Fulfillment',
+          id,
+          this.status_codes.UNKOWN_ERROR,
+          details,
+        );
+      }
+    }
+
+    protected DHLShipmentLabels2FulfillmentResponses (
+      fulfillments: FlatAggregatedFulfillment[],
+      response: any,
+      error: any,
+    ): FlatAggregatedFulfillment[] {
+      if (error) {
+        if (response?.html) {
+          this.logger?.error(`${this.constructor.name}: ${response.html.head.title}`);
+          throwOperationStatusCode(
+            'Fulfillment',
+            {
+              code: response.statusCode,
+              message: response.html.head.title
+            }
+          );
+        }
+        else {
+          const message = error?.root?.Envelope?.Body?.Fault?.faultstring
+            ?? error?.response?.statusText
+            ?? error?.toString()
+            ?? 'Server Error!';
+          this.logger?.error(`${this.constructor.name}: ${message}`);
+          throwOperationStatusCode(
+            'Fulfillment',
+            {
+              code: error?.response?.status ?? 500,
+              message
+            },
+          );
+        }
+      }
+      else if (response?.html) {
+        this.logger?.error(`${this.constructor.name}: ${response.html}`);
+        throwOperationStatusCode(
+          'Fulfillment',
+          {
+            code: response?.statusCode,
+            message: response?.html
+          },
+        );
+      }
+      else if (response) {
+        if (response?.Status?.statusCode !== 0) {
+          const message = JSON.stringify(response, null, 2);
+          this.logger?.error(`${this.constructor.name}: ${message}`);
+          throwOperationStatusCode(
+            'Fulfillment',
+            {
+              code: response.Status?.statusCode,
+              message
+            },
+          );
+        }
+      }
+      else {
+        throwOperationStatusCode(
+          'Fulfillment',
+          {
+            code: 500,
+            message: 'Unexpected Error: No Response!',
+          }
+        );
+      }
+      
+      return fulfillments.map((fulfillment, i) => {
+        const dhl_state = response?.CreationState?.find((state: any) => state.sequenceNumber === i.toString());
+        const code = dhl_state?.LabelData.Status.statusCode;
+        const state = code === 0 ? State.SUBMITTED : State.INVALID;
+        const status = this.DHLCode2StatusCode(
+          code,
+          fulfillment.payload?.id,
+          dhl_state?.LabelData?.Status?.statusMessage,
+        );
+        
+        if (state === State.INVALID) {
+          fulfillment.payload.state = state;
+          fulfillment.status = status;
+          return fulfillment;
+        }
+
+        const label: Label = {
+          parcel_id: fulfillment.parcel.id,
+          shipment_number: dhl_state?.shipmentNumber,
+          url: dhl_state?.LabelData.labelUrl,
+          state,
+          status,
+        };
+        
+        fulfillment.payload.state = state;
+        fulfillment.label = label;
+        fulfillment.status = status;
+        return fulfillment;
+      });
     }
 
     protected AggregatedFulfillmentRequests2DHLShipmentOrderRequest(
@@ -401,13 +545,13 @@ export namespace DHL_Soap
         return this.clients[courier.id];
       }
 
-      const configs = JSON.parse(courier?.configuration?.value?.toString() ?? null)?.ordering ?? this.stub_defaults?.ordering;
-      const wsdl = configs?.wsdl;
-      const username = configs?.username;
-      const password = configs?.password;
-      const endpoint = configs?.endpoint;
-      const wsdlHeader = configs?.wsdl_header;
       try{
+        const configs = JSON.parse(courier?.configuration?.value?.toString() ?? null)?.ordering ?? this.stub_defaults?.ordering;
+        const wsdl = configs?.wsdl ?? this.stub_defaults?.ordering?.wsdl;
+        const username = configs?.username ?? this.stub_defaults?.ordering?.username;
+        const password = configs?.password ?? this.stub_defaults?.ordering?.password;
+        const endpoint = configs?.endpoint ?? this.stub_defaults?.ordering?.endpoint;
+        const wsdlHeader = configs?.wsdl_header ?? this.stub_defaults?.ordering?.wsdl_header;
         this.clients[courier.id] = await soap.createClientAsync(wsdl).then(client => {
           client.setEndpoint(endpoint);
           client.addSoapHeader(typeof(wsdlHeader) === 'string' ? JSON.parse(wsdlHeader) : wsdlHeader);
@@ -416,7 +560,7 @@ export namespace DHL_Soap
         });
       }
       catch (err) {
-        this.logger?.error(`${this.constructor.name}:\n Failed to create Client for '${endpoint}' \n as '${username}'`);
+        this.logger?.error(`${this.constructor.name}:\n Failed to create Client!`);
         this.logger?.error(`${this.constructor.name}: ${JSON.stringify(err, null, 2)}`);
         throw err;
       }
@@ -428,182 +572,65 @@ export namespace DHL_Soap
       const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
       const client = await this.registerSoapClient();
       return new Promise<FlatAggregatedFulfillment[]>((resolve): void => {
-        try {
-          client.GVAPI_2_0_de.GKVAPISOAP11port0.evaluateShipmentOrder(dhl_order_request, (err: any, result: any): any => {
-            if (err) {
-              if (result?.html) {
-                this.logger?.error(`${this.constructor.name}: ${result.html.head.title}`);
-                const status: Status = {
-                  id: null,
-                  code: result.statusCode,
-                  message: result.html.head.title
-                };
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-              }
-              else {
-                const message = err?.root?.Envelope?.Body?.Fault?.faultstring ?? err?.response?.statusText ?? err?.toString() ?? 'Server Error!'
-                this.logger?.error(`${this.constructor.name}: ${message}`);
-                const status: Status = {
-                  id: null,
-                  code: err?.response?.status ?? 500,
-                  message
-                };
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-              }
-            }
-            else if (result?.html) {
-              this.logger?.error(`${this.constructor.name}: ${result.html}`);
-              const status: Status = {
-                id: null,
-                code: result.statusCode,
-                message: result.html
-              };
-              resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-            }
-            else if (result) {
-              if (result.Status.statusCode != 0) {
-                const message = JSON.stringify(result, null, 2);
-                this.logger?.error(`${this.constructor.name}: ${message}`);
-                const status: Status = {
-                  id: null,
-                  code: result.Status.statusCode,
-                  message
-                };
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-              }
-              else {
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, result));
-              }
-            }
-            else {
-              // Shouldn't get to here!?
-              const status: Status = {
-                id: null,
-                code: 500,
-                message: 'Unexpected Error: No Response!'
-              };
-              resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-            }
-          });
-        }
-        catch (err) {
-          const status: Status = {
-            id: null,
-            code: 500,
-            message: `Internal Error: ${JSON.stringify(err, null, 2)}`
-          };
-          resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-        }
+        client.GVAPI_2_0_de.GKVAPISOAP11port0.evaluateShipmentOrder(
+          dhl_order_request,
+          (error: any, result: any): any => {
+            resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
+          }
+        );
       });
     }
 
     protected override async submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
       if (fulfillments.length === 0) return [];
-      console.log("\n\n\nSUBMIT CALLED\n\n\n");
+      const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
       const client = await this.registerSoapClient();
       return new Promise<FlatAggregatedFulfillment[]>((resolve): void => {
-        try {
-          const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
-          client.GVAPI_2_0_de.GKVAPISOAP11port0.createShipmentOrder(dhl_order_request, (err: any, result: any): any => {
-            if (err) {
-              if (result?.html) {
-                this.logger?.error(`${this.constructor.name}: ${result.html.head.title}`);
-                const status: Status = {
-                  id: null,
-                  code: result.statusCode,
-                  message: result.html.head.title
-                };
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-              }
-              else {
-                const message = err?.root?.Envelope?.Body?.Fault?.faultstring ?? err?.response?.statusText ?? err?.toString() ?? 'Server Error!'
-                this.logger?.error(`${this.constructor.name}: ${message}`);
-                const status: Status = {
-                  id: null,
-                  code: err?.response?.status ?? 500,
-                  message
-                };
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-              }
-            }
-            else if (result?.html) {
-              this.logger?.error(`${this.constructor.name}: ${result.html}`);
-              const status: Status = {
-                id: null,
-                code: result.statusCode,
-                message: result.html
-              };
-              resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-            }
-            else if (result) {
-              if (result.Status.statusCode != 0) {
-                const message = JSON.stringify(result, null, 2);
-                this.logger?.error(`${this.constructor.name}: ${message}`);
-                const status: Status = {
-                  id: null,
-                  code: result.Status.statusCode,
-                  message
-                };
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-              }
-              else {
-                resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, result));
-              }
-            }
-            else {
-              // Shouldn't get to here!?
-              const status: Status = {
-                id: null,
-                code: 500,
-                message: 'Unexpected Error: No Response!'
-              };
-              resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-            }
-          });
-        }
-        catch (err) {
-          this.logger.error(`${this.constructor.name}: ${err}`);
-          const status: Status = {
-            id: null,
-            code: 500,
-            message: `Internal Error: ${JSON.stringify(err, null, 2)}`
-          };
-          resolve(DHLShipmentLabels2FulfillmentResponses(fulfillments, null, status));
-        }
+        client.GVAPI_2_0_de.GKVAPISOAP11port0.createShipmentOrder(
+          dhl_order_request,
+          (error: any, result: any): any => {
+            resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
+          }
+        );
       });
     }
 
     protected override async trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-      if (fulfillments.length === 0) return [];
       const promises = fulfillments.map(async item => {
         try {
           const options = JSON.parse(item?.options?.value?.toString() ?? null);
           const config = JSON.parse(this.courier?.configuration?.value?.toString() ?? null)?.tracking ?? this.stub_defaults?.tracking;
           const client = {
-            appname: config?.appname,
-            username: config?.username,
-            password: config?.password,
-            token: config?.token,
-            endpoint: config?.endpoint,
+            appname: config?.appname ?? this.stub_defaults?.tracking?.appname,
+            username: config?.username ?? this.stub_defaults?.tracking?.username,
+            password: config?.password ?? this.stub_defaults?.tracking?.password,
+            endpoint: config?.endpoint ?? this.stub_defaults?.tracking?.endpoint,
+            secret: config?.secret ?? this.stub_defaults?.tracking?.secret,
           };
-          const auth = 'Basic ' + Buffer.from(`${client.username}:${client.token}`).toString('base64');
-          const headers = {
-            method: 'get',
-            headers: {
-              Host: 'cig.dhl.de',
-              Authorization: auth,
-              Connection: 'Keep-Alive'
-            }
-          };
+          const auth = 'Basic ' + Buffer.from(`${client.username}:${client.password}`).toString('base64'); 
           const attributes = {
             appname: client.appname,
-            password: client.password,
-            'piece-code': item.payload.labels[0].shipment_number,
+            password: client.secret,
+            'piece-code': item.label.shipment_number,
             'language-code': options?.['language-code'] ?? 'de',
             request: options?.request ?? 'd-get-piece-detail'
           };
-          const xml = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + js2xml({ data: { _attributes: attributes } }, {compact: true});
-          return await fetch(client.endpoint + '?xml=' +xml, headers).then(
+          const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>${
+            js2xml({ data: { _attributes: attributes } }, { compact: true })
+          }`;
+          const params = new URLSearchParams();
+          params.append('xml', xml);
+          const payload = {
+            method: 'post',
+            headers: {
+              Host: 'cig.dhl.de',
+              Authorization: auth,
+              Connection: 'Keep-Alive',
+            },
+            body: params,
+          };
+          
+          return await fetch(client.endpoint, payload).then(
             response => DHLTracking2FulfillmentTracking(item, response),
             err => {
               this.logger?.error(`${this.constructor.name}: ${err}`);
@@ -612,7 +639,6 @@ export namespace DHL_Soap
           );
         } catch (err) {
           this.logger?.error(`${this.constructor.name}: ${err}`);
-          item.label.state = State.INVALID;
           return {
             ...item,
             status: {

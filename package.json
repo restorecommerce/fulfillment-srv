@@ -21,6 +21,7 @@
     "@restorecommerce/service-config": "^1.0.6",
     "@types/soap": "^0.21.0",
     "@types/xml-js": "^1.0.0",
+    "dayjs": "^1.11.9",
     "lodash": "^4.17.21",
     "redis": "^3.1.2",
     "soap": "^0.42.0",

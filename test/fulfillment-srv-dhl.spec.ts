@@ -93,6 +93,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200'
         );
         should.ok(
+          response?.items?.length > 0,
+          'response.items.length expected to be greater 0',
+        );
+        should.ok(
           !response?.items?.some(
             item => item?.status?.code !== 200
           ),
@@ -133,6 +137,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200'
         );
         should.ok(
+          response?.items?.length > 0,
+          'response.items.length expected to be greater 0',
+        );
+        should.ok(
           !response?.items?.some(
             item => item?.status?.code !== 200
           ),
@@ -149,6 +157,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200'
         );
         should.ok(
+          response?.items?.length > 0,
+          'response.items.length expected to be greater 0',
+        );
+        should.ok(
           !response?.items?.some(
             item => item?.status?.code !== 200
           ),
@@ -161,6 +173,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
   describe('The Fulfillment Service:', () => {
     const fulfillmentCreatedSemaphore = new Semaphore(0);
     const fulfillmentSubmittedSemaphore = new Semaphore(0);
+    const fulfillmentFulfilledSemaphore = new Semaphore(0);
     const fulfillmentWithdrawnSemaphore = new Semaphore(0);
     const fulfillmentCancelledSemaphore = new Semaphore(0);
 
@@ -172,6 +185,11 @@ describe('Testing Fulfillment Service Cluster:', () => {
     const onFulfillmentSubmitted = (msg: Fulfillment, context?:any): void => {
       should.equal(msg?.state, State.SUBMITTED);
       fulfillmentSubmittedSemaphore.release(1);
+    };
+
+    const onFulfillmentFulfilled = (msg: Fulfillment, context?:any): void => {
+      should.equal(msg?.state, State.FULFILLED);
+      fulfillmentFulfilledSemaphore.release(1);
     };
 
     const onFulfillmentWithdrawn = (msg: Fulfillment, context?:any): void => {
@@ -189,6 +207,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
       await Promise.all([
         topics.on('fulfillmentCreated', onFulfillmentCreated),
         topics.on('fulfillmentSubmitted', onFulfillmentSubmitted),
+        topics.on('fulfillmentFulfilled', onFulfillmentFulfilled),
         topics.on('fulfillmentWithdrawn', onFulfillmentWithdrawn),
         topics.on('fulfillmentCancelled', onFulfillmentCancelled),
       ]);
@@ -199,6 +218,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
       await Promise.all([
         topics.removeListener('fulfillmentCreated', onFulfillmentCreated),
         topics.removeListener('fulfillmentSubmitted', onFulfillmentSubmitted),
+        topics.removeListener('fulfillmentFulfilled', onFulfillmentFulfilled),
         topics.removeListener('fulfillmentWithdrawn', onFulfillmentWithdrawn),
         topics.removeListener('fulfillmentCancelled', onFulfillmentCancelled),
       ]);
@@ -211,16 +231,15 @@ describe('Testing Fulfillment Service Cluster:', () => {
           response?.operationStatus?.code, 200,
           response.operationStatus?.message ?? 'response.operationStatus.code expected to be 200'
         );
-        should.equal(
-          response?.items[0]?.status?.code, 200,
-          response.items[0]?.status?.message ?? 'response.items[0]?.status?.code expected to be 200');
+        should.ok(
+          response?.items?.length > 0,
+          'response.items.length expected to be greater 0',
+        );
         should.ok(
           !response?.items?.some(
-            item => item.payload?.labels.some(
-              label => label?.status?.code !== 200
-            )
+            item => item.status?.code !== 200
           ),
-          'response.items[*].payload.labels[*].status.code expected all to be 200'
+          'response.items[*].status.code expected all to be 200'
         );
       });
 
@@ -236,19 +255,17 @@ describe('Testing Fulfillment Service Cluster:', () => {
         const response = await fulfillment_client.submit(sample);
         should.equal(
           response?.operationStatus?.code, 200,
-          'response.operationStatus.code expected to be 200'
+          'response.operationStatus.code expected to be 200',
         );
-        should.equal(
-          response?.items[0]?.status?.code, 200,
-          'response.items[*]?.status?.code expected all to be 200'
+        should.ok(
+          response?.items?.length > 0,
+          'response.items.length expected to be greater 0',
         );
         should.ok(
           !response?.items?.some(
-            item => item.payload?.labels.some(
-              label => label?.status?.code !== 200
-            )
+            item => item.status?.code !== 200
           ),
-          'response.items[*].payload.labels[*].status.code expected all to be 200'
+          'response.items[*].status.code expected all to be 200',
         );
       });
 
@@ -258,33 +275,34 @@ describe('Testing Fulfillment Service Cluster:', () => {
       });
     }
 
+    for (let [sample_name, sample] of Object.entries(samples.trackingRequests.valid)) {
+      it(`should track fulfillment by valid samples: ${sample_name}`, async function() {
+        this.timeout(30000);
+        const response = await fulfillment_client.track(sample);
+        should.equal(
+          response?.operationStatus?.code, 200,
+          'response.operationStatus.code expected to be 200'
+        );
+        should.ok(
+          response?.items?.length > 0,
+          'response.items.length expected to be greater 0',
+        );
+        should.ok(
+          !response?.items?.some(
+            item => item.status?.code !== 200
+          ),
+          'response.items[*].status.code expected all to be 200',
+        );
+      });
+
+      it(`should have received fulfillment tracking event for ${sample_name}`, async function() {
+        this.timeout(5000);
+        await fulfillmentFulfilledSemaphore.acquire(1);
+      });
+    }
 
     /*
-    it('should track fulfillment orders from DHL', async function() {
-      this.timeout(30000);
-      const sample = samples.DHL.TrackFulfillments;
-      should.exist(sample, 'samples.DHL.TrackFulfillments should exist in samples.json');
-
-      offset = await topics.$offset(-1);
-      const response = await fulfillment_client.track(sample);
-      should.equal(
-        response?.operationStatus?.code, 200,
-        response?.operationStatus?.message ?? 'response.operationStatus.code should be 200'
-      );
-      should.equal(
-        response?.items[0]?.status?.code, 200,
-        response?.items[0]?.status?.message ?? 'response.items[0].status.code should be 200'
-      );
-      should.ok(
-        response?.items[0]?.payload?.labels.reduce((a:any,b:any) => a && (b?.status?.code == 200), true),
-        response?.operationStatus?.message ?? 'response?.items[0]?.fulfillment?.labels[*].status.code should all be 200'
-      );
-    });
-
-    it('should have received an event of "fulfillmentDone"', async function() {
-      this.timeout(15000);
-      await topics.$wait(offset);
-    });
+    
 
     it('should cancel fulfillment orders of DHL', async function() {
       this.timeout(30000);

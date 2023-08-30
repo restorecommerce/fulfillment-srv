@@ -29,6 +29,8 @@ import {
   FulfillmentIdList,
   FulfillmentServiceImplementation,
   InvoiceRequestList,
+  FulfillmentResponse,
+  FulfillmentId,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
 import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
@@ -57,9 +59,16 @@ import {
   ContactPointResponseMap,
   AddressResponseMap,
   filterTax,
+  throwOperationStatusCode,
+  throwStatusCode,
+  createStatusCode,
+  createOperationStatusCode,
 } from '..';
 import { InvoiceListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice';
-import { ContactPointResponse, ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
+import {
+  ContactPointResponse,
+  ContactPointServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
 import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
 import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
 import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
@@ -69,7 +78,7 @@ export class FulfillmentService
   extends ServiceBase<FulfillmentListResponse, FulfillmentList>
   implements FulfillmentServiceImplementation
 {
-  private readonly status_codes: { [key: string]: Status } = {
+  protected readonly status_codes: { [key: string]: Status } = {
     OK: {
       id: '',
       code: 200,
@@ -85,9 +94,19 @@ export class FulfillmentService
       code: 404,
       message: '{entity} {id} has no legal address!',
     },
+    NO_LABEL: {
+      id: '',
+      code: 404,
+      message: '{entity} {id} has no label!',
+    },
+    NOT_SUBMITTED: {
+      id: '',
+      code: 400,
+      message: '{entity} {id} is not submitted!',
+    },
   };
 
-  private readonly operation_status_codes: { [key: string]: OperationStatus} = {
+  protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
     SUCCESS: {
       code: 200,
       message: 'SUCCESS',
@@ -212,51 +231,7 @@ export class FulfillmentService
     );
   }
 
-  private createStatusCode(
-    entity: string,
-    id: string,
-    status: Status,
-    error?: string,
-  ): Status {
-    return {
-      id,
-      code: status?.code ?? 500,
-      message: status?.message?.replace(
-        '{error}', error
-      ).replace(
-        '{entity}', entity
-      ).replace(
-        '{id}', id
-      ) ?? 'Unknown status',
-    };
-  }
-
-  private throwStatusCode<T>(
-    entity: string,
-    id: string,
-    status: Status,
-    error?: string,
-  ): T {
-    throw this.createStatusCode(
-      entity,
-      id,
-      status,error
-    );
-  }
-
-  private createOperationStatusCode(
-    entity: string,
-    status: OperationStatus,
-  ): OperationStatus {
-    return {
-      code: status?.code ?? 500,
-      message: status?.message?.replace(
-        '{entity}', entity
-      ) ?? 'Unknown status',
-    };
-  }
-
-  private catchStatusError<T>(id: string, e: any, payload = null): T {
+  protected handleStatusError<T>(id: string, e: any, payload = null): T {
     this.logger?.warn(e);
     return {
       payload,
@@ -268,7 +243,7 @@ export class FulfillmentService
     } as T;
   }
 
-  private catchOperationError<T>(e: any): T {
+  protected handleOperationError<T>(e: any): T {
     this.logger?.error(e);
     return {
       items: [],
@@ -280,7 +255,7 @@ export class FulfillmentService
     } as T;
   }
 
-  private get<T>(
+  protected get<T>(
     ids: string[],
     service: CRUDClient,
     subject?: Subject,
@@ -290,7 +265,7 @@ export class FulfillmentService
     const entity = typeof ({} as T);
 
     if (ids.length > 1000) {
-      throw this.createOperationStatusCode(
+      throwOperationStatusCode(
         entity,
         this.operation_status_codes.LIMIT_EXHAUSTED,
       );
@@ -336,7 +311,7 @@ export class FulfillmentService
       return map[id];
     }
     else {
-      this.throwStatusCode<T>(
+      throwStatusCode<T>(
         'Object',
         id,
         this.status_codes.NOT_FOUND
@@ -350,7 +325,7 @@ export class FulfillmentService
     ));
   }
 
-  private getFulfillmentsByIDs(ids: string[], subject?: Subject, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+  protected getFulfillmentsByIDs(ids: string[], subject?: Subject, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     ids = [...new Set(ids).values()];
     if (ids.length > 1000) {
       throw {
@@ -373,7 +348,7 @@ export class FulfillmentService
     return this.read(request, context);
   }
 
-  private async aggregateFulfillments(
+  protected async aggregateFulfillments(
     fulfillments: Fulfillment[],
     subject?: Subject,
     context?: any,
@@ -518,7 +493,7 @@ export class FulfillmentService
             cpt => cpt.payload?.contact_point_type_ids.indexOf(
               this.legal_address_type_id
             ) >= 0
-          ) ?? this.throwStatusCode<ContactPointResponse>(
+          ) ?? throwStatusCode<ContactPointResponse>(
             typeof(item),
             item.id,
             this.status_codes.NO_LEGAL_ADDRESS,
@@ -552,7 +527,7 @@ export class FulfillmentService
             cp => cp.payload?.contact_point_type_ids.indexOf(
               this.legal_address_type_id
             ) >= 0
-          ) ?? this.throwStatusCode<ContactPointResponse>(
+          ) ?? throwStatusCode<ContactPointResponse>(
             typeof(item),
             item.id,
             this.status_codes.NO_LEGAL_ADDRESS,
@@ -625,7 +600,7 @@ export class FulfillmentService
         return aggreagatedFulfillment;
       }
       catch (error) {
-        return this.catchStatusError<AggregatedFulfillment>(item?.id, error, item);
+        return this.handleStatusError<AggregatedFulfillment>(item?.id, error, item);
       }
     });
 
@@ -640,8 +615,7 @@ export class FulfillmentService
       const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
       const flat_fulfillments = flatMapAggregatedFulfillments(fulfillments);
       const invalid_fulfillments = flat_fulfillments.filter(f => f.status?.code !== 200);
-      const promises = Stub.evaluate(flat_fulfillments.filter(f => f.status?.code === 200));
-      const responses = (await Promise.all(promises)).flatMap(f => f);
+      const responses = await Stub.evaluate(flat_fulfillments.filter(f => f.status?.code === 200));
       const items = mergeFulfillments([
         ...responses,
         ...invalid_fulfillments,
@@ -650,14 +624,14 @@ export class FulfillmentService
       return {
         items,
         total_count: items.length,
-        operation_status: {
-          code: 200,
-          message: 'OK',
-        }
+        operation_status: createOperationStatusCode(
+          this.name,
+          this.operation_status_codes.SUCCESS,
+        )
       };
     }
     catch (e) {
-      return this.catchOperationError<FulfillmentListResponse>(e);
+      return this.handleOperationError<FulfillmentListResponse>(e);
     }
   }
 
@@ -667,24 +641,39 @@ export class FulfillmentService
   ): Promise<DeepPartial<FulfillmentListResponse>> {
     try {
       const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
-      const flat_fulfillments = flatMapAggregatedFulfillments(fulfillments);
-      const invalid_fulfillments = flat_fulfillments.filter(
+      const flattened = flatMapAggregatedFulfillments(fulfillments);
+      const valids = flattened.filter(
+        f => {
+          if (f.status?.code !== 200) {
+            return false;
+          }
+          else if (StateRank[f.payload?.state] >= StateRank[State.SUBMITTED]) {
+            f.status = createStatusCode(
+              this.name,
+              f.payload?.id,
+              this.status_codes.ALREADY_SUBMITTED,
+            );
+            return false;
+          }
+          return true;
+        }
+      );
+      const invalids = flattened.filter(
         f => f.status?.code !== 200 || StateRank[f.payload?.state] >= StateRank[State.SUBMITTED]
       );
-      const promises = Stub.submit(flat_fulfillments.filter(f => f.status?.code === 200));
-      const responses = (await Promise.all(promises)).flatMap(f => f);
-      console.log(responses);
-      const items = mergeFulfillments([
+      const responses = await Stub.submit(valids);
+      const merged = mergeFulfillments([
         ...responses,
-        ...invalid_fulfillments,
+        ...invalids,
       ]);
+      const items = merged.filter(
+        item => item.payload?.labels?.length > 0
+      ).map(
+        item => item.payload
+      );
 
       const upsert_results = await super.upsert({
-        items: items.filter(
-          f => f.status?.code === 200
-        ).map(
-          f => f.payload
-        ),
+        items,
         total_count: items.length,
         subject: request.subject
       }, context);
@@ -692,7 +681,8 @@ export class FulfillmentService
       upsert_results.items.forEach(item => {
         if (item.payload.state in this.emitters) {
           switch (item.payload.state) {
-            case State.INVALID, State.FAILED:
+            case State.INVALID:
+            case State.FAILED:
               this.topic.emit(this.emitters[item.payload.state], item);
             default:
               this.topic.emit(this.emitters[item.payload.state], item.payload);
@@ -702,13 +692,13 @@ export class FulfillmentService
       });
 
       upsert_results.items.push(
-        ...items.filter(i => i.status?.code !== 200)
+        ...merged.filter(item => item.payload?.labels?.length === 0)
       );
       upsert_results.total_count = upsert_results.items.length;
       return upsert_results;
     }
     catch (e) {
-      return this.catchOperationError<FulfillmentListResponse>(e);
+      return this.handleOperationError<FulfillmentListResponse>(e);
     }
   }
 
@@ -717,111 +707,145 @@ export class FulfillmentService
     context?: any
   ): Promise<DeepPartial<FulfillmentListResponse>> {
     try {
-      const request_map = request.items.reduce(
+      const request_map: { [id: string]: FulfillmentId } = request.items.reduce(
         (a, b) => {
-          a[b.id] = b.shipment_numbers;
+          a[b.id] = b;
           return a;
         },
-        {}
+        {},
+      );
+
+      const response_map: { [id: string]: FulfillmentResponse } = request.items.reduce(
+        (a, b) => {
+          a[b.id] = {
+            payload: null,
+            status: createStatusCode(
+              this.name,
+              b.id,
+              this.status_codes.NOT_FOUND,
+            )
+          };
+          return a;
+        },
+        {},
       );
   
-      const fulfillments = await this.getFulfillmentsByIDs(
+      await this.getFulfillmentsByIDs(
         request.items.map(item => item.id),
         request.subject,
         context,
       ).then(
-        response => response.items.map(item => item.payload as Fulfillment)
-      );
-  
-      const agg_fulfillments = await this.aggregateFulfillments(
-        fulfillments,
-        request.subject,
-        context,
-      );
-  
-      const flat_fulfillments = flatMapAggregatedFulfillments(
-        agg_fulfillments,
-      ).map(
-        f => {
-          const id = f.status?.id;
-          if (!f.payload?.labels?.length) {
-            f.status = {
-              id: id,
-              code: 400,
-              message: `Fulfillment ${id} has no labels!`
-            }
+        response => response.items.filter(
+          item => {
+            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            return item.status?.code === 200;
           }
-          else if (f.payload?.state !== State.SUBMITTED && f.payload?.state !== State.IN_TRANSIT) {
-            f.status = {
-              id: id,
-              code: 400,
-              message: `For tracking Fulfillment ${
-                id
-              } is expected to be ${
-                State.SUBMITTED
-              } or ${
-                State.IN_TRANSIT
-              } but is ${
-                f.payload?.state
-              }!`
-            }
-          }
-
-          return f;
-        }
-      );
-  
-      const invalid_fulfillments = flat_fulfillments.filter(
-        f => f.status?.code !== 200
-      );
-      
-      const promises = Stub.track(flat_fulfillments.filter(
-        f => {
-          const shipment_numbers = request_map[f.payload?.id];
-          return f.status?.code === 200 &&
-            !shipment_numbers?.length ||
-            shipment_numbers.find(
-            s => s === f.payload?.labels[0]?.shipment_number
-          )
-        }
-      ));
-
-      const response = (await Promise.all(promises)).flatMap(f => f);
-      const items = mergeFulfillments([
-        ...response,
-        ...invalid_fulfillments,
-      ]);
-  
-      const update_results = await super.update({
-        items: items.filter(
-          f => f.status?.code === 200
         ).map(
-          f => f.payload
+          item => item.payload as Fulfillment
+        )
+      ).then(
+        fulfillments => this.aggregateFulfillments(
+          fulfillments,
+          request.subject,
+          context,
         ),
-        total_count: items.length,
-        subject: request.subject
-      }, context);
-  
-      update_results.items.forEach(item => {
-        if (item.payload.state in this.emitters) {
-          switch (item.payload.state) {
-            case State.INVALID, State.FAILED:
-              this.topic.emit(this.emitters[item.payload.state], item);
-            default:
-              this.topic.emit(this.emitters[item.payload.state], item.payload);
-              break;
+      ).then(
+        aggregated => flatMapAggregatedFulfillments(
+          aggregated.filter(
+            item => {
+              response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+              return item.status?.code === 200
+            }
+          )
+        ).filter(
+          f => {
+            const request = request_map[f.payload?.id];
+            if (
+              request.shipment_numbers?.length > 0 &&
+              request.shipment_numbers.indexOf(f.label.shipment_number) < 0
+            ) {
+              return false;
+            }
+              
+            if (!f.label) {
+              f.status = createStatusCode(
+                this.name,
+                f.payload?.id,
+                this.status_codes.NO_LABEL
+              );
+              return false;
+            }
+              
+            switch (f.label.state) {
+              case State.SUBMITTED:
+              case State.IN_TRANSIT:
+                return true;
+              default:
+                f.label.status = createStatusCode(
+                  this.name,
+                  f.payload?.id,
+                  this.status_codes.NOT_SUBMITTED
+                );
+                f.status = f.label.status;
+                return false;
+            }
           }
+        )
+      ).then(
+        flat_fulfillments => {
+          return Stub.track(flat_fulfillments);
         }
-      });
-  
-      update_results.items.push(
-        ...items.filter(i => i.status?.code !== 200)
+      ).then(
+        tracked_fulfillments => mergeFulfillments(tracked_fulfillments)
+      ).then(
+        merged_fulfillments => merged_fulfillments.filter(
+          item => {
+            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            return item.status.code === 200;
+          }
+        ).map(
+          item => item.payload
+        )
+      ).then(
+        items => super.update(
+          {
+            items,
+            total_count: items.length,
+            subject: request.subject
+          },
+          context
+        )
+      ).then(
+        updates => updates.items.forEach(
+          item => {
+            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            if (item.payload.state in this.emitters) {
+              switch (item.payload.state) {
+                case State.INVALID:
+                case State.FAILED:
+                  this.topic.emit(this.emitters[item.payload.state], item);
+                default:
+                  this.topic.emit(this.emitters[item.payload.state], item.payload);
+                  break;
+              }
+            }
+          }
+        )
       );
-      update_results.total_count = update_results.items.length;
-      return update_results;
+
+      const items = Object.values(response_map);
+
+      return {
+        items,
+        total_count: items.length,
+        operation_status: createOperationStatusCode(
+          this.name,
+          this.operation_status_codes.SUCCESS,
+        ),
+      }
     }
     catch (e) {
-      return this.catchOperationError<FulfillmentListResponse>(e);
+      return this.handleOperationError<FulfillmentListResponse>(e);
     }
   }
 
@@ -891,7 +915,7 @@ export class FulfillmentService
         f => f.status?.code !== 200
       );
   
-      const promises = Stub.track(flat_fulfillments.filter(
+      const response = await Stub.track(flat_fulfillments.filter(
         f => {
           const shipment_numbers = request_map[f.payload?.id];
           return f.status?.code === 200 &&
@@ -901,8 +925,7 @@ export class FulfillmentService
           )
         }
       ));
-  
-      const response = (await Promise.all(promises)).flatMap(f => f);
+      
       const items = mergeFulfillments([
         ...response,
         ...invalid_fulfillments,
@@ -921,7 +944,8 @@ export class FulfillmentService
       update_results.items.forEach(item => {
         if (item.payload.state in this.emitters) {
           switch (item.payload.state) {
-            case State.INVALID, State.FAILED:
+            case State.INVALID:
+            case State.FAILED:
               this.topic.emit(this.emitters[item.payload.state], item);
             default:
               this.topic.emit(this.emitters[item.payload.state], item.payload);
@@ -937,7 +961,7 @@ export class FulfillmentService
       return update_results;
     }
     catch (e) {
-      return this.catchOperationError<FulfillmentListResponse>(e);
+      return this.handleOperationError<FulfillmentListResponse>(e);
     }
   }
 

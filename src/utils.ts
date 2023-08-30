@@ -5,6 +5,7 @@ import {
   Label,
   Parcel,
   State,
+  Tracking,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import {
   FulfillmentCourier,
@@ -53,6 +54,7 @@ import {
 import {
   InvoiceServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice';
+import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
 
 export type CRUDClient = Client<TaxServiceDefinition>
 | Client<UserServiceDefinition>
@@ -153,8 +155,65 @@ export interface FlatAggregatedFulfillment extends FulfillmentResponse
   recipient_country: Country;
   parcel: Parcel;
   label: Label;
+  tracking: Tracking;
   options: any;
 }
+
+export const createStatusCode = (
+  entity: string,
+  id: string,
+  status: Status,
+  details?: string,
+): Status => ({
+  id,
+  code: status?.code ?? 500,
+  message: status?.message?.replace(
+    '{entity}', entity
+  ).replace(
+    '{id}', id
+  ).replace(
+    '{details}', details
+  ) ?? 'Unknown status',
+});
+
+export const throwStatusCode = <T>(
+  entity: string,
+  id: string,
+  status: Status,
+  details?: string,
+): T => {
+  throw createStatusCode(
+    entity,
+    id,
+    status,
+    details
+  );
+};
+
+export const createOperationStatusCode = (
+  entity: string,
+  status: OperationStatus,
+  details?: string,
+): OperationStatus => ({
+  code: status?.code ?? 500,
+  message: status?.message?.replace(
+    '{entity}', entity
+  ).replace(
+    '{details}', details
+  ) ?? 'Unknown status',
+});
+
+export const throwOperationStatusCode = <T>(
+  entity: string,
+  status: OperationStatus,
+  details?: string,
+): T => {
+  throw createOperationStatusCode(
+    entity,
+    status,
+    details,
+  );
+};
 
 export const extractCouriers = (fulfillments: FlatAggregatedFulfillment[]): CourierMap => {
   return fulfillments.reduce(
@@ -167,26 +226,31 @@ export const extractCouriers = (fulfillments: FlatAggregatedFulfillment[]): Cour
 } 
 
 export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] => {
-  return fulfillments.flatMap((fulfillment) =>
-    fulfillment.payload?.packaging?.parcels.map((parcel, i): FlatAggregatedFulfillment => {
-      const uuid = fulfillment.payload?.id ?? randomUUID();
+  return fulfillments.flatMap((fulfillment) => {
+    const uuid = randomUUID();
+    return fulfillment.payload?.packaging?.parcels.map((parcel, i): FlatAggregatedFulfillment => {
       const product = fulfillment.products?.[i].payload;
       const courier = fulfillment.couriers?.[i].payload;
       const label = fulfillment.payload?.labels[i];
+      const tracking = fulfillment.payload?.trackings[i];
       return {
-        payload: fulfillment.payload,
         uuid,
+        payload: {
+          ...fulfillment.payload,
+          state: label?.state ?? fulfillment.payload?.state,
+        },
         sender_country: fulfillment.sender_country?.payload,
         recipient_country: fulfillment.recipient_country?.payload,
         product,
         courier,
-        label,
         parcel,
+        label,
+        tracking,
         options: fulfillment.options,
-        status: fulfillment.status,
+        status: tracking?.status ?? label?.status ?? fulfillment.status,
       };
     })
-  );
+  });
 }
 
 export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): FulfillmentResponse[] => {
@@ -195,9 +259,9 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
     const b = a.payload;
     const c = merged_fulfillments[a?.uuid];
     if (b && c) {
-      c.payload.packaging?.parcels.push(a?.parcel);
-      c.payload.labels.push(a?.label);
-      c.payload.trackings.push(...b?.trackings);
+      if (a.parcel) c.payload.packaging?.parcels.push(a.parcel);
+      if (a.label) c.payload.labels.push(a.label);
+      if (a.tracking) c.payload.trackings.push(a.tracking);
       c.payload.state = StateRank[b.state] < StateRank[c.payload.state] ? b.state : c.payload.state;
       c.status = c.status.code > a.status.code ? c.status : a.status;
       c.payload.total_amounts = a.payload.total_amounts.reduce(
@@ -229,11 +293,10 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
       );
     }
     else {
-      delete a.uuid;
-      delete a.product;
-      delete a.parcel;
-      delete a.label;
-      merged_fulfillments[a.uuid] = { ...a };
+      b.packaging.parcels = a.parcel ? [a.parcel] : [];
+      b.labels = a.label ? [a.label] : [];
+      b.trackings = a.tracking ? [a.tracking] : [];
+      merged_fulfillments[a.uuid] = a;
     }
   });
   return Object.values(merged_fulfillments);

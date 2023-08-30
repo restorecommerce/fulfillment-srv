@@ -178,6 +178,12 @@
       "fulfillmentSubmitted": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
+      "fulfillmentInTransfer": {
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
+      },
+      "fulfillmentFulfilled": {
+        "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
+      },
       "fulfillmentFailed": {
         "messageObject": "io.restorecommerce.fulfillment.FulfillmentResponse"
       },
@@ -336,15 +342,31 @@
   },
   "fieldHandlers": {
     "fulfillment": {
-      "bufferField": "options",
-      "timeStampFields": ["meta.created", "meta.modified"]
+      "bufferFields": [
+        "options",
+        "trackings.[0].details",
+        "trackings.[0].events.[0].details"
+      ],
+      "timeStampFields": [
+        "meta.created",
+        "meta.modified",
+        "trackings.[0].events.[0].timestamp"
+      ]
     },
     "fulfillment_courier": {
-      "bufferField": "configuration",
-      "timeStampFields": ["meta.created", "meta.modified"]
+      "bufferFields": [
+        "configuration"
+      ],
+      "timeStampFields": [
+        "meta.created",
+        "meta.modified"
+      ]
     },
     "fulfillment_product": {
-      "timeStampFields": ["meta.created", "meta.modified"]
+      "timeStampFields": [
+        "meta.created",
+        "meta.modified"
+      ]
     }
   },
   "preDefinedIds": {
@@ -369,9 +391,10 @@
         "tracking": {
           "version": [3, 4, 0],
           "appname": "zt12345",
-          "endpoint": "https://cig.dhl.de/services/sandbox/soap",
+          "endpoint": "https://cig.dhl.de/services/sandbox/rest/sendungsverfolgung",
           "username": null,
-          "password": null
+          "password": null,
+          "secret": "geheim"
         }
       }
     }
