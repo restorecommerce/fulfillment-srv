@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@restorecommerce/cart": "^0.3.5",
-    "@restorecommerce/chassis-srv": "^1.2.5",
+    "@restorecommerce/chassis-srv": "^1.4.0",
     "@restorecommerce/cluster-service": "^1.0.2",
     "@restorecommerce/grpc-client": "^2.0.2",
     "@restorecommerce/kafka-client": "^1.0.16",
