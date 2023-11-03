@@ -13,7 +13,7 @@
     "@restorecommerce/chassis-srv": "^1.2.5",
     "@restorecommerce/cluster-service": "^1.0.2",
     "@restorecommerce/grpc-client": "^2.0.2",
-    "@restorecommerce/kafka-client": "^1.0.16",
+    "@restorecommerce/kafka-client": "^1.1.6",
     "@restorecommerce/logger": "^1.2.4",
     "@restorecommerce/rc-grpc-clients": "^1.1.0",
     "@restorecommerce/resource-base-interface": "^1.2.5",
