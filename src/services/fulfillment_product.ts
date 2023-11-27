@@ -64,7 +64,6 @@ import {
   ContactPointResponseMap,
   AddressResponseMap,
   CustomerResponseMap,
-  COUNTRY_CODES_EU,
   filterTax,
 } from '..';
 
@@ -392,14 +391,14 @@ export class FulfillmentProductService
     const call = ReadRequest.fromPartial({
       filters: [{
         filters: queries.flatMap(
-          item => item.preferences.couriers.map(
+          item => item.preferences?.couriers?.map(
             att => ({
               field: att.id,
               operation: Filter_Operation.eq,
               value: att.value,
             })
           )
-        ),
+        ).filter(item => !!item),
         operator: FilterOp_Operator.or
       }],
       subject,

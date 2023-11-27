@@ -231,8 +231,8 @@ export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillmen
     return fulfillment.payload?.packaging?.parcels.map((parcel, i): FlatAggregatedFulfillment => {
       const product = fulfillment.products?.[i].payload;
       const courier = fulfillment.couriers?.[i].payload;
-      const label = fulfillment.payload?.labels[i];
-      const tracking = fulfillment.payload?.trackings[i];
+      const label = fulfillment.payload?.labels?.[i];
+      const tracking = fulfillment.payload?.trackings?.[i];
       return {
         uuid,
         payload: {
@@ -259,12 +259,12 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
     const b = a.payload;
     const c = merged_fulfillments[a?.uuid];
     if (b && c) {
-      if (a.parcel) c.payload.packaging?.parcels.push(a.parcel);
+      if (a.parcel) c.payload.packaging.parcels.push(a.parcel);
       if (a.label) c.payload.labels.push(a.label);
       if (a.tracking) c.payload.trackings.push(a.tracking);
       c.payload.state = StateRank[b.state] < StateRank[c.payload.state] ? b.state : c.payload.state;
       c.status = c.status.code > a.status.code ? c.status : a.status;
-      c.payload.total_amounts = a.payload.total_amounts.reduce(
+      c.payload.total_amounts = a.payload.total_amounts?.reduce(
         (a, b) => {
           const c = a.find(c => c.currency_id === b.currency_id);
           if (c) {
@@ -289,8 +289,8 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
           }
           return a;
         },
-        c.payload.total_amounts,
-      );
+        c.payload.total_amounts ?? [],
+      ) ?? [];
     }
     else {
       b.packaging.parcels = a.parcel ? [a.parcel] : [];

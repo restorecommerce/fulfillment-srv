@@ -2,6 +2,14 @@ import {
   ResourcesAPIBase,
   ServiceBase
 } from '@restorecommerce/resource-base-interface';
+import {
+  ACSClientContext,
+  AuthZAction,
+  access_controlled_function,
+  access_controlled_service,
+  DefaultACSClientContextFactory,
+  Operation
+} from '@restorecommerce/acs-client';
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
@@ -28,7 +36,7 @@ import {
   FulfillmentList,
   FulfillmentIdList,
   FulfillmentServiceImplementation,
-  InvoiceRequestList,
+  FulfillmentInvoiceRequestList,
   FulfillmentResponse,
   FulfillmentId,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
@@ -74,10 +82,25 @@ import {
   createOperationStatusCode,
 } from '..';
 
+@access_controlled_service
 export class FulfillmentService
   extends ServiceBase<FulfillmentListResponse, FulfillmentList>
   implements FulfillmentServiceImplementation
 {
+  private static async ACSContextFactory(
+    self: FulfillmentService,
+    request: FulfillmentList | FulfillmentIdList | FulfillmentInvoiceRequestList,
+    context: any,
+  ): Promise<ACSClientContext> {
+    const ids = request.items?.map((item: any) => item.id);
+    const resources = await self.getFulfillmentsByIds(ids, request.subject, context);
+    return {
+      ...context,
+      subject: request.subject,
+      resources,
+    };
+  }
+
   protected readonly status_codes: { [key: string]: Status } = {
     OK: {
       id: '',
@@ -325,7 +348,7 @@ export class FulfillmentService
     ));
   }
 
-  protected getFulfillmentsByIDs(ids: string[], subject?: Subject, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+  protected getFulfillmentsByIds(ids: string[], subject?: Subject, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     ids = [...new Set(ids).values()];
     if (ids.length > 1000) {
       throw {
@@ -345,7 +368,7 @@ export class FulfillmentService
       }],
       subject
     });
-    return this.read(request, context);
+    return super.read(request, context);
   }
 
   protected async aggregateFulfillments(
@@ -607,7 +630,75 @@ export class FulfillmentService
     return await Promise.all(promises);
   }
 
-  async evaluate(
+  @access_controlled_function({
+    action: AuthZAction.READ,
+    operation: Operation.whatIsAllowed,
+    context: DefaultACSClientContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override read(
+    request: ReadRequest,
+    context?: any
+  ) {
+    return super.read(request, context);
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.CREATE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override create(
+    request: FulfillmentList,
+    context?: any
+  ) {
+    return super.create(request, context);
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.MODIFY,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override update(
+    request: FulfillmentList,
+    context?: any
+  ) {
+    return super.update(request, context);
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.MODIFY,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override upsert(
+    request: FulfillmentList,
+    context?: any
+  ) {
+    return super.upsert(request, context);
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.EXECUTE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public async evaluate(
     request: FulfillmentList,
     context?: any,
   ): Promise<DeepPartial<FulfillmentListResponse>> {
@@ -635,7 +726,15 @@ export class FulfillmentService
     }
   }
 
-  async submit(
+  @access_controlled_function({
+    action: AuthZAction.EXECUTE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public async submit(
     request: FulfillmentList,
     context?: any
   ): Promise<DeepPartial<FulfillmentListResponse>> {
@@ -701,8 +800,16 @@ export class FulfillmentService
       return this.handleOperationError<FulfillmentListResponse>(e);
     }
   }
-
-  async track(
+  
+  @access_controlled_function({
+    action: AuthZAction.EXECUTE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public async track(
     request: FulfillmentIdList,
     context?: any
   ): Promise<DeepPartial<FulfillmentListResponse>> {
@@ -712,7 +819,7 @@ export class FulfillmentService
           a[b.id] = b;
           return a;
         },
-        {},
+        {} as { [id: string]: FulfillmentId },
       );
 
       const response_map: { [id: string]: FulfillmentResponse } = request.items.reduce(
@@ -727,10 +834,10 @@ export class FulfillmentService
           };
           return a;
         },
-        {},
+        {} as { [id: string]: FulfillmentResponse },
       );
   
-      await this.getFulfillmentsByIDs(
+      await this.getFulfillmentsByIds(
         request.items.map(item => item.id),
         request.subject,
         context,
@@ -849,11 +956,27 @@ export class FulfillmentService
     }
   }
 
-  async withdraw(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+  @access_controlled_function({
+    action: AuthZAction.EXECUTE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public async withdraw(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     return null;
   }
 
-  async cancel(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+  @access_controlled_function({
+    action: AuthZAction.EXECUTE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public async cancel(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
     try {
       const request_map = request.items.reduce(
         (a, b) => {
@@ -863,7 +986,7 @@ export class FulfillmentService
         {}
       );
   
-      const fulfillments = await this.getFulfillmentsByIDs(
+      const fulfillments = await this.getFulfillmentsByIds(
         request.items.map(item => item.id),
         request.subject,
         context
@@ -965,15 +1088,23 @@ export class FulfillmentService
     }
   }
 
+  @access_controlled_function({
+    action: AuthZAction.CREATE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: [{ resource: 'invoice' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
   async createInvoice(
-    request: InvoiceRequestList,
+    request: FulfillmentInvoiceRequestList,
     context: any
   ): Promise<DeepPartial<InvoiceListResponse>> {
     return null;
   }
   
   async triggerInvoice(
-    request: InvoiceRequestList,
+    request: FulfillmentInvoiceRequestList,
     context: any
   ): Promise<DeepPartial<StatusListResponse>> {
     return null;

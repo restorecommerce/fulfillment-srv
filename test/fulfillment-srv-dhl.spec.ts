@@ -23,7 +23,7 @@ import {
   connectEvents,
   connectTopics,
   mockServices
-} from '.';
+} from './utils';
 
 /*
  * Note: To run this test, a running ArangoDB and Kafka instance is required.
@@ -93,7 +93,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200'
         );
         should.ok(
-          response?.items?.length > 0,
+          response?.items?.length ?? 0 > 0,
           'response.items.length expected to be greater 0',
         );
         should.ok(
@@ -137,7 +137,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200'
         );
         should.ok(
-          response?.items?.length > 0,
+          response?.items?.length ?? 0 > 0,
           'response.items.length expected to be greater 0',
         );
         should.ok(
@@ -157,7 +157,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200'
         );
         should.ok(
-          response?.items?.length > 0,
+          response?.items?.length ?? 0 > 0,
           'response.items.length expected to be greater 0',
         );
         should.ok(
@@ -232,7 +232,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           response.operationStatus?.message ?? 'response.operationStatus.code expected to be 200'
         );
         should.ok(
-          response?.items?.length > 0,
+          response?.items?.length ?? 0 > 0,
           'response.items.length expected to be greater 0',
         );
         should.ok(
@@ -258,7 +258,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200',
         );
         should.ok(
-          response?.items?.length > 0,
+          response?.items?.length ?? 0 > 0,
           'response.items.length expected to be greater 0',
         );
         should.ok(
@@ -284,7 +284,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           'response.operationStatus.code expected to be 200'
         );
         should.ok(
-          response?.items?.length > 0,
+          response?.items?.length ?? 0 > 0,
           'response.items.length expected to be greater 0',
         );
         should.ok(

@@ -419,7 +419,7 @@ export namespace DHL_Soap
       }
       
       return fulfillments.map((fulfillment, i) => {
-        const dhl_state = response?.CreationState?.find((state: any) => state.sequenceNumber === i.toString());
+        const dhl_state = response?.CreationState?.find((state: any) => state.sequenceNumber === (i + 1).toString());
         const code = dhl_state?.LabelData.Status.statusCode;
         const state = code === 0 ? State.SUBMITTED : State.INVALID;
         const status = this.DHLCode2StatusCode(
@@ -460,7 +460,7 @@ export namespace DHL_Soap
         ShipmentOrder: requests.map((request, i): ShipmentOrder => {
           const packaging = request.payload.packaging;
           return {
-            sequenceNumber: i,
+            sequenceNumber: i + 1,
             Shipment: {
               Shipper: {
                 Name: {
@@ -517,9 +517,11 @@ export namespace DHL_Soap
                   widthInCM: request.parcel.package.size_in_cm.width,
                   weightInKG: request.parcel.package.weight_in_kg,
                 },
+                /* No longer supported!!!
                 Notification: {
                   recipientEmailAddress: packaging.notify
                 }
+                */
               }
             }
           }

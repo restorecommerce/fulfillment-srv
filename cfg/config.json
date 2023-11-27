@@ -265,15 +265,21 @@
       "renderRequest": {
         "messageObject": "io.restorecommerce.rendering.RenderRequest"
       },
+      "setApiKeyCommand": {
+        "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
+      },
       "topics": {
         "command": {
           "topic": "io.restorecommerce.command",
-          "events": [
-            "healthCheckCommand",
-            "versionCommand",
-            "restoreCommand",
-            "resetCommand"
-          ]
+          "events": {
+            "healthCheckCommand": "fulfillmentCommandInterface.command",
+            "restoreCommand": "fulfillmentCommandInterface.command",
+            "resetCommand": "fulfillmentCommandInterface.command",
+            "versionCommand": "fulfillmentCommandInterface.command",
+            "configUpdateCommand": "fulfillmentCommandInterface.command",
+            "setApiKeyCommand": "fulfillmentCommandInterface.command",
+            "flushCacheCommand": "fulfillmentCommandInterface.command"
+          }
         },
         "jobs": {
           "topic": "io.restorecommerce.jobs",

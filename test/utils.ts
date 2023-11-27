@@ -1,4 +1,5 @@
 import should from 'should';
+import { RedisClientType, createClient as RedisCreateClient } from 'redis';
 import { GrpcMockServer } from '@alenon/grpc-mock-server';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import { createLogger } from '@restorecommerce/logger';
@@ -55,3 +56,16 @@ export async function mockServices(configs: { [key: string]: any }) {
     ).start();
   }).filter(m => !!m)) as GrpcMockServer[];
 };
+
+let redisClient: RedisClientType;
+export async function getRedisInstance() {
+  if (redisClient) {
+    return redisClient;
+  }
+  const redisConfig = cfg.get('redis');
+  redisConfig.database = cfg.get('redis:db-indexes:db-subject');
+  redisClient = RedisCreateClient(redisConfig);
+  redisClient.on('error', (err: any) => logger.error('Redis Client Error', err));
+  await redisClient.connect();
+  return redisClient;
+}

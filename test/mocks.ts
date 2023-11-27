@@ -1,41 +1,133 @@
+import {
+  Response,
+  Response_Decision,
+  ReverseQuery,
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/access_control';
+import {
+  Effect
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/rule';
+import {
+  UserListResponse,
+  UserResponse,
+  UserType
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user';
 import { 
-  ProductListResponse, ProductResponse
+  ProductListResponse,
+  ProductResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/product';
 import {
-  OrganizationListResponse, OrganizationResponse
+  OrganizationListResponse,
+  OrganizationResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/organization';
 import {
-  ContactPointListResponse, ContactPointResponse
+  ContactPointListResponse,
+  ContactPointResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/contact_point';
 import {
-  AddressListResponse, BillingAddress, ShippingAddress
+  AddressListResponse,
+  BillingAddress,
+  ShippingAddress
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/address';
 import {
   CountryListResponse,
   CountryResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/country';
 import {
-  TaxListResponse, TaxResponse
+  TaxListResponse,
+  TaxResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/tax';
 import {
-  ShopListResponse, ShopResponse
+  ShopListResponse,
+  ShopResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/shop';
 import {
-  CustomerListResponse, CustomerResponse
+  CustomerListResponse,
+  CustomerResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/customer';
 import {
   FulfillmentIdList,
   FulfillmentList,
   State as FulfillmentState
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
-import { OperationStatus } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/status';
-import { InvoiceListResponse, PaymentState } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/invoice';
-import { DeepPartial } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/resource_base';
-import { FulfillmentProductList, PackingSolutionQueryList } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_product';
-import { FulfillmentCourierList } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_courier';
-import { State } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import {
+  OperationStatus
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/status';
+import { 
+  InvoiceListResponse,
+  PaymentState
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/invoice';
+import {
+  DeepPartial
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/resource_base';
+import {
+  FulfillmentProductList,
+  PackingSolutionQueryList
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_product';
+import {
+  FulfillmentCourierList
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_courier';
+import {
+  State
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+import {
+  HierarchicalScope
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
+import {
+  getRedisInstance,
+  logger
+} from './utils';
 
 type Address = ShippingAddress & BillingAddress;
+
+const mainMeta = {
+  modifiedBy: 'SYSTEM',
+  acls: [],
+  created: new Date(),
+  modified: new Date(),
+  owners: [
+    {
+      id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
+      value: 'urn:restorecommerce:acs:model:organization.Organization',
+      attributes: [
+        {
+          id: 'urn:restorecommerce:acs:names:ownerInstance',
+          value: 'main',
+          attributes: []
+        }
+      ]
+    },
+    {
+      id: 'urn:restorecommerce:acs:names:ownerInstance',
+      value: 'main',
+      attributes: []
+    }
+  ]
+};
+
+const subMeta = {
+  modifiedBy: 'SYSTEM',
+  acls: [],
+  created: new Date(),
+  modified: new Date(),
+  owners: [
+    {
+      id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
+      value: 'urn:restorecommerce:acs:model:organization.Organization',
+      attributes: [
+        {
+          id: 'urn:restorecommerce:acs:names:ownerInstance',
+          value: 'sub',
+          attributes: []
+        }
+      ]
+    },
+    {
+      id: 'urn:restorecommerce:acs:names:ownerInstance',
+      value: 'sub',
+      attributes: []
+    }
+  ]
+};
 
 const operationStatus: OperationStatus = {
   code: 200,
@@ -354,7 +446,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         id: 'dhl-1-national',
         name: 'DHL National (Germany)',
         description: 'Versendungen innerhalb Deutschland',
-        courierId: validCouriers.dhl_1.items[0].id,
+        courierId: validCouriers.dhl_1.items?.[0].id,
         startZones: ['DE'],
         destinationZones: ['DE'],
         taxIds: [taxes[0].payload?.id as string],
@@ -420,7 +512,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         id: 'dhl-1-europe',
         name: 'DHL Europe',
         description: 'Versendungen innerhalb Europas',
-        courierId: validCouriers.dhl_1.items[0].id,
+        courierId: validCouriers.dhl_1.items?.[0].id,
         taxIds: [taxes[0].payload?.id as string],
         startZones: ['DE'],
         destinationZones: ['DE'],
@@ -486,7 +578,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         id: 'dhl-2-national',
         name: 'DHL National (Germany)',
         description: 'Versendungen innerhalb Deutschland',
-        courierId: validCouriers.dhl_1.items[1].id,
+        courierId: validCouriers.dhl_1.items?.[1].id,
         startZones: ['DE'],
         destinationZones: ['DE'],
         taxIds: [taxes[0].payload?.id as string],
@@ -552,7 +644,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         id: 'dhl-2-europe',
         name: 'DHL Europe',
         description: 'Versendungen innerhalb Europas',
-        courierId: validCouriers.dhl_1.items[1].id,
+        courierId: validCouriers.dhl_1.items?.[1].id,
         startZones: ['DE', 'FR', 'IT', 'ES'],
         destinationZones: ['DE', 'FR', 'IT', 'ES'],
         taxIds: [taxes[0].payload?.id as string],
@@ -642,8 +734,8 @@ const validPackingSolutionQueries: { [key: string]: PackingSolutionQueryList } =
         items: [
           {
             productId: products[0].payload?.id,
-            variantId: products[0].payload?.product?.physical?.variants[0].id,
-            package: products[0].payload?.product?.physical?.variants[0].package,
+            variantId: products[0].payload?.product?.physical?.variants?.[0].id,
+            package: products[0].payload?.product?.physical?.variants?.[0].package,
             quantity: 5,
           }
         ]
@@ -673,17 +765,17 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
           parcels: [
             {
               id: '1',
-              productId: validFulfillmentProducts.dhl_1.items[0].id,
-              variantId: validFulfillmentProducts.dhl_1.items[0].variants[0].id,
+              productId: validFulfillmentProducts.dhl_1.items?.[0].id,
+              variantId: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].id,
               items: [
                 {
                   productId: products[0].payload?.id,
-                  variantId: products[0].payload?.product?.physical?.variants[0].id,
-                  package: products[0].payload?.product?.physical?.variants[0].package,
+                  variantId: products[0].payload?.product?.physical?.variants?.[0].id,
+                  package: products[0].payload?.product?.physical?.variants?.[0].package,
                   quantity: 5,
                 }
               ],
-              price: validFulfillmentProducts.dhl_1.items[0].variants[0].price,
+              price: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].price,
               amount: undefined,
               package: {
                 sizeInCm: {
@@ -738,17 +830,17 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
           parcels: [
             {
               id: '1',
-              productId: validFulfillmentProducts.dhl_1.items[0].id,
-              variantId: validFulfillmentProducts.dhl_1.items[0].variants[0].id,
+              productId: validFulfillmentProducts.dhl_1.items?.[0].id,
+              variantId: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].id,
               items: [
                 {
                   productId: products[0].payload?.id,
-                  variantId: products[0].payload?.product?.physical?.variants[0].id,
-                  package: products[0].payload?.product?.physical?.variants[0].package,
+                  variantId: products[0].payload?.product?.physical?.variants?.[0].id,
+                  package: products[0].payload?.product?.physical?.variants?.[0].package,
                   quantity: 5,
                 }
               ],
-              price: validFulfillmentProducts.dhl_1.items[0].variants[0].price,
+              price: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].price,
               amount: undefined,
               package: {
                 sizeInCm: {
@@ -761,17 +853,17 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
             },
             {
               id: '2',
-              productId: validFulfillmentProducts.dhl_1.items[0].id,
-              variantId: validFulfillmentProducts.dhl_1.items[0].variants[0].id,
+              productId: validFulfillmentProducts.dhl_1.items?.[0].id,
+              variantId: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].id,
               items: [
                 {
                   productId: products[0].payload?.id,
-                  variantId: products[0].payload?.product?.physical?.variants[0].id,
-                  package: products[0].payload?.product?.physical?.variants[0].package,
+                  variantId: products[0].payload?.product?.physical?.variants?.[0].id,
+                  package: products[0].payload?.product?.physical?.variants?.[0].package,
                   quantity: 5,
                 }
               ],
-              price: validFulfillmentProducts.dhl_1.items[0].variants[0].price,
+              price: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].price,
               amount: undefined,
               package: {
                 sizeInCm: {
@@ -834,11 +926,10 @@ const validTrackingRequests: { [key: string]: FulfillmentIdList } = {
   dhl_1: {
     items: [
       {
-        id: validFulfillments.dhl_1.items[1].id,
+        id: validFulfillments.dhl_1.items?.[1].id,
         shipmentNumbers: [
           '00340434161094015902'
         ],
-        subject: {},
       }
     ],
     totalCount: 1,
@@ -873,7 +964,214 @@ export const samples = {
   },
 };
 
+const users: { [key: string]: UserResponse } = {
+  superadmin: {
+    payload: {
+      id: 'superadmin',
+      name: 'manuel.mustersuperadmin',
+      first_name: 'Manuel',
+      last_name: 'Mustersuperadmin',
+      email: 'manuel.mustersuperadmin@restorecommerce.io',
+      password: 'A$1rcadminpw',
+      default_scope: 'r-ug',
+      role_associations: [
+        {
+          id: 'superadmin-1-administrator-r-id',
+          role: 'superadministrator-r-id',
+          attributes: [],
+        },
+      ],
+      locale_id: 'de-de',
+      timezone_id: 'europe-berlin',
+      active: true,
+      user_type: UserType.ORG_USER,
+      tokens: [
+        {
+          token: 'superadmin',
+        }
+      ],
+      meta: mainMeta,
+    },
+    status: {
+      id: 'superadmin',
+      code: 200,
+      message: 'OK',
+    }
+  },
+  admin: {
+    payload: {
+      id: 'admin',
+      name: 'manuel.musteradmin',
+      first_name: 'Manuel',
+      last_name: 'Musteradmin',
+      email: 'manuel.musteradmin@restorecommerce.io',
+      password: 'A$1rcadminpw',
+      default_scope: 'sub',
+      role_associations: [
+        {
+          id: 'admin-1-administrator-r-id',
+          role: 'administrator-r-id',
+          attributes: [
+            {
+              id: 'urn:restorecommerce:acs:names:roleScopingEntity',
+              value: 'urn:restorecommerce:acs:model:organization.Organization',
+              attributes: [
+                {
+                  id: 'urn:restorecommerce:acs:names:roleScopingInstance',
+                  value: 'sub',
+                }
+              ],
+            }
+          ],
+        },
+      ],
+      locale_id: 'de-de',
+      timezone_id: 'europe-berlin',
+      active: true,
+      user_type: UserType.ORG_USER,
+      tokens: [
+        {
+          token: 'admin',
+        }
+      ],
+      meta: mainMeta,
+    },
+    status: {
+      id: 'admin',
+      code: 200,
+      message: 'OK',
+    }
+  },
+};
+
+const hierarchicalScopes: { [key: string]: HierarchicalScope[] } = {
+  superadmin: [
+    {
+      id: 'main',
+      role: 'superadministrator-r-id',
+      children: [
+        {
+          id: 'sub',
+        }
+      ]
+    }
+  ],
+  admin: [
+    {
+      id: 'sub',
+      role: 'administrator-r-id',
+    }
+  ]
+};
+
+const whatIsAllowed: ReverseQuery = {
+  policySets: [
+    {
+      id: 'policy_set',
+      combiningAlgorithm: 'urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:permit-overrides',
+      effect: Effect.DENY,
+      policies: [
+        {
+          id: 'policy_superadmin_permit_all',
+          combiningAlgorithm: 'urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:permit-overrides',
+          effect: Effect.DENY,
+          target: {
+            subjects: [
+              {
+                id: 'urn:restorecommerce:acs:names:role',
+                value: 'superadministrator-r-id',
+              },
+            ],
+          },
+          rules: [{
+            effect: Effect.PERMIT,
+            target: {
+              subjects: [
+                {
+                  id: 'urn:restorecommerce:acs:names:role',
+                  value: 'superadministrator-r-id',
+                },
+              ],
+            },
+          }],
+          hasRules: true,
+        },{
+          id: 'policy_admin_permit_all_by_scope',
+          combiningAlgorithm: 'urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:permit-overrides',
+          effect: Effect.DENY,
+          target: {
+            subjects: [
+              {
+                id: 'urn:restorecommerce:acs:names:role',
+                value: 'administrator-r-id',
+              },
+            ],
+          },
+          rules: [{
+            id: 'admin_can_do_all_by_scope',
+            effect: Effect.PERMIT,
+            target: {
+              subjects: [
+                {
+                  id: 'urn:restorecommerce:acs:names:role',
+                  value: 'administrator-r-id',
+                },
+                {
+                  id: 'urn:restorecommerce:acs:names:roleScopingEntity',
+                  value: 'urn:restorecommerce:acs:model:organization.Organization',
+                },
+              ],
+            },
+          }],
+          hasRules: true
+        },
+      ]
+    },
+  ],
+  operationStatus,
+};
+
 export const rules = {
+  'acs-srv': {
+    isAllowed: (
+      call: any,
+      callback: (error: any, response: DeepPartial<Response>) => void,
+    ) => callback(null, {
+      decision: Response_Decision.PERMIT,
+    }),
+    whatIsAllowed: (
+      call: any,
+      callback: (error: any, response: DeepPartial<ReverseQuery>) => void,
+    ) => callback(null, whatIsAllowed),
+  },
+  user: {
+    read: (
+      call: any,
+      callback: (error: any, response: DeepPartial<UserListResponse>) => void,
+    ) => callback(null, {}),
+    findByToken: (
+      call: any,
+      callback: (error: any, response: DeepPartial<UserResponse>) => void,
+    ) => {
+      getRedisInstance().then(
+        async client => {
+          const subject = users[call.request.token];
+          await client.set(
+            `cache:${ subject.payload?.id }:subject`,
+            JSON.stringify(subject.payload),
+          );
+          await client.set(
+            `cache:${ subject.payload?.id }:hrScopes`,
+            JSON.stringify(hierarchicalScopes[call.request.token]),
+          );
+          return subject;
+        },
+      ).then(
+        subject => callback(null, subject),
+        error => logger.error(error),
+      );
+    }
+  },
   shop: {
     read: (
       call: any,

@@ -163,9 +163,13 @@ export class Worker {
   async start(cfg?: any, logger?: any): Promise<any> {
     // Load config
     this._cfg = cfg = cfg ?? createServiceConfig(process.cwd());
-
+    const logger_cfg = cfg.get('logger') ?? {};
+    logger_cfg.esTransformer = (msg: any) => {
+      msg.fields = JSON.stringify(msg.fields);
+      return msg;
+    };
     // create server
-    this.logger = logger = logger || createLogger(cfg.get('logger'));
+    this.logger = logger = logger ?? createLogger(cfg.get('logger'));
     this.server = new Server(cfg.get('server'), logger);
 
     // get database connection
