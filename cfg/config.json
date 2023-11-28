@@ -27,123 +27,38 @@
     }
   },
   "redis": {
-    "host": "localhost",
-    "port": 6379,
-    "offsetStoreInterval": 1000
+    "url": "redis://localhost:6379",
+    "offsetStoreInterval": 1000,
+    "db-indexes": {
+      "db-offsetStore": 0,
+      "db-subject": 4,
+      "db-orderStore": 9
+    }
   },
   "client": {
-    "fulfillment": {
-      "address": "localhost:50065"
-    },
-    "fulfillment_courier": {
-      "address": "localhost:50065"
-    },
-    "fulfillment_product": {
-      "address": "localhost:50065"
-    },
     "customer": {
-      "address": "localhost:50066",
-      "mock": {
-        "protoPath": "io/restorecommerce/customer.proto",
-        "packageName": "io.restorecommerce.customer",
-        "serviceName": "CustomerService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50063"
     },
     "shop": {
-      "address": "localhost:50067",
-      "mock": {
-        "protoPath": "io/restorecommerce/shop.proto",
-        "packageName": "io.restorecommerce.shop",
-        "serviceName": "ShopService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50063"
     },
     "organization": {
-      "address": "localhost:50068",
-      "mock": {
-        "protoPath": "io/restorecommerce/organization.proto",
-        "packageName": "io.restorecommerce.organization",
-        "serviceName": "OrganizationService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50063"
     },
     "contact_point": {
-      "address": "localhost:50069",
-      "mock": {
-        "protoPath": "io/restorecommerce/contact_point.proto",
-        "packageName": "io.restorecommerce.contact_point",
-        "serviceName": "ContactPointService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50063"
     },
     "address": {
-      "address": "localhost:50070",
-      "mock": {
-        "protoPath": "io/restorecommerce/address.proto",
-        "packageName": "io.restorecommerce.address",
-        "serviceName": "AddressService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50063"
     },
     "country": {
-      "address": "localhost:50071",
-      "mock": {
-        "protoPath": "io/restorecommerce/country.proto",
-        "packageName": "io.restorecommerce.country",
-        "serviceName": "CountryService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50063"
     },
     "tax": {
-      "address": "localhost:50072",
-      "mock": {
-        "protoPath": "io/restorecommerce/tax.proto",
-        "packageName": "io.restorecommerce.tax",
-        "serviceName": "TaxService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50063"
     },
     "product": {
-      "address": "localhost:50073",
-      "mock": {
-        "protoPath": "io/restorecommerce/product.proto",
-        "packageName": "io.restorecommerce.product",
-        "serviceName": "ProductService",
-        "protoLoadOptions": {
-          "includeDirs": [
-            "node_modules/@restorecommerce/protos/"
-          ]
-        }
-      }
+      "address": "localhost:50068"
     }
   },
   "events": {
@@ -334,7 +249,7 @@
       {
         "name": "grpcFulfillmentSrv",
         "provider": "grpc",
-        "addr": "0.0.0.0:50065"
+        "addr": "0.0.0.0:50067"
       }
     ]
   },

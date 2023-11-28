@@ -9,48 +9,60 @@
       "source": "fulfillment-srv"
     }
   },
+  "redis": {
+    "url": "redis://redis:6379"
+  },
   "database": {
     "main": {
-      "host": "arangodb"
+      "provider": "arango",
+      "host": "arangodb",
+      "port": 8529,
+      "database": "fulfillment-srv",
+      "autoCreate": true
     }
   },
-  "redis": {
-    "host": "redis"
+  "client": {
+    "customer": {
+      "address": "localhost:50051"
+    },
+    "shop": {
+      "address": "localhost:50051"
+    },
+    "organization": {
+      "address": "localhost:50051"
+    },
+    "contact_point": {
+      "address": "localhost:50051"
+    },
+    "address": {
+      "address": "localhost:50051"
+    },
+    "country": {
+      "address": "localhost:50051"
+    },
+    "tax": {
+      "address": "localhost:50051"
+    },
+    "product": {
+      "address": "localhost:50051"
+    }
   },
   "events": {
     "kafka": {
-      "kafkaHost": "kafka:9092"
+      "kafka": {
+        "brokers": [
+          "kafka:9092"
+        ]
+      }
     }
   },
   "server": {
     "transports": [
       {
-        "name": "grpcFulfillmentSrv",
+        "name": "grpcFulfillment",
         "provider": "grpc",
-        "services": {
-          "io-restorecommerce-fulfillment-srv": "io.restorecommerce.fulfillment.Service",
-          "io-restorecommerce-fulfillment_courier-srv": "io.restorecommerce.fulfillment_courier.Service",
-          "io-restorecommerce-fulfillment-reflection": "grpc.reflection.v1alpha.ServerReflection",
-          "io-restorecommerce-fulfillment-cis": "io.restorecommerce.commandinterface.Service",
-          "grpc-health-v1": "grpc.health.v1.Health"
-        },
-        "protos": [
-          "io/restorecommerce/address.proto",
-          "io/restorecommerce/fulfillment.proto",
-          "io/restorecommerce/fulfillment_courier.proto",
-          "grpc/reflection/v1alpha/reflection.proto",
-          "io/restorecommerce/commandinterface.proto",
-          "grpc/health/v1/health.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
         "addr": "0.0.0.0:50051"
       }
     ]
-  },
-  "wadlurl": {
-    "url": "https://cig.dhl.de/services/production/rest/sendungsverfolgung?xml="
-  },
-  "endPoint": {
-    "url": "https://cig.dhl.de/services/production/soap"
   }
 }
