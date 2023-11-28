@@ -507,7 +507,7 @@ export namespace DHL_Soap
               ShipmentDetails: {
                 shipmentDate: new Date().toISOString().slice(0,10),
                 costCenter: '',
-                customerReference: request.payload.reference.instance_id ?? request.payload.id,
+                customerReference: request.payload.id,
                 product: request.product.attributes.find(att => att.id === this.cfg.get('urns:productName')).value,
                 accountNumber: request.product.attributes.find(att => att.id === this.cfg.get('urns:accountNumber')).value,
                 // Service: parseService(request.parcel.attributes),

@@ -755,10 +755,10 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
         userId: 'user_1',
         customerId: customers[0].payload?.id,
         shopId: shops[0].payload?.id,
-        reference: {
+        references: [{
           instanceType: 'urn:restorecommerce:io:order:Order',
           instanceId: 'order_1',
-        },
+        }],
         packaging: {
           sender: businessAddresses[0],
           recipient: residentialAddresses[0],
@@ -820,10 +820,10 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
         userId: 'user_2',
         customerId: customers[0].payload?.id,
         shopId: shops[0].payload?.id,
-        reference: {
+        references: [{
           instanceType: 'urn:restorecommerce:io:order:Order',
           instanceId: 'order_1',
-        },
+        }],
         packaging: {
           sender: businessAddresses[0],
           recipient: residentialAddresses[0],
