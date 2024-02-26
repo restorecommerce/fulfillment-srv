@@ -1,10 +1,10 @@
 import { Logger } from 'winston';
-import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
+import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
     Courier,
     FlatAggregatedFulfillment,
     extractCouriers,
-} from './utils';
+} from './utils.js';
 
 export abstract class Stub
 {

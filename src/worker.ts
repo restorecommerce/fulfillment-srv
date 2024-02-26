@@ -13,33 +13,31 @@ import {
 import { createLogger } from '@restorecommerce/logger';
 import { createServiceConfig } from '@restorecommerce/service-config';
 import { RedisClientType as RedisClient, createClient } from 'redis';
-import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base';
+import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base.js';
 import { Logger } from 'winston';
-import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transport/provider/grpc';
+import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transport/provider/grpc/index.js';
 import { 
   FulfillmentServiceDefinition,
   protoMetadata as FulfillmentMeta,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import {
   FulfillmentCourierServiceDefinition,
   protoMetadata as FulfillmentCourierMeta,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
 import {
   FulfillmentProductServiceDefinition,
   protoMetadata as FulfillmentProductMeta,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { 
   CommandInterfaceServiceDefinition,
   protoMetadata as CommandInterfaceMeta,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface';
-import { HealthDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/grpc/health/v1/health';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface.js';
+import { HealthDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/grpc/health/v1/health.js';
 import { ServerReflectionService } from 'nice-grpc-server-reflection';
-import {
-  FulfillmentService,
-  FulfillmentCourierService,
-  FulfillmentProductService,
-  FulfillmentCommandInterface
-} from './services';
+import { FulfillmentService } from './services/fulfillment.js';
+import { FulfillmentCourierService } from './services/fulfillment_courier.js';
+import { FulfillmentProductService } from './services/fulfillment_product.js';
+import { FulfillmentCommandInterface } from './services/fulfillment_command_interface.js';
 
 registerProtoMeta(
   FulfillmentMeta,

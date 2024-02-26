@@ -8,35 +8,35 @@ import {
 import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
-import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
-import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
+import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos.js';
+import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base.js';
 import {
   FilterOp_Operator,
   Filter_Operation,
   Filter_ValueType
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter';
-import { Courier as Packer, Offer } from '@restorecommerce/cart/lib/model/impl/Courier';
-import { Container } from '@restorecommerce/cart/lib/model/impl/bin/Container';
-import { IItem } from '@restorecommerce/cart/lib/model/IItem';
-import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter.js';
+import { Courier as Packer, Offer } from '@restorecommerce/cart/lib/model/impl/Courier.js';
+import { Container } from '@restorecommerce/cart/lib/model/impl/bin/Container.js';
+import { IItem } from '@restorecommerce/cart/lib/model/IItem.js';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
 import { 
   Amount,
   VAT
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount';
-import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
-import { CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
-import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
-import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
-import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
-import { ContactPointResponse, ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
-import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
+import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
+import { CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
+import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
+import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
+import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
+import { ContactPointResponse, ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
+import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
 import {
   TaxServiceDefinition,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
 import {
   Parcel,
   Item,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import {
   PackingSolutionQuery,
   PackingSolutionQueryList,
@@ -46,10 +46,10 @@ import {
   FulfillmentProductListResponse,
   PackingSolutionResponse,
   FulfillmentProductServiceImplementation,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import {
   FulfillmentCourierListResponse
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
 import { FulfillmentCourierService } from '.';
 import {
   CRUDClient,
@@ -57,7 +57,6 @@ import {
   ProductResponse,
   ProductResponseMap,
   TaxResponseMap,
-  Stub,
   CountryResponseMap,
   ShopResponseMap,
   OrganizationResponseMap,
@@ -65,7 +64,8 @@ import {
   AddressResponseMap,
   CustomerResponseMap,
   filterTax,
-} from '..';
+} from './../utils.js';
+import { Stub } from './../stub.js';
 
 
 interface PackageSolutionTotals extends PackingSolutionQuery {

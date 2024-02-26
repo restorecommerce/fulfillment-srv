@@ -1,4 +1,4 @@
-import { 
+import {
   ResourcesAPIBase,
   ServiceBase
 } from '@restorecommerce/resource-base-interface';
@@ -12,17 +12,17 @@ import {
 } from '@restorecommerce/acs-client';
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
-import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
-import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
+import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos.js';
+import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base.js';
 import {
   OperationStatus,
   Status,
   StatusListResponse,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
   Filter_Operation,
   Filter_ValueType,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter.js';
 import {
   Client,
   GrpcClientConfig,
@@ -39,28 +39,25 @@ import {
   FulfillmentInvoiceRequestList,
   FulfillmentResponse,
   FulfillmentId,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
-import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
-import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
+import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
 import {
   CountryServiceDefinition,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
-import { TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
-import { InvoiceListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
+import { TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
+import { InvoiceListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice.js';
 import {
   ContactPointResponse,
   ContactPointServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
-import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
-import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
-import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
-import { VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount';
-import { 
-  FulfillmentCourierService,
-  FulfillmentProductService
-} from './';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
+import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
+import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
+import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
+import { VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
+import { FulfillmentCourierService } from './fulfillment_courier.js';
+import { FulfillmentProductService } from './fulfillment_product.js';
 import {
-  Stub,
   ProductResponseMap,
   AggregatedFulfillment,
   mergeFulfillments,
@@ -80,13 +77,13 @@ import {
   throwStatusCode,
   createStatusCode,
   createOperationStatusCode,
-} from '..';
+} from './../utils.js';
+import { Stub } from './../stub.js';
 
 @access_controlled_service
 export class FulfillmentService
   extends ServiceBase<FulfillmentListResponse, FulfillmentList>
-  implements FulfillmentServiceImplementation
-{
+  implements FulfillmentServiceImplementation {
   private static async ACSContextFactory(
     self: FulfillmentService,
     request: FulfillmentList | FulfillmentIdList | FulfillmentInvoiceRequestList,
@@ -234,7 +231,7 @@ export class FulfillmentService
       AddressServiceDefinition,
       createChannel(cfg.get('client:address').address)
     );
-    
+
     this.country_service = createClient(
       {
         ...cfg.get('client:country'),
@@ -329,7 +326,7 @@ export class FulfillmentService
     );
   }
 
-  async getById<T>(map: { [id:string]: T }, id: string): Promise<T> {
+  async getById<T>(map: { [id: string]: T }, id: string): Promise<T> {
     if (id in map) {
       return map[id];
     }
@@ -342,7 +339,7 @@ export class FulfillmentService
     }
   }
 
-  async getByIds<T>(map: { [id:string]: T }, ids: string[]): Promise<T[]> {
+  async getByIds<T>(map: { [id: string]: T }, ids: string[]): Promise<T[]> {
     return Promise.all(ids.map(
       id => this.getById(map, id)
     ));
@@ -517,7 +514,7 @@ export class FulfillmentService
               this.legal_address_type_id
             ) >= 0
           ) ?? throwStatusCode<ContactPointResponse>(
-            typeof(item),
+            typeof (item),
             item.id,
             this.status_codes.NO_LEGAL_ADDRESS,
           )
@@ -551,7 +548,7 @@ export class FulfillmentService
               this.legal_address_type_id
             ) >= 0
           ) ?? throwStatusCode<ContactPointResponse>(
-            typeof(item),
+            typeof (item),
             item.id,
             this.status_codes.NO_LEGAL_ADDRESS,
           )
@@ -648,7 +645,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.CREATE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -663,7 +660,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -678,7 +675,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -693,7 +690,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -729,7 +726,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -800,11 +797,11 @@ export class FulfillmentService
       return this.handleOperationError<FulfillmentListResponse>(e);
     }
   }
-  
+
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -836,7 +833,7 @@ export class FulfillmentService
         },
         {} as { [id: string]: FulfillmentResponse },
       );
-  
+
       await this.getFulfillmentsByIds(
         request.items.map(item => item.id),
         request.subject,
@@ -873,7 +870,7 @@ export class FulfillmentService
             ) {
               return false;
             }
-              
+
             if (!f.label) {
               f.status = createStatusCode(
                 this.name,
@@ -882,7 +879,7 @@ export class FulfillmentService
               );
               return false;
             }
-              
+
             switch (f.label.state) {
               case State.SUBMITTED:
               case State.IN_TRANSIT:
@@ -959,7 +956,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -971,7 +968,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'fulfillment' }],
     database: 'arangoDB',
     useCache: true,
@@ -985,7 +982,7 @@ export class FulfillmentService
         },
         {}
       );
-  
+
       const fulfillments = await this.getFulfillmentsByIds(
         request.items.map(item => item.id),
         request.subject,
@@ -995,13 +992,13 @@ export class FulfillmentService
           item => item.payload as Fulfillment
         )
       );
-  
+
       const agg_fulfillments = await this.aggregateFulfillments(
         fulfillments,
         request.subject,
         context
       );
-  
+
       const flat_fulfillments = flatMapAggregatedFulfillments(
         agg_fulfillments,
       ).map(
@@ -1020,40 +1017,40 @@ export class FulfillmentService
               code: 400,
               message: `For canceling Fulfillment ${
                 id
-              } is expected to be ${
+                } is expected to be ${
                 State.SUBMITTED
-              } or ${
+                } or ${
                 State.IN_TRANSIT
-              } but is ${
+                } but is ${
                 f.payload?.state
-              }!`
+                }!`
             }
           }
-  
+
           return f;
         }
       );
-      
+
       const invalid_fulfillments = flat_fulfillments.filter(
         f => f.status?.code !== 200
       );
-  
+
       const response = await Stub.track(flat_fulfillments.filter(
         f => {
           const shipment_numbers = request_map[f.payload?.id];
           return f.status?.code === 200 &&
             !shipment_numbers?.length ||
             shipment_numbers.find(
-            s => s === f.payload?.labels[0]?.shipment_number
-          )
+              s => s === f.payload?.labels[0]?.shipment_number
+            )
         }
       ));
-      
+
       const items = mergeFulfillments([
         ...response,
         ...invalid_fulfillments,
       ]);
-  
+
       const update_results = await super.update({
         items: items.filter(
           f => f.status?.code === 200
@@ -1063,7 +1060,7 @@ export class FulfillmentService
         total_count: items.length,
         subject: request.subject
       }, context);
-  
+
       update_results.items.forEach(item => {
         if (item.payload.state in this.emitters) {
           switch (item.payload.state) {
@@ -1076,7 +1073,7 @@ export class FulfillmentService
           }
         }
       });
-  
+
       update_results.items.push(
         ...items.filter(i => i.status?.code !== 200)
       );
@@ -1091,7 +1088,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.CREATE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: FulfillmentService?.ACSContextFactory,
     resource: [{ resource: 'invoice' }],
     database: 'arangoDB',
     useCache: true,
@@ -1102,7 +1099,7 @@ export class FulfillmentService
   ): Promise<DeepPartial<InvoiceListResponse>> {
     return null;
   }
-  
+
   async triggerInvoice(
     request: FulfillmentInvoiceRequestList,
     context: any

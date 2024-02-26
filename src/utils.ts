@@ -6,55 +6,55 @@ import {
   Parcel,
   State,
   Tracking,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import {
   FulfillmentCourier,
   FulfillmentCourierResponse,
   FulfillmentCourierServiceImplementation,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
 import {
   FulfillmentProduct,
   FulfillmentProductResponse,
   FulfillmentProductServiceImplementation,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import {
   UserResponse,
   UserServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
 import {
   CustomerResponse,
   CustomerServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
 import {
   ShopResponse,
   ShopServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
 import {
   OrganizationResponse,
   OrganizationServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
 import {
   ContactPointResponse,
   ContactPointServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
 import {
   Tax,
   TaxResponse,
   TaxServiceDefinition,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
 import {
   AddressResponse,
   AddressServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
 import {
   Country,
   CountryResponse,
   CountryServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
 import {
   InvoiceServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice';
-import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status';
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice.js';
+import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 
 export type CRUDClient = Client<TaxServiceDefinition>
 | Client<UserServiceDefinition>
