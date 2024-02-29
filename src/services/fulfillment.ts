@@ -10,7 +10,7 @@ import {
   DefaultACSClientContextFactory,
   Operation
 } from '@restorecommerce/acs-client';
-import { DatabaseProvider } from '@restorecommerce/chassis-srv';
+import { database } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos.js';
 import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base.js';
@@ -155,7 +155,7 @@ export class FulfillmentService
     readonly fulfillmentCourierSrv: FulfillmentCourierService,
     readonly fulfillmentProductSrv: FulfillmentProductService,
     readonly topic: Topic,
-    readonly db: DatabaseProvider,
+    readonly db: database.DatabaseProvider,
     readonly cfg: any,
     readonly logger: any,
   ) {

@@ -289,20 +289,3 @@ export class Worker {
     ]);
   }
 }
-
-if (require.main === module) {
-  const service = new Worker();
-  const logger = service.logger;
-  service.start().then().catch((err) => {
-    console.log(err);
-    logger.error('startup error', err);
-    process.exit(1);
-  });
-
-  process.on('SIGINT', () => {
-    service.stop().then().catch((err) => {
-      logger.error('shutdown error', err);
-      process.exit(1);
-    });
-  });
-}
