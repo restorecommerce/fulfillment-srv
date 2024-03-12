@@ -9,7 +9,7 @@ import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-in
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
-import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
+import { DeleteRequest, ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
 import {
   FilterOp_Operator,
   Filter_Operation,
@@ -66,6 +66,16 @@ import {
   CustomerResponseMap,
   filterTax,
 } from '..';
+import { 
+  ACSClientContext,
+  AuthZAction,
+  DefaultACSClientContextFactory,
+  DefaultResourceFactory,
+  Operation,
+  access_controlled_function,
+  access_controlled_service,
+  injects_meta_data
+} from '@restorecommerce/acs-client';
 
 
 interface PackageSolutionTotals extends PackingSolutionQuery {
@@ -107,10 +117,28 @@ const countItems = (goods: Item[], container: Container) => {
   return [...item_map.values()];
 };
 
+@access_controlled_service
 export class FulfillmentProductService 
   extends ServiceBase<FulfillmentProductListResponse, FulfillmentProductList> 
   implements FulfillmentProductServiceImplementation
 {
+  private static async ACSContextFactory(
+    self: FulfillmentProductService,
+    request: FulfillmentProductList,
+    context: any,
+  ): Promise<ACSClientContext> {
+    const ids = request.items?.map((item: any) => item.id);
+    const resources = await self.getFulfillmentProductsByIds(ids, request.subject, context);
+    return {
+      ...context,
+      subject: request.subject,
+      resources: [
+        ...resources.items ?? [],
+        ...request.items ?? [],
+      ],
+    };
+  }
+
   protected readonly status_codes: { [key: string]: Status } = {
     OK: {
       id: '',
@@ -383,6 +411,33 @@ export class FulfillmentProductService
     ));
   }
 
+  protected getFulfillmentProductsByIds(
+    ids: string[],
+    subject?: Subject,
+    context?: any
+  ): Promise<DeepPartial<FulfillmentProductListResponse>> {
+    ids = [...new Set(ids).values()];
+    if (ids.length > 1000) {
+      throw {
+        code: 500,
+        message: 'Query for fulfillmentProducts exceeds limit of 1000!'
+      } as OperationStatus
+    }
+
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filters: [{
+          field: 'id',
+          operation: Filter_Operation.in,
+          value: JSON.stringify(ids),
+          type: Filter_ValueType.ARRAY
+        }]
+      }],
+      subject
+    });
+    return super.read(request, context);
+  }
+
   protected async findCouriers(
     queries: PackageSolutionTotals[],
     subject?: Subject,
@@ -441,7 +496,69 @@ export class FulfillmentProductService
       subject,
     });
 
-    return this.read(call, context);
+    return super.read(call, context);
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.READ,
+    operation: Operation.whatIsAllowed,
+    context: DefaultACSClientContextFactory,
+    resource: [{ resource: 'fulfillment' }],
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override read(
+    request: ReadRequest,
+    context?: any
+  ) {
+    return super.read(request, context);
+  }
+
+  @injects_meta_data()
+  @access_controlled_function({
+    action: AuthZAction.CREATE,
+    operation: Operation.isAllowed,
+    context: FulfillmentProductService.ACSContextFactory,
+    resource: DefaultResourceFactory('fulfillment'),
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override create(
+    request: FulfillmentProductList,
+    context?: any
+  ) {
+    return super.create(request, context);
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.MODIFY,
+    operation: Operation.isAllowed,
+    context: FulfillmentProductService.ACSContextFactory,
+    resource: DefaultResourceFactory('fulfillment'),
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override update(
+    request: FulfillmentProductList,
+    context?: any
+  ) {
+    return super.update(request, context);
+  }
+
+  @injects_meta_data()
+  @access_controlled_function({
+    action: AuthZAction.MODIFY,
+    operation: Operation.isAllowed,
+    context: FulfillmentProductService.ACSContextFactory,
+    resource: DefaultResourceFactory('fulfillment'),
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override upsert(
+    request: FulfillmentProductList,
+    context?: any
+  ) {
+    return super.upsert(request, context);
   }
 
   async find(request: PackingSolutionQueryList, context?: any): Promise<PackingSolutionListResponse> {
@@ -786,5 +903,20 @@ export class FulfillmentProductService
       console.error(e);
       this.catchOperationError(e);
     }
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.DELETE,
+    operation: Operation.isAllowed,
+    context: FulfillmentProductService.ACSContextFactory,
+    resource: DefaultResourceFactory('order'),
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override delete(
+    request: DeleteRequest,
+    context: any,
+  ) {
+    return super.delete(request, context);
   }
 }

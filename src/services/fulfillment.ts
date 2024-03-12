@@ -8,12 +8,14 @@ import {
   access_controlled_function,
   access_controlled_service,
   DefaultACSClientContextFactory,
-  Operation
+  Operation,
+  DefaultResourceFactory,
+  injects_meta_data
 } from '@restorecommerce/acs-client';
 import { DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos';
-import { ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
+import { DeleteRequest, ReadRequest } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base';
 import {
   OperationStatus,
   Status,
@@ -89,7 +91,7 @@ export class FulfillmentService
 {
   private static async ACSContextFactory(
     self: FulfillmentService,
-    request: FulfillmentList | FulfillmentIdList | FulfillmentInvoiceRequestList,
+    request: FulfillmentList & FulfillmentIdList & FulfillmentInvoiceRequestList,
     context: any,
   ): Promise<ACSClientContext> {
     const ids = request.items?.map((item: any) => item.id);
@@ -97,7 +99,10 @@ export class FulfillmentService
     return {
       ...context,
       subject: request.subject,
-      resources,
+      resources: [
+        ...resources.items ?? [],
+        ...request.items ?? [],
+      ],
     };
   }
 
@@ -348,7 +353,11 @@ export class FulfillmentService
     ));
   }
 
-  protected getFulfillmentsByIds(ids: string[], subject?: Subject, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+  protected getFulfillmentsByIds(
+    ids: string[],
+    subject?: Subject,
+    context?: any
+  ): Promise<DeepPartial<FulfillmentListResponse>> {
     ids = [...new Set(ids).values()];
     if (ids.length > 1000) {
       throw {
@@ -645,11 +654,12 @@ export class FulfillmentService
     return super.read(request, context);
   }
 
+  @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.CREATE,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: DefaultResourceFactory('fulfillment'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -657,6 +667,13 @@ export class FulfillmentService
     request: FulfillmentList,
     context?: any
   ) {
+    request?.items?.forEach(
+      item => {
+        if (!item.state || item.state === State.UNRECOGNIZED) {
+          item.state = State.CREATED;
+        }
+      }
+    );
     return super.create(request, context);
   }
 
@@ -664,7 +681,7 @@ export class FulfillmentService
     action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: DefaultResourceFactory('fulfillment'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -675,11 +692,12 @@ export class FulfillmentService
     return super.update(request, context);
   }
 
+  @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: DefaultResourceFactory('fulfillment'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -693,8 +711,8 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    context: DefaultACSClientContextFactory,
+    resource: DefaultResourceFactory('fulfillment'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -726,11 +744,12 @@ export class FulfillmentService
     }
   }
 
+  @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: DefaultResourceFactory('execution.submitFulfillments'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -805,7 +824,7 @@ export class FulfillmentService
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: DefaultResourceFactory('execution.trackFulfillments'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -960,7 +979,7 @@ export class FulfillmentService
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: DefaultResourceFactory('execution.withdrawOrder'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -972,7 +991,7 @@ export class FulfillmentService
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: DefaultResourceFactory('execution.cancelFulfillments'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -1086,6 +1105,21 @@ export class FulfillmentService
     catch (e) {
       return this.handleOperationError<FulfillmentListResponse>(e);
     }
+  }
+
+  @access_controlled_function({
+    action: AuthZAction.DELETE,
+    operation: Operation.isAllowed,
+    context: FulfillmentService.ACSContextFactory,
+    resource: DefaultResourceFactory('order'),
+    database: 'arangoDB',
+    useCache: true,
+  })
+  public override delete(
+    request: DeleteRequest,
+    context: any,
+  ) {
+    return super.delete(request, context);
   }
 
   @access_controlled_function({
