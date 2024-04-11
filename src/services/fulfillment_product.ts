@@ -37,13 +37,14 @@ import {
   VAT
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
 import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
-import { CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
-import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
-import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
-import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
-import { ContactPointResponse, ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
-import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
+import { Country, CountryServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
+import { Customer, CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
+import { Shop, ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
+import { Organization, OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
+import { ContactPoint, ContactPointResponse, ContactPointServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
+import { Address, AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
 import {
+  Tax,
   TaxServiceDefinition,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
 import {
@@ -59,24 +60,21 @@ import {
   FulfillmentProductListResponse,
   PackingSolutionResponse,
   FulfillmentProductServiceImplementation,
+  FulfillmentProduct,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import {
   FulfillmentCourierListResponse
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
-import { FulfillmentCourierService } from '.';
+import { FulfillmentCourierService } from './index.js';
 import {
   CRUDClient,
   Courier,
-  ProductResponse,
-  ProductResponseMap,
-  TaxResponseMap,
-  CountryResponseMap,
-  ShopResponseMap,
-  OrganizationResponseMap,
-  ContactPointResponseMap,
-  AddressResponseMap,
-  CustomerResponseMap,
+  Payload,
+  Response,
+  ResponseList,
+  ResponseMap,
   filterTax,
+  throwOperationStatusCode,
 } from './../utils.js';
 import { Stub } from './../stub.js';
 
@@ -111,8 +109,8 @@ const countItems = (goods: Item[], container: Container) => {
   const item_map = new Map<string, Item>(goods.map(
     item => [`${item.product_id}\t${item.variant_id}`, { ...item, quantity: 0 }]
   ));
-  container.getLevels().forEach(level =>
-    level.forEach(a => {
+  container.getLevels().forEach((level) =>
+    level.forEach((a) => {
       const item = item_map.get(a.getBox().getName());
       item && (item.quantity += 1);
     })
@@ -332,10 +330,10 @@ export class FulfillmentProductService
     };
   }
 
-  protected catchOperationError(e: any) {
+  protected catchOperationError<T>(e: any) {
     this.logger?.error(e);
     return {
-      items: [],
+      items: [] as T[],
       total_count: 0,
       operation_status: {
         code: e?.code ?? 500,
@@ -344,17 +342,17 @@ export class FulfillmentProductService
     };
   }
 
-  protected get<T>(
+  protected get<T extends Payload>(
     ids: string[],
     service: CRUDClient,
     subject?: Subject,
     context?: any,
-  ): Promise<T> {
-    ids = [...new Set<string>(ids)];
-    const entity = typeof ({} as T);
+  ): Promise<ResponseMap<T>> {
+    ids = [...new Set(ids)];
+    const entity = ({} as new() => T).name;
 
     if (ids.length > 1000) {
-      throw this.createOperationStatusCode(
+      throwOperationStatusCode(
         entity,
         this.operation_status_codes.LIMIT_EXHAUSTED,
       );
@@ -379,13 +377,14 @@ export class FulfillmentProductService
       request,
       context,
     ).then(
-      (response: any) => {
+      (response: ResponseList<any>) => {
         if (response.operation_status?.code === 200) {
           return response.items?.reduce(
-            (a: any, b: any) => {
-              a[b.payload?.id] = b;
+            (a: ResponseMap<T>, b: Response<T>) => {
+              a[b.payload?.id!] = b;
               return a;
-            }, {} as T
+            },
+            {}
           );
         }
         else {
@@ -401,7 +400,7 @@ export class FulfillmentProductService
     }
     else {
       throw this.createStatusCode(
-        typeof({} as T),
+        ({} as new() => T).name,
         id,
         this.status_codes.NOT_FOUND
       );
@@ -417,7 +416,7 @@ export class FulfillmentProductService
   protected getFulfillmentProductsByIds(
     ids: string[],
     subject?: Subject,
-    context?: any
+    context?: any,
   ): Promise<DeepPartial<FulfillmentProductListResponse>> {
     ids = [...new Set(ids).values()];
     if (ids.length > 1000) {
@@ -464,12 +463,12 @@ export class FulfillmentProductService
     return this.courier_srv.read(call, context);
   }
 
-  protected async findProducts(
+  protected async findFulfillmentProducts(
     queries: PackageSolutionTotals[],
     stubs?: Stub[],
     subject?: Subject,
-    context?: any
-  ): Promise<DeepPartial<FulfillmentProductListResponse>> {
+    context?: any,
+  ): Promise<FulfillmentProductListResponse> {
     stubs = stubs || await this.findCouriers(
       queries,
       subject,
@@ -506,13 +505,13 @@ export class FulfillmentProductService
     action: AuthZAction.READ,
     operation: Operation.whatIsAllowed,
     context: DefaultACSClientContextFactory,
-    resource: [{ resource: 'fulfillment' }],
+    resource: [{ resource: 'fulfillment_product' }],
     database: 'arangoDB',
     useCache: true,
   })
   public override read(
     request: ReadRequest,
-    context?: any
+    context?: any,
   ) {
     return super.read(request, context);
   }
@@ -522,7 +521,7 @@ export class FulfillmentProductService
     action: AuthZAction.CREATE,
     operation: Operation.isAllowed,
     context: FulfillmentProductService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
+    resource: DefaultResourceFactory('fulfillment_product'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -537,7 +536,7 @@ export class FulfillmentProductService
     action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
     context: FulfillmentProductService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
+    resource: DefaultResourceFactory('fulfillment_product'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -553,7 +552,7 @@ export class FulfillmentProductService
     action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
     context: FulfillmentProductService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
+    resource: DefaultResourceFactory('fulfillment_product'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -568,21 +567,21 @@ export class FulfillmentProductService
     try {
       const queries = buildQueryTotals(request.items);
 
-      const customer_map = await this.get<CustomerResponseMap>(
+      const customer_map = await this.get<Customer>(
         queries.map(q => q.customer_id),
         this.customer_service,
         request.subject,
         context,
       );
 
-      const shop_map = await this.get<ShopResponseMap>(
+      const shop_map = await this.get<Shop>(
         queries.map(q => q.shop_id),
         this.shop_service,
         request.subject,
         context,
       );
 
-      const orga_map = await this.get<OrganizationResponseMap>(
+      const orga_map = await this.get<Organization>(
         [
           ...Object.values(shop_map).map(
             item => item.payload?.organization_id
@@ -597,7 +596,7 @@ export class FulfillmentProductService
         context,
       );
 
-      const contact_point_map = await this.get<ContactPointResponseMap>(
+      const contact_point_map = await this.get<ContactPoint>(
         [
           ...Object.values(orga_map).flatMap(
             item => item.payload?.contact_point_ids
@@ -611,7 +610,7 @@ export class FulfillmentProductService
         context,
       );
   
-      const address_map = await this.get<AddressResponseMap>(
+      const address_map = await this.get<Address>(
         Object.values(contact_point_map).map(
           item => item.payload?.physical_address_id
         ),
@@ -620,7 +619,7 @@ export class FulfillmentProductService
         context,
       );
 
-      const country_map = await this.get<CountryResponseMap>(
+      const country_map = await this.get<Country>(
         Object.values(address_map).map(
           item => item.payload?.country_id
         ),
@@ -645,22 +644,22 @@ export class FulfillmentProductService
         )
       );
 
-      const product_map = await this.findProducts(
+      const product_map = await this.findFulfillmentProducts(
         queries,
         stubs,
         request.subject,
         context,
       ).then(
         response => response.items.reduce(
-          (a, b) => {
-            a[b.payload?.id ?? b.status?.id] = b as ProductResponse;
+          (a: ResponseMap<FulfillmentProduct>, b) => {
+            a[b.payload?.id ?? b.status?.id!] = b;
             return a;
           },
-          {} as ProductResponseMap
+          {} as ResponseMap<FulfillmentProduct>
         )
       );
 
-      const tax_map = await this.get<TaxResponseMap>(
+      const tax_map = await this.get<Tax>(
         Object.values(product_map).flatMap(
           p => p.payload.tax_ids
         ),
@@ -821,25 +820,27 @@ export class FulfillmentProductService
                 }
               });
   
-              const amounts = Object.values(
-                parcels.reduce((a, b) => {
-                  const c = a[b.amount.currency_id];
-                  if (c) {
-                    c.gross += b.amount.gross;
-                    c.net += b.amount.net;
-                    c.vats.push(...b.amount.vats);
-                  }
-                  else {
-                    a[b.amount.currency_id] = { ...b.amount };
-                  }
-                  return a;
-                },
-                {} as { [key: string]: Amount })
+              const amounts = Object.values<Amount>(
+                parcels.reduce(
+                  (a: { [key: string]: Amount }, b) => {
+                    const c = a[b.amount.currency_id];
+                    if (c) {
+                      c.gross += b.amount.gross;
+                      c.net += b.amount.net;
+                      c.vats.push(...b.amount.vats);
+                    }
+                    else {
+                      a[b.amount.currency_id] = { ...b.amount };
+                    }
+                    return a;
+                  },
+                  {}
+                )
               );
   
               amounts.forEach(amount => {
-                amount.vats = Object.values(amount.vats.reduce(
-                  (a, b) => {
+                amount.vats = Object.values(amount.vats?.reduce(
+                  (a: { [id: string]: VAT }, b) => {
                     const c = a[b.tax_id];
                     if (c) {
                       c.vat += b.vat;
@@ -847,7 +848,7 @@ export class FulfillmentProductService
                     a[b.tax_id] = { ...b };
                     return a;
                   },
-                  {} as { [id: string]: VAT }
+                  {}
                 ))
               });
   

@@ -14,7 +14,6 @@ import {
 } from '@restorecommerce/acs-client';
 import { database } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
-import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos.js';
 import {
   DeleteRequest,
   ReadRequest
@@ -46,49 +45,46 @@ import {
   FulfillmentId,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
-import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
+import { Address, AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
 import {
+  Country,
   CountryServiceDefinition,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
-import { TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
+import { Tax, TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
 import { InvoiceListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice.js';
 import {
+  ContactPoint,
   ContactPointResponse,
   ContactPointServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
-import { CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
-import { ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
-import { OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
+import { Customer, CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
+import { Shop, ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
+import { Organization, OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
 import { VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
+import { FulfillmentProduct } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { FulfillmentCourierService } from './fulfillment_courier.js';
 import { FulfillmentProductService } from './fulfillment_product.js';
 import {
-  ProductResponseMap,
   AggregatedFulfillment,
   mergeFulfillments,
   flatMapAggregatedFulfillments,
-  CourierResponseMap,
   StateRank,
-  CountryResponseMap,
-  TaxResponseMap,
   CRUDClient,
-  CustomerResponseMap,
-  ShopResponseMap,
-  OrganizationResponseMap,
-  ContactPointResponseMap,
-  AddressResponseMap,
   filterTax,
   throwOperationStatusCode,
   throwStatusCode,
   createStatusCode,
   createOperationStatusCode,
+  ResponseMap,
+  Courier,
 } from './../utils.js';
 import { Stub } from './../stub.js';
 
 @access_controlled_service
 export class FulfillmentService
   extends ServiceBase<FulfillmentListResponse, FulfillmentList>
-  implements FulfillmentServiceImplementation {
+  implements FulfillmentServiceImplementation
+{
   private static async ACSContextFactory(
     self: FulfillmentService,
     request: FulfillmentList & FulfillmentIdList & FulfillmentInvoiceRequestList,
@@ -259,7 +255,7 @@ export class FulfillmentService
     );
   }
 
-  protected handleStatusError<T>(id: string, e: any, payload = null): T {
+  protected handleStatusError<T>(id: string, e: any, payload?: any): T {
     this.logger?.warn(e);
     return {
       payload,
@@ -288,9 +284,9 @@ export class FulfillmentService
     service: CRUDClient,
     subject?: Subject,
     context?: any,
-  ): Promise<T> {
-    ids = [...new Set<string>(ids)];
-    const entity = typeof ({} as T);
+  ): Promise<ResponseMap<T>> {
+    ids = [...new Set(ids)];
+    const entity = ({} as new() => T).name;
 
     if (ids.length > 1000) {
       throwOperationStatusCode(
@@ -318,13 +314,14 @@ export class FulfillmentService
       request,
       context,
     ).then(
-      response => {
+      (response: any) => {
         if (response.operation_status?.code === 200) {
           return response.items?.reduce(
-            (a, b) => {
+            (a: ResponseMap<T>, b: any) => {
               a[b.payload?.id] = b;
               return a;
-            }, {} as T
+            },
+            {} as ResponseMap<T>
           );
         }
         else {
@@ -357,8 +354,8 @@ export class FulfillmentService
     ids: string[],
     subject?: Subject,
     context?: any
-  ): Promise<DeepPartial<FulfillmentListResponse>> {
-    ids = [...new Set(ids).values()];
+  ): Promise<FulfillmentListResponse> {
+    ids = [...new Set(ids)];
     if (ids.length > 1000) {
       throw {
         code: 500,
@@ -386,21 +383,21 @@ export class FulfillmentService
     context?: any,
     evaluate?: boolean,
   ): Promise<AggregatedFulfillment[]> {
-    const customer_map = await this.get<CustomerResponseMap>(
+    const customer_map = await this.get<Customer>(
       fulfillments.map(q => q.customer_id),
       this.customer_service,
       subject,
       context,
     );
 
-    const shop_map = await this.get<ShopResponseMap>(
+    const shop_map = await this.get<Shop>(
       fulfillments.map(q => q.shop_id),
       this.shop_service,
       subject,
       context,
     );
 
-    const orga_map = await this.get<OrganizationResponseMap>(
+    const orga_map = await this.get<Organization>(
       [
         ...Object.values(shop_map).map(
           item => item.payload?.organization_id
@@ -415,7 +412,7 @@ export class FulfillmentService
       context,
     );
 
-    const contact_point_map = await this.get<ContactPointResponseMap>(
+    const contact_point_map = await this.get<ContactPoint>(
       [
         ...Object.values(orga_map).flatMap(
           item => item.payload?.contact_point_ids
@@ -429,7 +426,7 @@ export class FulfillmentService
       context,
     );
 
-    const address_map = await this.get<AddressResponseMap>(
+    const address_map = await this.get<Address>(
       Object.values(contact_point_map).map(
         item => item.payload?.physical_address_id
       ),
@@ -438,7 +435,7 @@ export class FulfillmentService
       context,
     );
 
-    const country_map = await this.get<CountryResponseMap>(
+    const country_map = await this.get<Country>(
       Object.values(address_map).map(
         item => item.payload?.country_id
       ),
@@ -447,7 +444,7 @@ export class FulfillmentService
       context,
     );
 
-    const product_map = await this.get<ProductResponseMap>(
+    const product_map = await this.get<FulfillmentProduct>(
       fulfillments.flatMap(
         f => f.packaging.parcels.map(p => p.product_id)
       ),
@@ -456,7 +453,7 @@ export class FulfillmentService
       context,
     );
 
-    const courier_map = await this.get<CourierResponseMap>(
+    const courier_map = await this.get<Courier>(
       Object.values(product_map).map(
         p => p.payload?.courier_id
       ),
@@ -465,7 +462,7 @@ export class FulfillmentService
       context,
     );
 
-    const tax_map = await this.get<TaxResponseMap>(
+    const tax_map = await this.get<Tax>(
       Object.values(product_map).flatMap(
         p => p.payload?.tax_ids
       ),
@@ -712,14 +709,14 @@ export class FulfillmentService
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
     context: DefaultACSClientContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
+    resource: DefaultResourceFactory('execution.evaluateFulfillments'),
     database: 'arangoDB',
     useCache: true,
   })
   public async evaluate(
     request: FulfillmentList,
     context?: any,
-  ): Promise<DeepPartial<FulfillmentListResponse>> {
+  ): Promise<FulfillmentListResponse> {
     try {
       const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
       const flat_fulfillments = flatMapAggregatedFulfillments(fulfillments);
@@ -756,7 +753,7 @@ export class FulfillmentService
   public async submit(
     request: FulfillmentList,
     context?: any
-  ): Promise<DeepPartial<FulfillmentListResponse>> {
+  ): Promise<FulfillmentListResponse> {
     try {
       const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
       const flattened = flatMapAggregatedFulfillments(fulfillments);
@@ -831,7 +828,7 @@ export class FulfillmentService
   public async track(
     request: FulfillmentIdList,
     context?: any
-  ): Promise<DeepPartial<FulfillmentListResponse>> {
+  ): Promise<FulfillmentListResponse> {
     try {
       const request_map: { [id: string]: FulfillmentId } = request.items.reduce(
         (a, b) => {
@@ -983,7 +980,7 @@ export class FulfillmentService
     database: 'arangoDB',
     useCache: true,
   })
-  public async withdraw(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+  public async withdraw(request: FulfillmentIdList, context?: any): Promise<FulfillmentListResponse> {
     return null;
   }
 
@@ -995,14 +992,14 @@ export class FulfillmentService
     database: 'arangoDB',
     useCache: true,
   })
-  public async cancel(request: FulfillmentIdList, context?: any): Promise<DeepPartial<FulfillmentListResponse>> {
+  public async cancel(request: FulfillmentIdList, context?: any): Promise<FulfillmentListResponse> {
     try {
-      const request_map = request.items.reduce(
+      const request_map = request.items!.reduce(
         (a, b) => {
           a[b.id] = b.shipment_numbers;
           return a;
         },
-        {}
+        {} as { [key: string]: string[] }
       );
 
       const fulfillments = await this.getFulfillmentsByIds(
@@ -1111,7 +1108,7 @@ export class FulfillmentService
     action: AuthZAction.DELETE,
     operation: Operation.isAllowed,
     context: FulfillmentService.ACSContextFactory,
-    resource: DefaultResourceFactory('order'),
+    resource: DefaultResourceFactory('fulfillment'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -1133,14 +1130,14 @@ export class FulfillmentService
   async createInvoice(
     request: FulfillmentInvoiceRequestList,
     context: any
-  ): Promise<DeepPartial<InvoiceListResponse>> {
+  ): Promise<InvoiceListResponse> {
     return null;
   }
 
   async triggerInvoice(
     request: FulfillmentInvoiceRequestList,
     context: any
-  ): Promise<DeepPartial<StatusListResponse>> {
+  ): Promise<StatusListResponse> {
     return null;
   }
 }

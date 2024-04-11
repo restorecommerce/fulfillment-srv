@@ -16,7 +16,7 @@ import {
   Stub,
   FlatAggregatedFulfillment,
   throwOperationStatusCode,
-} from '..';
+} from '../index.js';
 
 dayjs.extend(customParseFormat);
 
@@ -252,7 +252,7 @@ export namespace DHL_Soap
       });
     }
 
-    return response.DeletionState.map(state => {
+    return response.DeletionState.map((state: any) => {
       const fulfillment = fulfillment_map[state.shipmentNumber];
       fulfillment.label.state = state.Status.statusCode == 0 ? State.CANCELLED : fulfillment.label.state;
       const status = {

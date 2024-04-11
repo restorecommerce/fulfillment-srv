@@ -60,7 +60,7 @@ export abstract class Stub
     );
   }
 
-  protected handleStatusError<T>(id: string, error: any, payload = null): T {
+  protected handleStatusError<T>(id: string, error: any, payload?: any): T {
     this.logger?.warn(error);
     return {
       payload,
@@ -72,7 +72,7 @@ export abstract class Stub
     } as T;
   }
 
-  protected handleOperationError<T>(error: any, items = []): T {
+  protected handleOperationError<T>(error: any, items: any[] = []): T {
     this.logger?.error(error);
     return {
       items: items ?? [],
