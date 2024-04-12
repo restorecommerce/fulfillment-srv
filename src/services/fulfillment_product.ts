@@ -913,7 +913,7 @@ export class FulfillmentProductService
     action: AuthZAction.DELETE,
     operation: Operation.isAllowed,
     context: FulfillmentProductService.ACSContextFactory,
-    resource: DefaultResourceFactory('order'),
+    resource: DefaultResourceFactory('fulfillment_product'),
     database: 'arangoDB',
     useCache: true,
   })

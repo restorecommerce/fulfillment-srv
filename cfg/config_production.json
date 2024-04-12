@@ -1,7 +1,7 @@
 {
   "logger": {
     "elasticsearch": {
-      "level": "crit",
+      "level": "info",
       "clientOpts": {
         "node": "http://elasticsearch:9200"
       },
@@ -22,29 +22,35 @@
     }
   },
   "client": {
+    "acs-srv": {
+      "address": "access-control-srv:50051"
+    },
+    "user": {
+      "address": "identity-srv:50051"
+    },
     "customer": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     },
     "shop": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     },
     "organization": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     },
     "contact_point": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     },
     "address": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     },
     "country": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     },
     "tax": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     },
     "product": {
-      "address": "localhost:50051"
+      "address": "resource-srv:50051"
     }
   },
   "events": {
@@ -54,6 +60,17 @@
           "kafka:9092"
         ]
       }
+    }
+  },
+  "authorization": {
+    "acs-srv": {
+      "address": "access-control-srv:50051"
+    },
+    "user": {
+      "address": "identity-srv:50051"
+    },
+    "cache": {
+      "url": "redis://redis:6379"
     }
   },
   "server": {

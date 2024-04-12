@@ -149,11 +149,14 @@ export class Worker {
     }
   }
   
-  bindHandler(serviceName: string, functionName: string) {
-    return (msg: any, context: any, config: any, eventName: string): Promise<any> => { 
-      return this[serviceName]?.[functionName]?.(msg, context).then(
+  protected bindHandler(serviceName: string, functionName: string) {
+    this.logger.debug(`Bind event to handler: ${serviceName}.${functionName}`);
+    return (msg: any, context: any, config: any, eventName: string): Promise<any> => {
+      return (this as any)[serviceName]?.[functionName]?.(msg, context).then(
         () => this.logger.info(`Event ${eventName} handled.`),
         (err: any) => this.logger.error(`Error while handling event ${eventName}: ${err}`),
+      ) ?? this.logger.warn(
+        `Event ${eventName} was not bound to handler: ${serviceName}.${functionName} does not exist!.`
       );
     };
   }
@@ -204,9 +207,10 @@ export class Worker {
     logger.verbose('Setting up command interface services');
     this.fulfillmentCommandInterface = new FulfillmentCommandInterface(
       this.server,
+      cfg,
+      logger,
       this.events,
       this.redisClient,
-      cfg, logger,
     );
     logger.verbose('Setting up fulfillment courier services');
     this.fulfillmentCourierService = new FulfillmentCourierService(
@@ -252,9 +256,9 @@ export class Worker {
     // Add reflection service
     const reflectionServiceName = serviceNamesCfg.reflection;
     const reflectionService = buildReflectionService([
-      { descriptor: FulfillmentMeta.fileDescriptor },
-      { descriptor: FulfillmentCourierMeta.fileDescriptor },
-      { descriptor: FulfillmentProductMeta.fileDescriptor },
+      { descriptor: FulfillmentMeta.fileDescriptor as any },
+      { descriptor: FulfillmentCourierMeta.fileDescriptor as any },
+      { descriptor: FulfillmentProductMeta.fileDescriptor as any },
     ]);
 
     await this.server.bind(reflectionServiceName, {

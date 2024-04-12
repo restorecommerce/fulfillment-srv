@@ -36,6 +36,12 @@
     }
   },
   "client": {
+    "acs-srv": {
+      "address": "localhost:50061"
+    },
+    "user": {
+      "address": "localhost:50051"
+    },
     "customer": {
       "address": "localhost:50063"
     },
@@ -183,6 +189,15 @@
       "setApiKeyCommand": {
         "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
       },
+      "setApiKeyResponse": {
+        "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
+      },
+      "flushCacheCommand": {
+        "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
+      },
+      "flushCacheResponse": {
+        "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
+      },
       "topics": {
         "command": {
           "topic": "io.restorecommerce.command",
@@ -243,6 +258,57 @@
     "user": "urn:restorecommerce:acs:model:user.User",
     "productName": "urn:restorecommerce:fulfillment:product:attribute:dhl:productName",
     "accountNumber": "urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber"
+  },
+  "authorization": {
+    "service": "acs-srv",
+    "enabled": true,
+    "enforce": true,
+    "database": "arangoDB",
+    "client": {
+      "acs-srv": {
+        "address": "localhost:50061"
+      },
+      "user": {
+        "address": "localhost:50051"
+      }
+    },
+    "urns": {
+      "entity": "urn:restorecommerce:acs:names:model:entity",
+      "user": "urn:restorecommerce:acs:model:user.User",
+      "model": "urn:restorecommerce:acs:model",
+      "role": "urn:restorecommerce:acs:names:role",
+      "roleScopingEntity": "urn:restorecommerce:acs:names:roleScopingEntity",
+      "roleScopingInstance": "urn:restorecommerce:acs:names:roleScopingInstance",
+      "unauthenticated_user": "urn:restorecommerce:acs:names:unauthenticated-user",
+      "property": "urn:restorecommerce:acs:names:model:property",
+      "ownerIndicatoryEntity": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
+      "ownerInstance": "urn:restorecommerce:acs:names:ownerInstance",
+      "orgScope": "urn:restorecommerce:acs:model:organization.Organization",
+      "subjectID": "urn:oasis:names:tc:xacml:1.0:subject:subject-id",
+      "resourceID": "urn:oasis:names:tc:xacml:1.0:resource:resource-id",
+      "actionID": "urn:oasis:names:tc:xacml:1.0:action:action-id",
+      "action": "urn:restorecommerce:acs:names:action",
+      "operation": "urn:restorecommerce:acs:names:operation",
+      "execute": "urn:restorecommerce:acs:names:action:execute",
+      "permitOverrides": "urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:permit-overrides",
+      "denyOverrides": "urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:deny-overrides",
+      "create": "urn:restorecommerce:acs:names:action:create",
+      "read": "urn:restorecommerce:acs:names:action:read",
+      "modify": "urn:restorecommerce:acs:names:action:modify",
+      "delete": "urn:restorecommerce:acs:names:action:delete",
+      "organization": "urn:restorecommerce:acs:model:organization.Organization",
+      "aclIndicatoryEntity": "urn:restorecommerce:acs:names:aclIndicatoryEntity",
+      "aclInstance": "urn:restorecommerce:acs:names:aclInstance",
+      "skipACL": "urn:restorecommerce:acs:names:skipACL",
+      "maskedProperty": "urn:restorecommerce:acs:names:obligation:maskedProperty"
+    },
+    "cache": {
+      "host": "localhost",
+      "port": 6379,
+      "db-index": 5,
+      "ttl": 3600,
+      "prefix": "acs:"
+    }
   },
   "server": {
     "transports": [
