@@ -1,5 +1,5 @@
 import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
-import { DatabaseProvider } from '@restorecommerce/chassis-srv';
+import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import {
   ACSClientContext,
@@ -11,14 +11,14 @@ import {
   access_controlled_service,
   injects_meta_data
 } from '@restorecommerce/acs-client';
-import { 
+import {
   FulfillmentCourierListResponse,
   FulfillmentCourierList,
   FulfillmentCourierServiceImplementation,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
 import { OperationStatus } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
-import { 
+import {
   DeleteRequest,
   ReadRequest
 } from '@restorecommerce/rc-grpc-clients';
@@ -30,8 +30,7 @@ import {
 @access_controlled_service
 export class FulfillmentCourierService
   extends ServiceBase<FulfillmentCourierListResponse, FulfillmentCourierList>
-  implements FulfillmentCourierServiceImplementation
-{
+  implements FulfillmentCourierServiceImplementation {
   private static async ACSContextFactory(
     self: FulfillmentCourierService,
     request: FulfillmentCourierList,

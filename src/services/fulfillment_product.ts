@@ -6,7 +6,7 @@ import {
   Client
 } from '@restorecommerce/grpc-client';
 import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
-import { DatabaseProvider } from '@restorecommerce/chassis-srv';
+import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { 
   ACSClientContext,
   AuthZAction,
