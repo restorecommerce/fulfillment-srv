@@ -74,7 +74,7 @@
       "INVALID": "fulfillmentInvalid",
       "SUBMITTED": "fulfillmentSubmitted",
       "IN_TRANSFER": "fulfillmentInTransfer",
-      "FULFILLED": "fulfillmentFulfilled",
+      "COMPLETED": "fulfillmentCompleted",
       "WITHDRAWN": "fulfillmentWithdrawn",
       "CANCELLED": "fulfillmentCancelled",
       "CREATE_INVOICES": "createInvoices"
@@ -101,7 +101,7 @@
       "fulfillmentInTransfer": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
-      "fulfillmentFulfilled": {
+      "fulfillmentCompleted": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
       "fulfillmentFailed": {

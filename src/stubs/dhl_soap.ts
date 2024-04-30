@@ -24,30 +24,30 @@ type ClientMap = { [id: string]: soap.Client };
 
 interface Origin
 {
-  country: string;
-  countryISOCode: string;
+  'cis:country': string;
+  'cis:countryISOCode': string;
 }
 
 interface Communication
 {
-  phone?: string;
-  email?: string;
-  contactPerson?: string;
+  'cis:phone'?: string;
+  'cis:email'?: string;
+  'cis:contactPerson'?: string;
 }
 
 interface Shipper
 {
   Name: {
-    name1: string;
-    name2?: string;
-    name3?: string;
+    'cis:name1': string;
+    'cis:name2'?: string;
+    'cis:name3'?: string;
   };
   Address: {
-    streetName: string;
-    streetNumber: string;
-    zip: string;
-    city: string;
-    Origin: Origin;
+    'cis:streetName': string;
+    'cis:streetNumber': string;
+    'cis:zip': string;
+    'cis:city': string;
+    'cis:Origin': Origin;
   };
   Communication: Communication;
 }
@@ -58,11 +58,11 @@ interface Receiver
   Address: {
     name2?: string;
     name3?: string;
-    streetName: string;
-    streetNumber: string;
-    zip: string;
-    city: string;
-    Origin: Origin;
+    'cis:streetName': string;
+    'cis:streetNumber': string;
+    'cis:zip': string;
+    'cis:city': string;
+    'cis:Origin': Origin;
   };
   Communication: Communication;
 }
@@ -421,8 +421,8 @@ class DHLSoap extends Stub {
     }
 
     return fulfillments.map((fulfillment, i) => {
-      const dhl_state = response?.CreationFulfillmentState?.find((state: any) => state.sequenceNumber === (i + 1).toString());
-      const code = dhl_state?.LabelData.Status.statusCode;
+      const dhl_state = response?.CreationState?.find((state: any) => state.sequenceNumber === (i + 1).toString());
+      const code = dhl_state?.LabelData?.Status?.statusCode;
       const state = code === 0 ? FulfillmentState.SUBMITTED : FulfillmentState.INVALID;
       const status = this.DHLCode2StatusCode(
         code,
@@ -466,24 +466,24 @@ class DHLSoap extends Stub {
           Shipment: {
             Shipper: {
               Name: {
-                name1: packaging.sender.address.residential_address?.family_name ?? packaging.sender.address.business_address?.name,
-                name2: packaging.sender.address.residential_address?.given_name,
-                name3: packaging.sender.address.residential_address?.mid_name,
+                'cis:name1': packaging.sender.address.residential_address?.family_name ?? packaging.sender.address.business_address?.name,
+                'cis:name2': packaging.sender.address.residential_address?.given_name,
+                'cis:name3': packaging.sender.address.residential_address?.mid_name,
               },
               Address: {
-                streetName: packaging.sender.address?.street,
-                streetNumber: packaging.sender.address?.building_number,
-                zip: packaging.sender.address?.postcode,
-                city: packaging.sender.address?.region,
-                Origin: {
-                  country: request.sender_country?.name,
-                  countryISOCode: request.sender_country?.country_code
+                'cis:streetName': packaging.sender.address?.street,
+                'cis:streetNumber': packaging.sender.address?.building_number,
+                'cis:zip': packaging.sender.address?.postcode,
+                'cis:city': packaging.sender.address?.region,
+                'cis:Origin': {
+                  'cis:country': request.sender_country?.name,
+                  'cis:countryISOCode': request.sender_country?.country_code
                 }
               },
               Communication: {
-                contactPerson: packaging.sender?.contact?.name,
-                email: packaging.sender?.contact.email,
-                phone: packaging.sender?.contact.phone,
+                'cis:contactPerson': packaging.sender?.contact?.name,
+                'cis:email': packaging.sender?.contact.email,
+                'cis:phone': packaging.sender?.contact.phone,
               }
             },
             Receiver: {
@@ -491,19 +491,19 @@ class DHLSoap extends Stub {
               Address: {
                 name2: packaging.recipient.address.residential_address?.given_name,
                 name3: packaging.recipient.address.residential_address?.mid_name,
-                streetName: packaging.recipient.address?.street,
-                streetNumber: packaging.recipient.address?.building_number,
-                zip: packaging.recipient.address?.postcode,
-                city: packaging.recipient.address?.region,
-                Origin: {
-                  country: request.recipient_country?.name,
-                  countryISOCode: request.recipient_country?.country_code
+                'cis:streetName': packaging.recipient.address?.street,
+                'cis:streetNumber': packaging.recipient.address?.building_number,
+                'cis:zip': packaging.recipient.address?.postcode,
+                'cis:city': packaging.recipient.address?.region,
+                'cis:Origin': {
+                  'cis:country': request.recipient_country?.name,
+                  'cis:countryISOCode': request.recipient_country?.country_code
                 },
               },
               Communication: {
-                contactPerson: packaging.recipient.contact?.name,
-                email: packaging.recipient.contact?.email,
-                phone: packaging.recipient.contact?.phone,
+                'cis:contactPerson': packaging.recipient.contact?.name,
+                'cis:email': packaging.recipient.contact?.email,
+                'cis:phone': packaging.recipient.contact?.phone,
               }
             },
             ShipmentDetails: {
@@ -589,13 +589,18 @@ class DHLSoap extends Stub {
     if (fulfillments.length === 0) return [];
     const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
     const client = await this.registerSoapClient();
-    return new Promise<FlatAggregatedFulfillment[]>((resolve, reject): void => {
+    return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject): void => {
       const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
       client.GVAPI_2_0_de.GKVAPISOAP11port0.createShipmentOrder(
         dhl_order_request,
         (error: any, result: any): any => {
           clearTimeout(timer);
-          resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
+          try {
+            resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
+          }
+          catch (e: any) {
+            reject(e);
+          }
         }
       );
     });
@@ -627,16 +632,16 @@ class DHLSoap extends Stub {
         const params = new URLSearchParams();
         params.append('xml', xml);
         const payload = {
-          method: 'post',
+          method: 'get',
           headers: {
             Host: 'cig.dhl.de',
             Authorization: auth,
             Connection: 'Keep-Alive',
           },
-          body: params,
+          // body: params,
         };
 
-        return await fetch(client.endpoint, payload).then(
+        return await fetch(`${client.endpoint}?${params}`, payload).then(
           response => DHLTracking2FulfillmentTracking(item, response),
           err => {
             this.logger?.error(`${this.constructor.name}: ${err}`);
@@ -666,20 +671,27 @@ class DHLSoap extends Stub {
     const dhl_cancel_request = this.AggregatedFulfillment2DHLShipmentCancelRequest(fulfillments);
     const client = await this.registerSoapClient();
     return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject: (v: FlatAggregatedFulfillment[]) => void): void => {
+      const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
       client.GVAPI_2_0_de.GKVAPISOAP11port0.deleteShipmentOrder(dhl_cancel_request,
         (err: any, result: any): any => {
-          if (err) {
-            if (result?.html) {
-              this.logger?.error(`${this.constructor.name}: ${result.html.head.title}`);
-              reject(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, null, result.html.head.title));
+          clearTimeout(timer);
+          try {
+            if (err) {
+              if (result?.html) {
+                this.logger?.error(`${this.constructor.name}: ${result.html.head.title}`);
+                reject(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, null, result.html.head.title));
+              }
+              else {
+                this.logger?.error(`${this.constructor.name}: ${err}`);
+                reject(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, null, err));
+              }
             }
             else {
-              this.logger?.error(`${this.constructor.name}: ${err}`);
-              reject(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, null, err));
+              resolve(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, result));
             }
           }
-          else {
-            resolve(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, result));
+          catch (e: any) {
+            reject(e);
           }
         });
     });

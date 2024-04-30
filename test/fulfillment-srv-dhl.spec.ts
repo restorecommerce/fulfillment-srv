@@ -70,6 +70,30 @@ describe('Testing Fulfillment Service Cluster:', () => {
       FulfillmentServiceDefinition,
       createChannel(cfg.get('client:fulfillment:address'))
     ) as Client<FulfillmentServiceDefinition>;
+
+    await Promise.allSettled([
+      courier_client?.delete({
+        collection: true,
+        subject: {
+          id: 'superadmin',
+          token: 'superadmin',
+        },
+      }),
+      product_client?.delete({
+        collection: true,
+        subject: {
+          id: 'superadmin',
+          token: 'superadmin',
+        },
+      }),
+      fulfillment_client?.delete({
+        collection: true,
+        subject: {
+          id: 'superadmin',
+          token: 'superadmin',
+        },
+      }),
+    ]);
   });
 
   after(async function() {
@@ -191,7 +215,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
   describe('The Fulfillment Service:', () => {
     const fulfillmentCreatedSemaphore = new Semaphore(0);
     const fulfillmentSubmittedSemaphore = new Semaphore(0);
-    const fulfillmentFulfilledSemaphore = new Semaphore(0);
+    const fulfillmentCompletedSemaphore = new Semaphore(0);
     const fulfillmentWithdrawnSemaphore = new Semaphore(0);
     const fulfillmentCancelledSemaphore = new Semaphore(0);
 
@@ -205,9 +229,9 @@ describe('Testing Fulfillment Service Cluster:', () => {
       fulfillmentSubmittedSemaphore.release(1);
     };
 
-    const onFulfillmentFulfilled = (msg: Fulfillment, context?:any): void => {
+    const onFulfillmentCompleted = (msg: Fulfillment, context?:any): void => {
       should.equal(msg?.fulfillment_state, FulfillmentState.COMPLETED);
-      fulfillmentFulfilledSemaphore.release(1);
+      fulfillmentCompletedSemaphore.release(1);
     };
 
     const onFulfillmentWithdrawn = (msg: Fulfillment, context?:any): void => {
@@ -225,7 +249,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
       await Promise.all([
         topics.on('fulfillmentCreated', onFulfillmentCreated),
         topics.on('fulfillmentSubmitted', onFulfillmentSubmitted),
-        topics.on('fulfillmentFulfilled', onFulfillmentFulfilled),
+        topics.on('fulfillmentCompleted', onFulfillmentCompleted),
         topics.on('fulfillmentWithdrawn', onFulfillmentWithdrawn),
         topics.on('fulfillmentCancelled', onFulfillmentCancelled),
       ]);
@@ -236,7 +260,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
       await Promise.all([
         topics.removeListener('fulfillmentCreated', onFulfillmentCreated),
         topics.removeListener('fulfillmentSubmitted', onFulfillmentSubmitted),
-        topics.removeListener('fulfillmentFulfilled', onFulfillmentFulfilled),
+        topics.removeListener('fulfillmentCompleted', onFulfillmentCompleted),
         topics.removeListener('fulfillmentWithdrawn', onFulfillmentWithdrawn),
         topics.removeListener('fulfillmentCancelled', onFulfillmentCancelled),
       ]);
@@ -271,7 +295,6 @@ describe('Testing Fulfillment Service Cluster:', () => {
       it(`should submit fulfillment by valid samples: ${sample_name}`, async function() {
         this.timeout(60000);
         const response = await fulfillment_client.submit(sample);
-        console.log(JSON.stringify(response, null, 2));
         should.equal(
           response?.operationStatus?.code, 200,
           'response.operationStatus.code expected to be 200',
@@ -316,7 +339,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
 
       it(`should have received fulfillment tracking event for ${sample_name}`, async function() {
         this.timeout(5000);
-        await fulfillmentFulfilledSemaphore.acquire(1);
+        await fulfillmentCompletedSemaphore.acquire(1);
       });
     }
 
