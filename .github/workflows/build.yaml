@@ -21,6 +21,11 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     needs: build
+    env:
+      stubs__DHLSoap__defaults__ordering__username: $STUBS__DHLSOAP__DEFAULTS__ORDERING__USERNAME
+      stubs__DHLSoap__defaults__ordering__password: $STUBS__DHLSOAP__DEFAULTS__ORDERING__PASSWORD
+      stubs__DHLSoap__defaults__tracking__username: $STUBS__DHLSOAP__DEFAULTS__TRACKING__USERNAME
+      stubs__DHLSoap__defaults__tracking__password: $STUBS__DHLSOAP__DEFAULTS__TRACKING__PASSWORD
     steps:
       - uses: actions/checkout@v4
 
