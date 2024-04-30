@@ -12,7 +12,7 @@ import {
   DefaultResourceFactory,
   injects_meta_data
 } from '@restorecommerce/acs-client';
-import { database } from '@restorecommerce/chassis-srv';
+import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import {
   DeleteRequest,
@@ -34,7 +34,7 @@ import {
   createClient,
 } from '@restorecommerce/grpc-client';
 import {
-  State,
+  FulfillmentState,
   FulfillmentListResponse,
   Fulfillment,
   FulfillmentList,
@@ -57,9 +57,18 @@ import {
   ContactPointResponse,
   ContactPointServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
-import { Customer, CustomerServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
-import { Shop, ShopServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
-import { Organization, OrganizationServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
+import {
+  Customer,
+  CustomerServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
+import {
+  Shop,
+  ShopServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
+import {
+  Organization,
+  OrganizationServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
 import { VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
 import { FulfillmentProduct } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { FulfillmentCourierService } from './fulfillment_courier.js';
@@ -80,6 +89,7 @@ import {
 } from './../utils.js';
 import { Stub } from './../stub.js';
 
+
 @access_controlled_service
 export class FulfillmentService
   extends ServiceBase<FulfillmentListResponse, FulfillmentList>
@@ -87,10 +97,10 @@ export class FulfillmentService
 {
   private static async ACSContextFactory(
     self: FulfillmentService,
-    request: FulfillmentList & FulfillmentIdList & FulfillmentInvoiceRequestList,
+    request: FulfillmentList & FulfillmentIdList & FulfillmentInvoiceRequestList & DeleteRequest,
     context: any,
   ): Promise<ACSClientContext> {
-    const ids = request.items?.map((item: any) => item.id);
+    const ids = request.ids ?? request.items?.map((item: any) => item.id);
     const resources = await self.getFulfillmentsByIds(ids, request.subject, context);
     return {
       ...context,
@@ -143,6 +153,10 @@ export class FulfillmentService
       code: 500,
       message: 'Query limit 1000 exhausted!',
     },
+    TIMEOUT: {
+      code: 500,
+      message: 'Request timeout, API not responding!',
+    },
   };
 
   protected readonly emitters: any;
@@ -159,7 +173,7 @@ export class FulfillmentService
     readonly fulfillmentCourierSrv: FulfillmentCourierService,
     readonly fulfillmentProductSrv: FulfillmentProductService,
     readonly topic: Topic,
-    readonly db: database.DatabaseProvider,
+    readonly db: DatabaseProvider,
     readonly cfg: any,
     readonly logger: any,
   ) {
@@ -197,7 +211,7 @@ export class FulfillmentService
         logger
       } as GrpcClientConfig,
       CustomerServiceDefinition,
-      createChannel(cfg.get('client:customer').address)
+      createChannel(cfg.get('client:customer:address'))
     );
 
     this.shop_service = createClient(
@@ -206,7 +220,7 @@ export class FulfillmentService
         logger
       } as GrpcClientConfig,
       ShopServiceDefinition,
-      createChannel(cfg.get('client:shop').address)
+      createChannel(cfg.get('client:shop:address'))
     );
 
     this.organization_service = createClient(
@@ -215,7 +229,7 @@ export class FulfillmentService
         logger
       } as GrpcClientConfig,
       OrganizationServiceDefinition,
-      createChannel(cfg.get('client:organization').address)
+      createChannel(cfg.get('client:organization:address'))
     );
 
     this.contact_point_service = createClient(
@@ -224,7 +238,7 @@ export class FulfillmentService
         logger
       } as GrpcClientConfig,
       ContactPointServiceDefinition,
-      createChannel(cfg.get('client:contact_point').address)
+      createChannel(cfg.get('client:contact_point:address'))
     );
 
     this.address_service = createClient(
@@ -233,7 +247,7 @@ export class FulfillmentService
         logger
       } as GrpcClientConfig,
       AddressServiceDefinition,
-      createChannel(cfg.get('client:address').address)
+      createChannel(cfg.get('client:address:address'))
     );
 
     this.country_service = createClient(
@@ -242,7 +256,7 @@ export class FulfillmentService
         logger
       } as GrpcClientConfig,
       CountryServiceDefinition,
-      createChannel(cfg.get('client:country').address)
+      createChannel(cfg.get('client:country:address'))
     );
 
     this.tax_service = createClient(
@@ -251,7 +265,7 @@ export class FulfillmentService
         logger
       } as GrpcClientConfig,
       TaxServiceDefinition,
-      createChannel(cfg.get('client:tax').address)
+      createChannel(cfg.get('client:tax:address'))
     );
   }
 
@@ -360,7 +374,7 @@ export class FulfillmentService
       throw {
         code: 500,
         message: 'Query for fulfillments exceeds limit of 1000!'
-      } as OperationStatus
+      } as OperationStatus;
     }
 
     const request = ReadRequest.fromPartial({
@@ -590,7 +604,7 @@ export class FulfillmentService
                   customer_country.payload,
                   !!customer.payload.private?.user_id,
                 )
-              )
+              );
               const gross = price.sale ? price.sale_price : price.regular_price;
               const vats = taxes.map((tax): VAT => ({
                 tax_id: tax.id,
@@ -604,7 +618,7 @@ export class FulfillmentService
                 gross,
                 net,
                 vats,
-              }
+              };
             }
           );
         }
@@ -666,8 +680,8 @@ export class FulfillmentService
   ) {
     request?.items?.forEach(
       item => {
-        if (!item.state || item.state === State.UNRECOGNIZED) {
-          item.state = State.CREATED;
+        if (!item.fulfillment_state || item.fulfillment_state === FulfillmentState.UNRECOGNIZED) {
+          item.fulfillment_state = FulfillmentState.PENDING;
         }
       }
     );
@@ -762,7 +776,7 @@ export class FulfillmentService
           if (f.status?.code !== 200) {
             return false;
           }
-          else if (StateRank[f.payload?.state] >= StateRank[State.SUBMITTED]) {
+          else if (StateRank[f.payload?.fulfillment_state] >= StateRank[FulfillmentState.SUBMITTED]) {
             f.status = createStatusCode(
               this.name,
               f.payload?.id,
@@ -774,7 +788,7 @@ export class FulfillmentService
         }
       );
       const invalids = flattened.filter(
-        f => f.status?.code !== 200 || StateRank[f.payload?.state] >= StateRank[State.SUBMITTED]
+        f => f.status?.code !== 200 || StateRank[f.payload?.fulfillment_state] >= StateRank[FulfillmentState.SUBMITTED]
       );
       const responses = await Stub.submit(valids);
       const merged = mergeFulfillments([
@@ -794,13 +808,13 @@ export class FulfillmentService
       }, context);
 
       upsert_results.items.forEach(item => {
-        if (item.payload.state in this.emitters) {
-          switch (item.payload.state) {
-            case State.INVALID:
-            case State.FAILED:
-              this.topic.emit(this.emitters[item.payload.state], item);
+        if (item.payload.fulfillment_state in this.emitters) {
+          switch (item.payload.fulfillment_state) {
+            case FulfillmentState.INVALID:
+            case FulfillmentState.FAILED:
+              this.topic.emit(this.emitters[item.payload.fulfillment_state], item);
             default:
-              this.topic.emit(this.emitters[item.payload.state], item.payload);
+              this.topic.emit(this.emitters[item.payload.fulfillment_state], item.payload);
               break;
           }
         }
@@ -877,7 +891,7 @@ export class FulfillmentService
           aggregated.filter(
             item => {
               response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
-              return item.status?.code === 200
+              return item.status?.code === 200;
             }
           )
         ).filter(
@@ -900,8 +914,8 @@ export class FulfillmentService
             }
 
             switch (f.label.state) {
-              case State.SUBMITTED:
-              case State.IN_TRANSIT:
+              case FulfillmentState.SUBMITTED:
+              case FulfillmentState.IN_TRANSIT:
                 return true;
               default:
                 f.label.status = createStatusCode(
@@ -942,13 +956,13 @@ export class FulfillmentService
         updates => updates.items.forEach(
           item => {
             response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
-            if (item.payload.state in this.emitters) {
-              switch (item.payload.state) {
-                case State.INVALID:
-                case State.FAILED:
-                  this.topic.emit(this.emitters[item.payload.state], item);
+            if (item.payload.fulfillment_state in this.emitters) {
+              switch (item.payload.fulfillment_state) {
+                case FulfillmentState.INVALID:
+                case FulfillmentState.FAILED:
+                  this.topic.emit(this.emitters[item.payload.fulfillment_state], item);
                 default:
-                  this.topic.emit(this.emitters[item.payload.state], item.payload);
+                  this.topic.emit(this.emitters[item.payload.fulfillment_state], item.payload);
                   break;
               }
             }
@@ -965,7 +979,7 @@ export class FulfillmentService
           this.name,
           this.operation_status_codes.SUCCESS,
         ),
-      }
+      };
     }
     catch (e) {
       return this.handleOperationError<FulfillmentListResponse>(e);
@@ -1025,25 +1039,25 @@ export class FulfillmentService
           const id = f.status?.id;
           if (!f.payload?.labels?.length) {
             f.status = {
-              id: id,
+              id,
               code: 400,
               message: `Fulfillment ${id} has no labels!`
-            }
+            };
           }
-          else if (f.payload?.state !== State.SUBMITTED && f.payload?.state !== State.IN_TRANSIT) {
+          else if (f.payload?.fulfillment_state !== FulfillmentState.SUBMITTED && f.payload?.fulfillment_state !== FulfillmentState.IN_TRANSIT) {
             f.status = {
-              id: id,
+              id,
               code: 400,
               message: `For canceling Fulfillment ${
                 id
-                } is expected to be ${
-                State.SUBMITTED
-                } or ${
-                State.IN_TRANSIT
-                } but is ${
-                f.payload?.state
-                }!`
-            }
+              } is expected to be ${
+                FulfillmentState.SUBMITTED
+              } or ${
+                FulfillmentState.IN_TRANSIT
+              } but is ${
+                f.payload?.fulfillment_state
+              }!`
+            };
           }
 
           return f;
@@ -1061,7 +1075,7 @@ export class FulfillmentService
             !shipment_numbers?.length ||
             shipment_numbers.find(
               s => s === f.payload?.labels[0]?.shipment_number
-            )
+            );
         }
       ));
 
@@ -1081,13 +1095,13 @@ export class FulfillmentService
       }, context);
 
       update_results.items.forEach(item => {
-        if (item.payload.state in this.emitters) {
-          switch (item.payload.state) {
-            case State.INVALID:
-            case State.FAILED:
-              this.topic.emit(this.emitters[item.payload.state], item);
+        if (item.payload.fulfillment_state in this.emitters) {
+          switch (item.payload.fulfillment_state) {
+            case FulfillmentState.INVALID:
+            case FulfillmentState.FAILED:
+              this.topic.emit(this.emitters[item.payload.fulfillment_state], item);
             default:
-              this.topic.emit(this.emitters[item.payload.state], item.payload);
+              this.topic.emit(this.emitters[item.payload.fulfillment_state], item.payload);
               break;
           }
         }

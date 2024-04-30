@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import {
   createClient,
   createChannel,
@@ -18,8 +18,7 @@ import {
   injects_meta_data
 } from '@restorecommerce/acs-client';
 import { Topic } from '@restorecommerce/kafka-client';
-import { DeepPartial } from '@restorecommerce/kafka-client/lib/protos.js';
-import { 
+import {
   DeleteRequest,
   ReadRequest
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base.js';
@@ -32,7 +31,7 @@ import { Courier as Packer, Offer } from '@restorecommerce/cart/lib/model/impl/C
 import { Container } from '@restorecommerce/cart/lib/model/impl/bin/Container.js';
 import { IItem } from '@restorecommerce/cart/lib/model/IItem.js';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
-import { 
+import {
   Amount,
   VAT
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
@@ -68,7 +67,6 @@ import {
 import { FulfillmentCourierService } from './index.js';
 import {
   CRUDClient,
-  Courier,
   Payload,
   Response,
   ResponseList,
@@ -119,8 +117,8 @@ const countItems = (goods: Item[], container: Container) => {
 };
 
 @access_controlled_service
-export class FulfillmentProductService 
-  extends ServiceBase<FulfillmentProductListResponse, FulfillmentProductList> 
+export class FulfillmentProductService
+  extends ServiceBase<FulfillmentProductListResponse, FulfillmentProductList>
   implements FulfillmentProductServiceImplementation
 {
   private static async ACSContextFactory(
@@ -171,6 +169,10 @@ export class FulfillmentProductService
       code: 500,
       message: 'Query limit 1000 exhausted!',
     },
+    COURIERS_NOT_FOUND: {
+      code: 404,
+      message: 'Couriers not found!',
+    }
   };
 
   protected readonly legal_address_type_id: string;
@@ -257,7 +259,7 @@ export class FulfillmentProductService
       AddressServiceDefinition,
       createChannel(cfg.get('client:address').address)
     );
-    
+
     this.country_service = createClient(
       {
         ...cfg.get('client:country'),
@@ -394,7 +396,7 @@ export class FulfillmentProductService
     );
   }
 
-  async getById<T>(map: { [id:string]: T }, id: string): Promise<T> {
+  async getById<T>(map: { [id: string]: T }, id: string): Promise<T> {
     if (id in map) {
       return map[id];
     }
@@ -407,23 +409,23 @@ export class FulfillmentProductService
     }
   }
 
-  async getByIds<T>(map: { [id:string]: T }, ids: string[]): Promise<T[]> {
+  async getByIds<T>(map: { [id: string]: T }, ids: string[]): Promise<T[]> {
     return Promise.all(ids.map(
       id => this.getById(map, id)
     ));
   }
 
-  protected getFulfillmentProductsByIds(
+  protected async getFulfillmentProductsByIds(
     ids: string[],
     subject?: Subject,
     context?: any,
-  ): Promise<DeepPartial<FulfillmentProductListResponse>> {
+  ): Promise<FulfillmentProductListResponse> {
     ids = [...new Set(ids).values()];
     if (ids.length > 1000) {
       throw {
         code: 500,
         message: 'Query for fulfillmentProducts exceeds limit of 1000!'
-      } as OperationStatus
+      } as OperationStatus;
     }
 
     const request = ReadRequest.fromPartial({
@@ -437,14 +439,23 @@ export class FulfillmentProductService
       }],
       subject
     });
-    return super.read(request, context);
+    return await super.read(request, context).then(
+      resp => {
+        if (resp.operation_status?.code !== 200) {
+          throw resp.operation_status;
+        }
+        else {
+          return resp;
+        }
+      }
+    );
   }
 
   protected async findCouriers(
     queries: PackageSolutionTotals[],
     subject?: Subject,
     context?: any,
-  ): Promise<DeepPartial<FulfillmentCourierListResponse>> {
+  ): Promise<FulfillmentCourierListResponse> {
     const call = ReadRequest.fromPartial({
       filters: [{
         filters: queries.flatMap(
@@ -460,21 +471,29 @@ export class FulfillmentProductService
       }],
       subject,
     });
-    return this.courier_srv.read(call, context);
+    return await this.courier_srv.read(call, context).then(
+      resp => {
+        if (resp.operation_status?.code !== 200) {
+          throw resp.operation_status;
+        }
+        else {
+          return resp;
+        }
+      }
+    );
   }
 
   protected async findFulfillmentProducts(
     queries: PackageSolutionTotals[],
-    stubs?: Stub[],
     subject?: Subject,
     context?: any,
   ): Promise<FulfillmentProductListResponse> {
-    stubs = stubs || await this.findCouriers(
+    const stubs = await this.findCouriers(
       queries,
       subject,
       context,
     ).then(
-      (resp: FulfillmentCourierListResponse) => resp.items.map(
+      (resp: FulfillmentCourierListResponse) => resp.items?.map(
         item => Stub.getInstance(
           item.payload,
           {
@@ -482,8 +501,14 @@ export class FulfillmentProductService
             logger: this.logger
           }
         )
+      ).filter(
+        s => !!s
       )
     );
+
+    if (!stubs?.length) {
+      throw this.operation_status_codes.COURIERS_NOT_FOUND;
+    }
 
     const call = ReadRequest.fromPartial({
       filters: [{
@@ -498,7 +523,16 @@ export class FulfillmentProductService
       subject,
     });
 
-    return super.read(call, context);
+    return await super.read(call, context).then(
+      resp => {
+        if (resp.operation_status?.code !== 200) {
+          throw resp.operation_status;
+        }
+        else {
+          return resp;
+        }
+      }
+    );
   }
 
   @access_controlled_function({
@@ -609,7 +643,7 @@ export class FulfillmentProductService
         request.subject,
         context,
       );
-  
+
       const address_map = await this.get<Address>(
         Object.values(contact_point_map).map(
           item => item.payload?.physical_address_id
@@ -628,25 +662,8 @@ export class FulfillmentProductService
         context,
       );
 
-      const stubs = await this.findCouriers(
-        queries,
-        request.subject,
-        context,
-      ).then(
-        resp => resp.items.map(
-          item => Stub.getInstance(
-            item.payload as Courier,
-            {
-              cfg: this.cfg,
-              logger: this.logger
-            }
-          )
-        )
-      );
-
       const product_map = await this.findFulfillmentProducts(
         queries,
-        stubs,
         request.subject,
         context,
       ).then(
@@ -696,12 +713,12 @@ export class FulfillmentProductService
             price: 0.0, // placeholder
             taxType: 'vat_standard' // placeholder
           }));
-  
+
           const packer = new Packer({
             source: JSON.stringify({ zones: [] }),
             shipping: null
           });
-  
+
           const shop_country = await this.getById(
             shop_map,
             query.shop_id
@@ -733,12 +750,12 @@ export class FulfillmentProductService
           ).then(
             address => this.getById(country_map, address.payload.country_id)
           );
-  
+
           const customer = await this.getById(
             customer_map,
             query.customer_id
           );
-  
+
           const customer_country = await this.getByIds(
             contact_point_map,
             [
@@ -767,7 +784,7 @@ export class FulfillmentProductService
               address.payload.country_id
             )
           );
-  
+
           const solutions: PackingSolution[] = offer_lists.map(
             offers => packer.canFit(offers, goods)
           ).map(
@@ -788,14 +805,14 @@ export class FulfillmentProductService
                     customer_country.payload,
                     !!customer.payload.private?.user_id,
                   )
-                )
+                );
                 const gross = price.sale ? price.sale_price : price.regular_price;
                 const vats = taxes.map((tax): VAT => ({
                   tax_id: tax.id,
                   vat: gross * tax.rate,
                 }));
                 const net = vats.reduce((a, b) => a + b.vat, gross);
-  
+
                 return {
                   id: randomUUID(),
                   product_id,
@@ -817,9 +834,9 @@ export class FulfillmentProductService
                     net,
                     vats,
                   }
-                }
+                };
               });
-  
+
               const amounts = Object.values<Amount>(
                 parcels.reduce(
                   (a: { [key: string]: Amount }, b) => {
@@ -837,7 +854,7 @@ export class FulfillmentProductService
                   {}
                 )
               );
-  
+
               amounts.forEach(amount => {
                 amount.vats = Object.values(amount.vats?.reduce(
                   (a: { [id: string]: VAT }, b) => {
@@ -849,9 +866,9 @@ export class FulfillmentProductService
                     return a;
                   },
                   {}
-                ))
+                ));
               });
-  
+
               return {
                 parcels,
                 amounts,
@@ -859,10 +876,10 @@ export class FulfillmentProductService
                 homogeneity: 1,
                 score: 1,
                 reference: query.reference,
-              }
+              };
             }
           );
-  
+
           const solution: PackingSolutionResponse = {
             solutions,
             status: {
@@ -877,11 +894,10 @@ export class FulfillmentProductService
               }`
             }
           };
-  
+
           return solution;
         }
-        catch (e) {
-          console.error(e);
+        catch (e: any) {
           const solution: PackingSolutionResponse = {
             solutions: [],
             status: this.catchStatusError(
@@ -891,7 +907,7 @@ export class FulfillmentProductService
           };
           return solution;
         }
-      });        
+      });
 
       const items = await Promise.all(promises);
       return {
@@ -903,9 +919,8 @@ export class FulfillmentProductService
         )
       };
     }
-    catch (e) {
-      console.error(e);
-      this.catchOperationError(e);
+    catch (e: any) {
+      return this.catchOperationError(e);
     }
   }
 

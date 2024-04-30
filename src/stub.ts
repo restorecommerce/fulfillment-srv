@@ -1,9 +1,9 @@
 import { Logger } from 'winston';
 import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
-    Courier,
-    FlatAggregatedFulfillment,
-    extractCouriers,
+  Courier,
+  FlatAggregatedFulfillment,
+  extractCouriers,
 } from './utils.js';
 
 export abstract class Stub
@@ -22,7 +22,7 @@ export abstract class Stub
   ) {}
 
   public abstract getTariffCode(fulfillment: FlatAggregatedFulfillment): Promise<string>;
-  
+
   protected abstract evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
@@ -83,7 +83,7 @@ export abstract class Stub
       }
     } as T;
   }
-  
+
   public readonly evaluate = (fulfillments: FlatAggregatedFulfillment[]) => this.evaluateImpl(
     fulfillments.filter(f => f.product?.courier_id === this.courier.id)
   );
@@ -108,7 +108,7 @@ export abstract class Stub
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -128,7 +128,7 @@ export abstract class Stub
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -148,7 +148,7 @@ export abstract class Stub
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -168,7 +168,7 @@ export abstract class Stub
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -190,7 +190,7 @@ export abstract class Stub
   ) {
     Stub.STUB_TYPES[typeName] = type;
   }
-  
+
   public static getInstance(courier: Courier, kwargs?: { [key: string]: any }): Stub
   {
     let stub = Stub.REGISTER[courier.id];

@@ -47,7 +47,7 @@ import {
 import {
   FulfillmentIdList,
   FulfillmentList,
-  State as FulfillmentState
+  FulfillmentState
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
 import {
   OperationStatus
@@ -67,15 +67,13 @@ import {
   FulfillmentCourierList
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_courier';
 import {
-  State
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
-import {
   HierarchicalScope
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
 import {
   getRedisInstance,
   logger
 } from './utils';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/auth';
 
 type Address = ShippingAddress & BillingAddress;
 
@@ -127,6 +125,19 @@ const subMeta = {
       attributes: []
     }
   ]
+};
+
+const subjects: { [key: string]: Subject } = {
+  superadmin: {
+    id: 'superadmin',
+    scope: 'main',
+    token: 'superadmin',
+  },
+  admin: {
+    id: 'admin',
+    scope: 'sub',
+    token: 'admin',
+  },
 };
 
 const operationStatus: OperationStatus = {
@@ -379,7 +390,7 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
         description: '',
         logo: 'DHL.png',
         website: 'https://www.dhl.com/',
-        stubType: 'DHLSoapStub',
+        stubType: 'DHLSoap',
         shopIds: [
           'shop_1'
         ],
@@ -408,7 +419,7 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
         description: '',
         logo: 'DHL.png',
         website: 'https://www.dhl.com/',
-        stubType: 'DHLSoapStub',
+        stubType: 'DHLSoap',
         shopIds: [
           'shop_1'
         ],
@@ -433,9 +444,7 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
       }
     ],
     totalCount: 2,
-    subject: {
-      unauthenticated: true
-    }
+    subject: subjects.superadmin
   }
 };
 
@@ -709,9 +718,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
       }
     ],
     totalCount: 4,
-    subject: {
-      unauthenticated: true
-    }
+    subject: subjects.superadmin
   }
 }; 
 
@@ -741,9 +748,7 @@ const validPackingSolutionQueries: { [key: string]: PackingSolutionQueryList } =
         ]
       }
     ],
-    subject: {
-      unauthenticated: true
-    }
+    subject: subjects.superadmin
   }
 };
 
@@ -795,25 +800,8 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
         labels: [],
         trackings: [],
         totalAmounts: [],
-        state: FulfillmentState.CREATED,
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [
-            {
-              id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-              value: 'urn:restorecommerce:acs:model:user.User',
-              attributes: []
-            },
-            {
-              id: 'urn:restorecommerce:acs:names:ownerInstance',
-              value: 'UserID',
-              attributes: []
-            }
-          ]
-        }
+        fulfillmentState: FulfillmentState.PENDING,
+        meta: mainMeta,
       },
       {
         id: 'validFulfillment_2',
@@ -884,7 +872,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
           {
             parcelId: '1',
             shipmentNumber: '00340434161094015902',
-            state: State.SUBMITTED,
+            state: FulfillmentState.SUBMITTED,
             status: {
               id: 'validFulfillment_2',
               code: 200,
@@ -894,31 +882,12 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
         ],
         trackings: [],
         totalAmounts: [],
-        state: FulfillmentState.CREATED,
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [
-            {
-              id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-              value: 'urn:restorecommerce:acs:model:user.User',
-              attributes: []
-            },
-            {
-              id: 'urn:restorecommerce:acs:names:ownerInstance',
-              value: 'UserID',
-              attributes: []
-            }
-          ]
-        }
+        fulfillmentState: FulfillmentState.PENDING,
+        meta: mainMeta,
       },
     ],
     totalCount: 2,
-    subject: {
-      unauthenticated: true
-    }
+    subject: subjects.superadmin
   }
 };
 
@@ -933,9 +902,7 @@ const validTrackingRequests: { [key: string]: FulfillmentIdList } = {
       }
     ],
     totalCount: 1,
-    subject: {
-      unauthenticated: true
-    }
+    subject: subjects.superadmin
   }
 };
 
@@ -1135,23 +1102,23 @@ export const rules = {
   'acs-srv': {
     isAllowed: (
       call: any,
-      callback: (error: any, response: DeepPartial<Response>) => void,
+      callback: (error: any, response: Response) => void,
     ) => callback(null, {
       decision: Response_Decision.PERMIT,
     }),
     whatIsAllowed: (
       call: any,
-      callback: (error: any, response: DeepPartial<ReverseQuery>) => void,
+      callback: (error: any, response: ReverseQuery) => void,
     ) => callback(null, whatIsAllowed),
   },
   user: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<UserListResponse>) => void,
+      callback: (error: any, response: UserListResponse) => void,
     ) => callback(null, {}),
     findByToken: (
       call: any,
-      callback: (error: any, response: DeepPartial<UserResponse>) => void,
+      callback: (error: any, response: UserResponse) => void,
     ) => {
       getRedisInstance().then(
         async client => {
@@ -1175,7 +1142,7 @@ export const rules = {
   shop: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<ShopListResponse>) => void,
+      callback: (error: any, response: ShopListResponse) => void,
     ) => callback(null, {
       items: shops,
       totalCount: shops.length,
@@ -1185,7 +1152,7 @@ export const rules = {
   organization: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<OrganizationListResponse>) => void,
+      callback: (error: any, response: OrganizationListResponse) => void,
     ) => callback(null, {
       items: organizations,
       totalCount: organizations.length,
@@ -1195,7 +1162,7 @@ export const rules = {
   customer: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<CustomerListResponse>) => void,
+      callback: (error: any, response: CustomerListResponse) => void,
     ) => callback(null, {
       items: customers,
       totalCount: 1,
@@ -1205,7 +1172,7 @@ export const rules = {
   contact_point: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<ContactPointListResponse>) => void,
+      callback: (error: any, response: ContactPointListResponse) => void,
     ) => callback(null, {
       items: contactPoints,
       totalCount: contactPoints.length,
@@ -1215,7 +1182,7 @@ export const rules = {
   address: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<AddressListResponse>) => void,
+      callback: (error: any, response: AddressListResponse) => void,
     ) => callback(null, {
       items: [
         ...residentialAddresses,
@@ -1235,7 +1202,7 @@ export const rules = {
   country: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<CountryListResponse>) => void,
+      callback: (error: any, response: CountryListResponse) => void,
     ) => callback(null, {
       items: countries,
       totalCount: countries.length,
@@ -1245,7 +1212,7 @@ export const rules = {
   product: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<ProductListResponse>) => void,
+      callback: (error: any, response: ProductListResponse) => void,
     ) => callback(null, {
       items: products,
       totalCount: products.length,
@@ -1255,7 +1222,7 @@ export const rules = {
   tax: {
     read: (
       call: any,
-      callback: (error: any, response: DeepPartial<TaxListResponse>) => void,
+      callback: (error: any, response: TaxListResponse) => void,
     )=> callback(null, {
       items: taxes,
       totalCount: 1,
@@ -1265,7 +1232,7 @@ export const rules = {
   invoice: {
     create: (
       call: any,
-      callback: (error: any, response: DeepPartial<InvoiceListResponse>) => void,
+      callback: (error: any, response: InvoiceListResponse) => void,
     ) => callback(null, {
       items: [{
         payload: {

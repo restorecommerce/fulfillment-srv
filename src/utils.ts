@@ -1,10 +1,10 @@
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { Client } from '@restorecommerce/grpc-client';
 import {
   FulfillmentResponse,
   Label,
   Parcel,
-  State,
+  FulfillmentState,
   Tracking,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import {
@@ -69,15 +69,15 @@ export type CourierResponse = FulfillmentCourierResponse;
 export type CourierMap = { [id: string]: Courier };
 
 export type Payload = { id?: string };
-export type Response<T extends Payload> = { 
-  payload?: T,
-  status?: Status,
+export type Response<T extends Payload> = {
+  payload?: T;
+  status?: Status;
 };
 export type ResponseList<T extends Payload> = {
-  items?: Response<T>[],
-  operation_status?: OperationStatus,
-}
-export type ResponseMap<T extends Payload> = { [id: string]: Response<T> }
+  items?: Response<T>[];
+  operation_status?: OperationStatus;
+};
+export type ResponseMap<T extends Payload> = { [id: string]: Response<T> };
 
 export const filterTax = (
   tax: Tax,
@@ -95,9 +95,9 @@ export const filterTax = (
   )
 );
 
-export const StateRank = Object.values(State).reduce((a, b, i) => {
+export const StateRank = Object.values(FulfillmentState).reduce((a, b, i) => {
   a[b] = i;
-  return a; 
+  return a;
 }, {} as { [key: string]: number });
 
 export interface AggregatedFulfillment extends FulfillmentResponse
@@ -186,7 +186,7 @@ export const extractCouriers = (fulfillments: FlatAggregatedFulfillment[]): Cour
     },
     {} as CourierMap
   );
-} 
+};
 
 export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] => {
   return fulfillments.flatMap((fulfillment) => {
@@ -200,7 +200,7 @@ export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillmen
         uuid,
         payload: {
           ...fulfillment.payload,
-          state: label?.state ?? fulfillment.payload?.state,
+          fulfillment_state: label?.state ?? fulfillment.payload?.fulfillment_state,
         },
         sender_country: fulfillment.sender_country?.payload,
         recipient_country: fulfillment.recipient_country?.payload,
@@ -212,9 +212,9 @@ export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillmen
         options: fulfillment.options,
         status: tracking?.status ?? label?.status ?? fulfillment.status,
       };
-    })
+    });
   });
-}
+};
 
 export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): FulfillmentResponse[] => {
   const merged_fulfillments: { [uuid: string]: FulfillmentResponse } = {};
@@ -225,7 +225,7 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
       if (a.parcel) c.payload.packaging.parcels.push(a.parcel);
       if (a.label) c.payload.labels.push(a.label);
       if (a.tracking) c.payload.trackings.push(a.tracking);
-      c.payload.state = StateRank[b.state] < StateRank[c.payload.state] ? b.state : c.payload.state;
+      c.payload.fulfillment_state = StateRank[b.fulfillment_state] < StateRank[c.payload.fulfillment_state] ? b.fulfillment_state : c.payload.fulfillment_state;
       c.status = c.status.code > a.status.code ? c.status : a.status;
       c.payload.total_amounts = a.payload.total_amounts?.reduce(
         (a, b) => {

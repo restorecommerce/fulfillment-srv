@@ -8,7 +8,7 @@ import {
   Client
 } from '@restorecommerce/grpc-client';
 import { Events, Topic } from '@restorecommerce/kafka-client';
-import { State } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
+import { FulfillmentState } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
 import { Fulfillment } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment';
 import { FulfillmentServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment';
 import { FulfillmentCourierServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_courier';
@@ -75,9 +75,27 @@ describe('Testing Fulfillment Service Cluster:', () => {
   after(async function() {
     this.timeout(30000);
     await Promise.allSettled([
-      courier_client?.delete({ collection: true }),
-      product_client?.delete({ collection: true }),
-      fulfillment_client?.delete({ collection: true }),
+      courier_client?.delete({
+        collection: true,
+        subject: {
+          id: 'superadmin',
+          token: 'superadmin',
+        },
+      }),
+      product_client?.delete({
+        collection: true,
+        subject: {
+          id: 'superadmin',
+          token: 'superadmin',
+        },
+      }),
+      fulfillment_client?.delete({
+        collection: true,
+        subject: {
+          id: 'superadmin',
+          token: 'superadmin',
+        },
+      }),
       events?.stop(),
     ]);
     await worker?.stop();
@@ -178,27 +196,27 @@ describe('Testing Fulfillment Service Cluster:', () => {
     const fulfillmentCancelledSemaphore = new Semaphore(0);
 
     const onFulfillmentCreated = (msg: Fulfillment, context?:any): void => {
-      should.equal(msg?.state, State.CREATED);
+      should.equal(msg?.fulfillment_state, FulfillmentState.PENDING);
       fulfillmentCreatedSemaphore.release(1);
     };
 
     const onFulfillmentSubmitted = (msg: Fulfillment, context?:any): void => {
-      should.equal(msg?.state, State.SUBMITTED);
+      should.equal(msg?.fulfillment_state, FulfillmentState.SUBMITTED);
       fulfillmentSubmittedSemaphore.release(1);
     };
 
     const onFulfillmentFulfilled = (msg: Fulfillment, context?:any): void => {
-      should.equal(msg?.state, State.FULFILLED);
+      should.equal(msg?.fulfillment_state, FulfillmentState.COMPLETED);
       fulfillmentFulfilledSemaphore.release(1);
     };
 
     const onFulfillmentWithdrawn = (msg: Fulfillment, context?:any): void => {
-      should.equal(msg?.state, State.WITHDRAWN);
+      should.equal(msg?.fulfillment_state, FulfillmentState.WITHDRAWN);
       fulfillmentWithdrawnSemaphore.release(1);
     };
 
     const onFulfillmentCancelled = (msg: Fulfillment, context?:any): void => {
-      should.equal(msg?.state, State.CANCELLED);
+      should.equal(msg?.fulfillment_state, FulfillmentState.CANCELLED);
       fulfillmentCancelledSemaphore.release(1);
     };
 
@@ -251,8 +269,9 @@ describe('Testing Fulfillment Service Cluster:', () => {
 
     for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
       it(`should submit fulfillment by valid samples: ${sample_name}`, async function() {
-        this.timeout(30000);
+        this.timeout(60000);
         const response = await fulfillment_client.submit(sample);
+        console.log(JSON.stringify(response, null, 2));
         should.equal(
           response?.operationStatus?.code, 200,
           'response.operationStatus.code expected to be 200',

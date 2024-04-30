@@ -72,7 +72,7 @@ export class FulfillmentCourierService
       throw {
         code: 500,
         message: 'Query for fulfillments exceeds limit of 1000!'
-      } as OperationStatus
+      } as OperationStatus;
     }
 
     const request = ReadRequest.fromPartial({

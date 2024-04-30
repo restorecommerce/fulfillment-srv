@@ -1,9 +1,7 @@
-import {
-  Stub,
-  FlatAggregatedFulfillment
-} from '../index.js';
+import { FlatAggregatedFulfillment } from '../utils.js';
+import { Stub } from '../stub.js';
 
-export class DummyStub extends Stub {
+class DummyStub extends Stub {
 
   get type(): string {
     return this.constructor.name;
@@ -32,10 +30,12 @@ export class DummyStub extends Stub {
   ): Promise<FlatAggregatedFulfillment[]> {
     return fulfillments;
   }
-  
+
   protected override async cancelImpl(
     fulfillments: FlatAggregatedFulfillment[]
   ): Promise<FlatAggregatedFulfillment[]> {
     return fulfillments;
   }
 }
+
+Stub.register('Dummy', DummyStub);

@@ -77,7 +77,6 @@
       "FULFILLED": "fulfillmentFulfilled",
       "WITHDRAWN": "fulfillmentWithdrawn",
       "CANCELLED": "fulfillmentCancelled",
-      "CREATE_FULFILLMENTS": "createFulfillments",
       "CREATE_INVOICES": "createInvoices"
     },
     "kafka": {
@@ -359,8 +358,22 @@
   "preDefinedIds": {
     "legalAddressTypeId": "legal_address"
   },
+  "errors": {
+    "INVALID_CREDENTIALS": {
+      "code": 401,
+      "message": "Invalid credentials"
+    },
+    "USER_NOT_LOGGED_IN": {
+      "code": 401,
+      "message": "Invalid authentication context, please log in first"
+    },
+    "ACTION_NOT_ALLOWED": {
+      "code": 403,
+      "message": "Action not allowed on this resource"
+    }
+  },
   "stubs": {
-    "DHLSoapStub": {
+    "DHLSoap": {
       "defaults": {
         "ordering": {
           "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",

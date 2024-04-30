@@ -16,7 +16,7 @@ import { RedisClientType as RedisClient, createClient } from 'redis';
 import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base.js';
 import { Logger } from 'winston';
 import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transport/provider/grpc/index.js';
-import { 
+import {
   FulfillmentServiceDefinition,
   protoMetadata as FulfillmentMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
@@ -28,7 +28,7 @@ import {
   FulfillmentProductServiceDefinition,
   protoMetadata as FulfillmentProductMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
-import { 
+import {
   CommandInterfaceServiceDefinition,
   protoMetadata as CommandInterfaceMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface.js';
@@ -38,6 +38,7 @@ import { FulfillmentService } from './services/fulfillment.js';
 import { FulfillmentCourierService } from './services/fulfillment_courier.js';
 import { FulfillmentProductService } from './services/fulfillment_product.js';
 import { FulfillmentCommandInterface } from './services/fulfillment_command_interface.js';
+import './stubs/index.js';
 
 registerProtoMeta(
   FulfillmentMeta,
@@ -147,8 +148,8 @@ export class Worker {
         (err: any) => this.logger.error(`Job ${msg?.type} failed: ${err}`)
       );
     }
-  }
-  
+  };
+
   protected bindHandler(serviceName: string, functionName: string) {
     this.logger.debug(`Bind event to handler: ${serviceName}.${functionName}`);
     return (msg: any, context: any, config: any, eventName: string): Promise<any> => {
@@ -198,7 +199,7 @@ export class Worker {
             eventName as string,
             this.serviceActions.get(eventName),
             { startingOffset: offsetValue }
-          )
+          );
         }
       );
       this.topics.set(key, topic);
