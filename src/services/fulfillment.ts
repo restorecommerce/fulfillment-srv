@@ -138,6 +138,11 @@ export class FulfillmentService
       code: 400,
       message: '{entity} {id} is not submitted!',
     },
+    SHOP_ID_NOT_IDENTICAL: {
+      id: '',
+      code: 400,
+      message: '{entity} {id} Fulfillment.shopId must be listed in Courier.shopIds!',
+    },
   };
 
   protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
@@ -293,6 +298,106 @@ export class FulfillmentService
     } as T;
   }
 
+  protected getProductsBySuper(
+    ids: string[],
+    subject?: Subject,
+    context?: any,
+  ): Promise<ResponseMap<FulfillmentProduct>> {
+    ids = [...new Set(ids)];
+
+    if (ids.length > 1000) {
+      throwOperationStatusCode(
+        'FulfillmentProduct',
+        this.operation_status_codes.LIMIT_EXHAUSTED,
+      );
+    }
+
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filters: [
+          {
+            field: 'id',
+            operation: Filter_Operation.in,
+            value: JSON.stringify(ids),
+            type: Filter_ValueType.ARRAY,
+          }
+        ]
+      }],
+      limit: ids.length,
+      subject,
+    });
+
+    return this.fulfillmentProductSrv.superRead(
+      request,
+      context,
+    ).then(
+      (response: any) => {
+        if (response.operation_status?.code === 200) {
+          return response.items?.reduce(
+            (a: ResponseMap<FulfillmentProduct>, b: any) => {
+              a[b.payload?.id] = b;
+              return a;
+            },
+            {} as ResponseMap<FulfillmentProduct>
+          );
+        }
+        else {
+          throw response.operation_status;
+        }
+      }
+    );
+  }
+
+  protected getCouriersBySuper(
+    ids: string[],
+    subject?: Subject,
+    context?: any,
+  ): Promise<ResponseMap<Courier>> {
+    ids = [...new Set(ids)];
+
+    if (ids.length > 1000) {
+      throwOperationStatusCode(
+        'Courier',
+        this.operation_status_codes.LIMIT_EXHAUSTED,
+      );
+    }
+
+    const request = ReadRequest.fromPartial({
+      filters: [{
+        filters: [
+          {
+            field: 'id',
+            operation: Filter_Operation.in,
+            value: JSON.stringify(ids),
+            type: Filter_ValueType.ARRAY,
+          }
+        ]
+      }],
+      limit: ids.length,
+      subject,
+    });
+
+    return this.fulfillmentCourierSrv.superRead(
+      request,
+      context,
+    ).then(
+      (response: any) => {
+        if (response.operation_status?.code === 200) {
+          return response.items?.reduce(
+            (a: ResponseMap<Courier>, b: any) => {
+              a[b.payload?.id] = b;
+              return a;
+            },
+            {} as ResponseMap<Courier>
+          );
+        }
+        else {
+          throw response.operation_status;
+        }
+      }
+    );
+  }
+
   protected get<T>(
     ids: string[],
     service: CRUDClient,
@@ -351,7 +456,7 @@ export class FulfillmentService
     }
     else {
       throwStatusCode<T>(
-        'Object',
+        ({} as new() => T).name,
         id,
         this.status_codes.NOT_FOUND
       );
@@ -458,20 +563,18 @@ export class FulfillmentService
       context,
     );
 
-    const product_map = await this.get<FulfillmentProduct>(
+    const product_map = await this.getProductsBySuper(
       fulfillments.flatMap(
         f => f.packaging.parcels.map(p => p.product_id)
       ),
-      this.fulfillmentProductSrv,
       subject,
       context,
     );
 
-    const courier_map = await this.get<Courier>(
+    const courier_map = await this.getCouriersBySuper(
       Object.values(product_map).map(
         p => p.payload?.courier_id
       ),
-      this.fulfillmentCourierSrv,
       subject,
       context,
     );
@@ -509,6 +612,16 @@ export class FulfillmentService
           products.map(
             product => product.payload?.courier_id
           )
+        )
+        
+        couriers.every(
+          courier => courier.payload?.shop_ids?.includes(
+            item.shop_id
+          )
+        ) || throwStatusCode<any>(
+          'Fulfillment',
+          item.id,
+          this.status_codes.SHOP_ID_NOT_IDENTICAL,
         );
 
         const status: Status[] = [

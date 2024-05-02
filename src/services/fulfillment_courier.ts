@@ -89,6 +89,13 @@ export class FulfillmentCourierService
     return super.read(request, context);
   }
 
+  public superRead(
+    request: ReadRequest,
+    context?: any,
+  ) {
+    return super.read(request, context);
+  }
+
   @access_controlled_function({
     action: AuthZAction.READ,
     operation: Operation.whatIsAllowed,
