@@ -1,11 +1,7 @@
 import { FlatAggregatedFulfillment } from '../utils.js';
 import { Stub } from '../stub.js';
 
-class DummyStub extends Stub {
-
-  get type(): string {
-    return this.constructor.name;
-  }
+class Dummy extends Stub {
 
   override async getTariffCode(
     fulfillment: FlatAggregatedFulfillment
@@ -38,4 +34,4 @@ class DummyStub extends Stub {
   }
 }
 
-Stub.register('Dummy', DummyStub);
+Stub.register(Dummy.constructor.name, Dummy);

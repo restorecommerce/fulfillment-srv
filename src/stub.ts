@@ -13,7 +13,13 @@ export abstract class Stub
   static cfg: any = null;
   static logger: Logger = null;
 
-  abstract get type(): string;
+  private static getType<T extends Stub>(stub: T): string {
+    return stub.constructor.name;
+  }
+
+  get type(): string {
+    return Stub.getType(this);
+  }
 
   constructor(
     public courier: Courier,

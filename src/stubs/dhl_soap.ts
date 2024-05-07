@@ -311,10 +311,6 @@ class DHLSoap extends Stub {
     },
   };
 
-  get type(): string {
-    return this.constructor.name; // 'DHLSoap';
-  }
-
   get clients(): ClientMap {
     return DHLSoap._clients;
   }
@@ -702,4 +698,4 @@ class DHLSoap extends Stub {
   }
 };
 
-Stub.register('DHLSoap', DHLSoap);
+Stub.register(DHLSoap.constructor.name, DHLSoap);
