@@ -34,4 +34,4 @@ class Dummy extends Stub {
   }
 }
 
-Stub.register(Dummy.constructor.name, Dummy);
+Stub.register(Dummy.name, Dummy);

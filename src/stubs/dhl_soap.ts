@@ -317,7 +317,7 @@ class DHLSoap extends Stub {
 
   constructor(courier?: Courier, kwargs?: { [key: string]: any }) {
     super(courier, kwargs?.cfg, kwargs?.logger);
-    this.stub_defaults = this.cfg?.get(`stubs:DHLSoap:${courier?.id}`) ?? this.cfg?.get('stubs:DHLSoap:defaults');
+    this.stub_defaults = this.cfg?.get(`stubs:${this.type}:${courier?.id}`) ?? this.cfg?.get(`stubs:${this.type}:defaults`);
     this.version = this.stub_defaults?.ordering?.version ?? [3, 4, 0];
 
     this.status_codes = {
@@ -698,4 +698,4 @@ class DHLSoap extends Stub {
   }
 };
 
-Stub.register(DHLSoap.constructor.name, DHLSoap);
+Stub.register(DHLSoap.name, DHLSoap);
