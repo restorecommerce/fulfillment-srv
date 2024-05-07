@@ -63,12 +63,6 @@
     }
   },
   "authorization": {
-    "acs-srv": {
-      "address": "access-control-srv:50051"
-    },
-    "user": {
-      "address": "identity-srv:50051"
-    },
     "cache": {
       "url": "redis://redis:6379"
     }

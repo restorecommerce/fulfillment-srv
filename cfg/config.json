@@ -23,6 +23,13 @@
         "fulfillment",
         "fulfillmentCourier",
         "fulfillmentProduct"
+      ],
+      "customQueries": [
+        {
+          "path": "queries/filter_ownership.aql",
+          "name": "filterByOwnership",
+          "type": "filter"
+        }
       ]
     }
   },
@@ -263,14 +270,6 @@
     "enabled": true,
     "enforce": true,
     "database": "arangoDB",
-    "client": {
-      "acs-srv": {
-        "address": "localhost:50061"
-      },
-      "user": {
-        "address": "localhost:50051"
-      }
-    },
     "urns": {
       "entity": "urn:restorecommerce:acs:names:model:entity",
       "user": "urn:restorecommerce:acs:model:user.User",

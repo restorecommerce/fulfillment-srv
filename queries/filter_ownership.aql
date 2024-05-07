@@ -1,0 +1,11 @@
+let found = (
+  for o in node.meta.owners
+    filter o.id == "urn:restorecommerce:acs:names:ownerIndicatoryEntity"
+    for arg in @customArguments
+      filter o.value == arg.entity
+      for ownerInst in o.attributes
+        filter ownerInst.id == "urn:restorecommerce:acs:names:ownerInstance"
+        filter ownerInst.value in arg.instance    
+        return true
+)
+filter true in found
