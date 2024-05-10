@@ -62,6 +62,10 @@ import {
   CustomerServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
 import {
+  Credential,
+  CredentialServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
+import {
   Shop,
   ShopServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
@@ -173,6 +177,7 @@ export class FulfillmentService
   protected readonly address_service: Client<AddressServiceDefinition>;
   protected readonly country_service: Client<CountryServiceDefinition>;
   protected readonly tax_service: Client<TaxServiceDefinition>;
+  protected readonly credential_service: Client<CredentialServiceDefinition>;
 
   constructor(
     readonly fulfillmentCourierSrv: FulfillmentCourierService,
@@ -271,6 +276,15 @@ export class FulfillmentService
       } as GrpcClientConfig,
       TaxServiceDefinition,
       createChannel(cfg.get('client:tax:address'))
+    );
+
+    this.credential_service = createClient(
+      {
+        ...cfg.get('client:credential'),
+        logger
+      } as GrpcClientConfig,
+      CredentialServiceDefinition,
+      createChannel(cfg.get('client:credential:address'))
     );
   }
 
@@ -405,11 +419,10 @@ export class FulfillmentService
     context?: any,
   ): Promise<ResponseMap<T>> {
     ids = [...new Set(ids)];
-    const entity = ({} as new() => T).name;
 
     if (ids.length > 1000) {
       throwOperationStatusCode(
-        entity,
+        service.constructor?.name,
         this.operation_status_codes.LIMIT_EXHAUSTED,
       );
     }
@@ -450,22 +463,22 @@ export class FulfillmentService
     );
   }
 
-  async getById<T>(map: { [id: string]: T }, id: string): Promise<T> {
-    if (id in map) {
+  async getById<T>(map: { [id: string]: T }, id: string, name: string): Promise<T> {
+    if (map && id in map) {
       return map[id];
     }
     else {
       throwStatusCode<T>(
-        ({} as new() => T).name,
+        name,
         id,
         this.status_codes.NOT_FOUND
       );
     }
   }
 
-  async getByIds<T>(map: { [id: string]: T }, ids: string[]): Promise<T[]> {
+  async getByIds<T>(map: { [id: string]: T }, ids: string[], name: string): Promise<T[]> {
     return Promise.all(ids.map(
-      id => this.getById(map, id)
+      id => this.getById(map, id, name)
     ));
   }
 
@@ -579,6 +592,15 @@ export class FulfillmentService
       context,
     );
 
+    const credential_map = await this.get<Credential>(
+      Object.values(courier_map).map(
+        c => c.payload?.credential_id
+      ),
+      this.credential_service,
+      subject,
+      context,
+    )
+
     const tax_map = await this.get<Tax>(
       Object.values(product_map).flatMap(
         p => p.payload?.tax_ids
@@ -593,11 +615,13 @@ export class FulfillmentService
         const sender_country = await this.getById(
           country_map,
           item.packaging.sender?.address?.country_id,
+          'Country'
         );
 
         const recipient_country = await this.getById(
           country_map,
           item.packaging.recipient?.address?.country_id,
+          'Country'
         );
 
         const products = await this.getByIds(
@@ -605,14 +629,16 @@ export class FulfillmentService
           item.packaging.parcels.map(
             parcel => parcel?.product_id
           ),
+          'Product'
         );
 
         const couriers = await this.getByIds(
           courier_map,
           products.map(
             product => product.payload?.courier_id
-          )
-        )
+          ),
+          'Courier'
+        );
         
         couriers.every(
           courier => courier.payload?.shop_ids?.includes(
@@ -624,6 +650,16 @@ export class FulfillmentService
           this.status_codes.SHOP_ID_NOT_IDENTICAL,
         );
 
+        const credentials = await this.getByIds(
+          credential_map,
+          couriers.map(
+            c => c.payload?.credential_id
+          ).filter(
+            id => id
+          ),
+          'Credential'
+        );
+
         const status: Status[] = [
           sender_country?.status,
           recipient_country?.status,
@@ -633,16 +669,19 @@ export class FulfillmentService
 
         const shop_country = await this.getById(
           shop_map,
-          item.shop_id
+          item.shop_id,
+          'Shop'
         ).then(
           shop => this.getById(
             orga_map,
-            shop.payload?.organization_id
+            shop.payload!.organization_id,
+            'Organization'
           )
         ).then(
           orga => this.getByIds(
             contact_point_map,
-            orga.payload?.contact_point_ids
+            orga.payload!.contact_point_ids,
+            'ContactPoint'
           )
         ).then(
           cpts => cpts.find(
@@ -657,18 +696,21 @@ export class FulfillmentService
         ).then(
           contact_point => this.getById(
             address_map,
-            contact_point.payload?.physical_address_id,
+            contact_point.payload!.physical_address_id,
+            'ContactPoint'
           )
         ).then(
           address => this.getById(
             country_map,
-            address.payload?.country_id
+            address.payload!.country_id,
+            'Country'
           )
         );
 
         const customer = await this.getById(
           customer_map,
-          item.customer_id
+          item.customer_id,
+          'Customer'
         );
 
         const customer_country = await this.getByIds(
@@ -677,7 +719,8 @@ export class FulfillmentService
             customer.payload.private?.contact_point_ids,
             orga_map[customer.payload.commercial?.organization_id]?.payload.contact_point_ids,
             orga_map[customer.payload.public_sector?.organization_id]?.payload.contact_point_ids,
-          ].flatMap(id => id).filter(id => id)
+          ].flatMap(id => id).filter(id => id),
+          'Country'
         ).then(
           cps => cps.find(
             cp => cp.payload?.contact_point_type_ids.indexOf(
@@ -692,11 +735,13 @@ export class FulfillmentService
           cp => this.getById(
             address_map,
             cp.payload.physical_address_id,
+            'Address'
           )
         ).then(
           address => this.getById(
             country_map,
-            address.payload.country_id
+            address.payload.country_id,
+            'Country'
           )
         );
 
@@ -740,6 +785,7 @@ export class FulfillmentService
           payload: item,
           products,
           couriers,
+          credentials,
           sender_country,
           recipient_country,
           options: null,
@@ -921,7 +967,7 @@ export class FulfillmentService
       }, context);
 
       upsert_results.items.forEach(item => {
-        if (item.payload.fulfillment_state in this.emitters) {
+        if (this.emitters && item.payload.fulfillment_state in this.emitters) {
           switch (item.payload.fulfillment_state) {
             case FulfillmentState.INVALID:
             case FulfillmentState.FAILED:
@@ -1069,7 +1115,7 @@ export class FulfillmentService
         updates => updates.items.forEach(
           item => {
             response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
-            if (item.payload.fulfillment_state in this.emitters) {
+            if (this.emitters && item.payload.fulfillment_state in this.emitters) {
               switch (item.payload.fulfillment_state) {
                 case FulfillmentState.INVALID:
                 case FulfillmentState.FAILED:
@@ -1208,7 +1254,7 @@ export class FulfillmentService
       }, context);
 
       update_results.items.forEach(item => {
-        if (item.payload.fulfillment_state in this.emitters) {
+        if (this.emitters && item.payload.fulfillment_state in this.emitters) {
           switch (item.payload.fulfillment_state) {
             case FulfillmentState.INVALID:
             case FulfillmentState.FAILED:

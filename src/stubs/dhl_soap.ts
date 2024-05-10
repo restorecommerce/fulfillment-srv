@@ -11,6 +11,9 @@ import {
 import {
   FulfillmentCourier as Courier
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
+import {
+  Credential
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
 import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
   FlatAggregatedFulfillment,
@@ -21,6 +24,13 @@ import { Stub } from '../stub.js';
 dayjs.extend(customParseFormat);
 
 type ClientMap = { [id: string]: soap.Client };
+type RequestMap = {
+  [id: string]: {
+    courier: Courier,
+    credential: Credential,
+    fulfillments: FlatAggregatedFulfillment[],
+  }
+}
 
 interface Origin
 {
@@ -123,6 +133,31 @@ interface ShipmentCancelRequest
     minorRelease: number;
   };
   shipmentNumber: string[];
+}
+
+interface Config
+{
+  ordering?: {
+    wsdl?: string,
+    version?: number[],
+    endpoint?: string,
+    username?: string,
+    password?: string,
+    wsdl_header?: {
+      Authentification?: {
+        user?: string,
+        signature?: string,
+      },
+    },
+  },
+  tracking?: {
+    version?: number[],
+    appname?: string,
+    endpoint?: string,
+    username?: string,
+    password?: string,
+    secret?: string,
+  },
 }
 
 const parseService = (attributes: any[]) => attributes.filter((att: any) =>
@@ -539,85 +574,133 @@ class DHLSoap extends Stub {
     };
   }
 
-  async registerSoapClient(courier?: Courier): Promise<soap.Client> {
+  async getSoapClient(courier: Courier, credential: Credential): Promise<soap.Client> {
     this.courier = courier = courier ?? this.courier;
     if (this.clients[courier.id]) {
       return this.clients[courier.id];
     }
 
     try{
-      const configs = JSON.parse(courier?.configuration?.value?.toString() ?? null)?.ordering ?? this.stub_defaults?.ordering;
-      const wsdl = configs?.wsdl ?? this.stub_defaults?.ordering?.wsdl;
-      const username = configs?.username ?? this.stub_defaults?.ordering?.username;
-      const password = configs?.password ?? this.stub_defaults?.ordering?.password;
-      const endpoint = configs?.endpoint ?? this.stub_defaults?.ordering?.endpoint;
-      const wsdlHeader = configs?.wsdl_header ?? this.stub_defaults?.ordering?.wsdl_header;
-      this.clients[courier.id] = await soap.createClientAsync(wsdl).then(client => {
-        client.setEndpoint(endpoint);
-        client.addSoapHeader(typeof(wsdlHeader) === 'string' ? JSON.parse(wsdlHeader) : wsdlHeader);
-        client.setSecurity(new soap.BasicAuthSecurity(username, password));
-        return client;
-      });
+      const config: Config = {
+        ordering: {
+          ...this.stub_defaults?.ordering,
+          ...JSON.parse(courier?.configuration?.value?.toString() ?? null)?.ordering,
+          ...credential
+              ? {
+                  username: credential?.user,
+                  password: credential?.pass,
+                } 
+              : {},
+          ...JSON.parse(credential?.credentials?.value?.toString() ?? null)?.ordering,
+        }
+      };
+      
+      this.clients[courier.id] = await soap.createClientAsync(config.ordering.wsdl).then(
+        client => {
+          client.setEndpoint(config.ordering.endpoint);
+          client.addSoapHeader(
+            typeof(config.ordering.wsdl_header) === 'string'
+              ? JSON.parse(config.ordering.wsdl_header)
+              : config.ordering.wsdl_header
+          );
+          client.setSecurity(new soap.BasicAuthSecurity(config.ordering.username, config.ordering.password));
+          return client;
+        }
+      );
     }
     catch (err) {
-      this.logger?.error(`${this.constructor.name}:\n Failed to create Client!`);
-      this.logger?.error(`${this.constructor.name}: ${JSON.stringify(err, null, 2)}`);
+      this.logger?.error(`${this.type}:\n Failed to create Client!`);
+      this.logger?.error(`${this.type}: ${JSON.stringify(err, null, 2)}`);
       throw err;
     }
     return this.clients[courier.id];
   };
 
-  protected override async evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+  protected async soapCall(
+    funcName: string,
+    fulfillments: FlatAggregatedFulfillment[]
+  ): Promise<FlatAggregatedFulfillment[]> {
     if (fulfillments.length === 0) return [];
-    const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
-    const client = await this.registerSoapClient();
-    return new Promise<FlatAggregatedFulfillment[]>((resolve): void => {
-      client.GVAPI_2_0_de.GKVAPISOAP11port0.evaluateShipmentOrder(
-        dhl_order_request,
-        (error: any, result: any): any => {
-          resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
+    const request_map = fulfillments.reduce(
+      (a, b) => {
+        const c = a[b.courier?.id];
+        if (c) {
+          c.fulfillments.push(b);
         }
-      );
-    });
+        else if (b.courier?.id) {
+          a[b.courier.id] = {
+            courier: b.courier,
+            credential: b.credential,
+            fulfillments: [b],
+          };
+        }
+        return a;
+      },
+      {} as RequestMap
+    );
+    return await Promise.all(
+      Object.values(request_map).map(
+        ({courier, credential, fulfillments}) => this.getSoapClient(courier, credential).then(
+          client => new Promise<FlatAggregatedFulfillment[]>(
+            (resolve, reject): void => {
+              const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
+              client.GVAPI_2_0_de.GKVAPISOAP11port0[funcName](
+                this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments),
+                (error: any, result: any): any => {
+                  try {
+                    clearTimeout(timer);
+                    resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
+                  }
+                  catch (e: any) {
+                    reject(e);
+                  }
+                }
+              )
+            }
+          )
+        )
+      )
+    ).then(
+      p => p.flatMap(p => p)
+    );
+  }
+
+  protected override async evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+    return await this.soapCall('evaluateShipmentOrder', fulfillments);
   }
 
   protected override async submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-    if (fulfillments.length === 0) return [];
-    const dhl_order_request = this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments);
-    const client = await this.registerSoapClient();
-    return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject): void => {
-      const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
-      client.GVAPI_2_0_de.GKVAPISOAP11port0.createShipmentOrder(
-        dhl_order_request,
-        (error: any, result: any): any => {
-          clearTimeout(timer);
-          try {
-            resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
-          }
-          catch (e: any) {
-            reject(e);
-          }
-        }
-      );
-    });
+    return await this.soapCall('createShipmentOrder', fulfillments);
   }
+
+  protected override async cancelImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+    return await this.soapCall('deleteShipmentOrder', fulfillments);
+  };
 
   protected override async trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
     const promises = fulfillments.map(async item => {
       try {
+        const courier = item.courier;
+        const credential = item.credential;
         const options = JSON.parse(item?.options?.value?.toString() ?? null);
-        const config = JSON.parse(this.courier?.configuration?.value?.toString() ?? null)?.tracking ?? this.stub_defaults?.tracking;
-        const client = {
-          appname: config?.appname ?? this.stub_defaults?.tracking?.appname,
-          username: config?.username ?? this.stub_defaults?.tracking?.username,
-          password: config?.password ?? this.stub_defaults?.tracking?.password,
-          endpoint: config?.endpoint ?? this.stub_defaults?.tracking?.endpoint,
-          secret: config?.secret ?? this.stub_defaults?.tracking?.secret,
+        const config: Config = {
+          tracking: {
+            ...this.stub_defaults?.tracking,
+            ...JSON.parse(courier?.configuration?.value?.toString() ?? null)?.tracking,
+            ...credential
+              ? {
+                  username: credential?.user,
+                  password: credential?.pass,
+                } 
+              : {},
+            ...JSON.parse(credential?.credentials?.value?.toString() ?? null)?.tracking,
+          }
         };
-        const auth = 'Basic ' + Buffer.from(`${client.username}:${client.password}`).toString('base64');
+
+        const auth = 'Basic ' + Buffer.from(`${config.tracking.username}:${config.tracking.password}`).toString('base64');
         const attributes = {
-          appname: client.appname,
-          password: client.secret,
+          appname: config.tracking.appname,
+          password: config.tracking.secret,
           'piece-code': item.label.shipment_number,
           'language-code': options?.['language-code'] ?? 'de',
           request: options?.request ?? 'd-get-piece-detail'
@@ -637,15 +720,15 @@ class DHLSoap extends Stub {
           // body: params,
         };
 
-        return await fetch(`${client.endpoint}?${params}`, payload).then(
+        return await fetch(`${config.tracking.endpoint}?${params}`, payload).then(
           response => DHLTracking2FulfillmentTracking(item, response),
           err => {
-            this.logger?.error(`${this.constructor.name}: ${err}`);
+            this.logger?.error(`${this.type}: ${err}`);
             return DHLTracking2FulfillmentTracking(item, null, err);
           }
         );
       } catch (err) {
-        this.logger?.error(`${this.constructor.name}: ${err}`);
+        this.logger?.error(`${this.type}: ${err}`);
         return {
           ...item,
           status: {
@@ -658,39 +741,6 @@ class DHLSoap extends Stub {
     });
 
     return await Promise.all(promises);
-  };
-
-  protected override async cancelImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-    if (fulfillments.length === 0) return [];
-    const fulfillment_map: { [k: string]: FlatAggregatedFulfillment } = {};
-    fulfillments.forEach(a => fulfillment_map[a.label.shipment_number] = a);
-    const dhl_cancel_request = this.AggregatedFulfillment2DHLShipmentCancelRequest(fulfillments);
-    const client = await this.registerSoapClient();
-    return await new Promise<FlatAggregatedFulfillment[]>((resolve, reject: (v: FlatAggregatedFulfillment[]) => void): void => {
-      const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
-      client.GVAPI_2_0_de.GKVAPISOAP11port0.deleteShipmentOrder(dhl_cancel_request,
-        (err: any, result: any): any => {
-          clearTimeout(timer);
-          try {
-            if (err) {
-              if (result?.html) {
-                this.logger?.error(`${this.constructor.name}: ${result.html.head.title}`);
-                reject(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, null, result.html.head.title));
-              }
-              else {
-                this.logger?.error(`${this.constructor.name}: ${err}`);
-                reject(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, null, err));
-              }
-            }
-            else {
-              resolve(DHLShipmentCancelResponse2AggregatedFulfillment(fulfillment_map, result));
-            }
-          }
-          catch (e: any) {
-            reject(e);
-          }
-        });
-    });
   };
 
   async getTariffCode(fulfillment: FlatAggregatedFulfillment): Promise<string> {

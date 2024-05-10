@@ -70,6 +70,9 @@
     "tax": {
       "address": "localhost:50063"
     },
+    "credential": {
+      "address": "localhost:50063"
+    },
     "product": {
       "address": "localhost:50068"
     }

@@ -18,6 +18,10 @@ import {
   FulfillmentProductServiceImplementation,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import {
+  Credential,
+  CredentialResponse,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
+import {
   UserServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
 import {
@@ -104,6 +108,7 @@ export interface AggregatedFulfillment extends FulfillmentResponse
 {
   products: FulfillmentProductResponse[];
   couriers: CourierResponse[];
+  credentials: CredentialResponse[];
   sender_country: CountryResponse;
   recipient_country: CountryResponse;
   options: any;
@@ -114,6 +119,7 @@ export interface FlatAggregatedFulfillment extends FulfillmentResponse
   uuid: string;
   product: FulfillmentProduct;
   courier: Courier;
+  credential: Credential;
   sender_country: Country;
   recipient_country: Country;
   parcel: Parcel;
@@ -192,8 +198,9 @@ export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillmen
   return fulfillments.flatMap((fulfillment) => {
     const uuid = randomUUID();
     return fulfillment.payload?.packaging?.parcels.map((parcel, i): FlatAggregatedFulfillment => {
-      const product = fulfillment.products?.[i].payload;
-      const courier = fulfillment.couriers?.[i].payload;
+      const product = fulfillment.products?.[i]?.payload;
+      const courier = fulfillment.couriers?.[i]?.payload;
+      const credential = fulfillment.credentials?.[i]?.payload;
       const label = fulfillment.payload?.labels?.[i];
       const tracking = fulfillment.payload?.trackings?.[i];
       return {
@@ -206,6 +213,7 @@ export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillmen
         recipient_country: fulfillment.recipient_country?.payload,
         product,
         courier,
+        credential,
         parcel,
         label,
         tracking,

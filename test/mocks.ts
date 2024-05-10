@@ -57,8 +57,8 @@ import {
   PaymentState
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/invoice';
 import {
-  DeepPartial
-} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/resource_base';
+  CredentialListResponse
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/credential';
 import {
   FulfillmentProductList,
   PackingSolutionQueryList
@@ -1262,5 +1262,15 @@ export const rules = {
       totalCount: 1,
       operationStatus,
     })
+  },
+  credential: {
+    read: (
+      call: any,
+      callback: (error: any, response: CredentialListResponse) => void,
+    )=> callback(null, {
+      items: [],
+      totalCount: 0,
+      operationStatus
+    }),
   },
 };

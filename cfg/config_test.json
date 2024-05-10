@@ -163,6 +163,19 @@
           ]
         }
       }
+    },
+    "credential": {
+      "address": "localhost:50173",
+      "mock": {
+        "protoPath": "io/restorecommerce/credential.proto",
+        "packageName": "io.restorecommerce.credential",
+        "serviceName": "CredentialService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
     }
   }
 }
