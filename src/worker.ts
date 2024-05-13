@@ -254,19 +254,6 @@ export class Worker {
       implementation: this.fulfillmentCommandInterface,
     } as BindConfig<CommandInterfaceServiceDefinition>);
 
-    // Add reflection service
-    const reflectionServiceName = serviceNamesCfg.reflection;
-    const reflectionService = buildReflectionService([
-      { descriptor: FulfillmentMeta.fileDescriptor as any },
-      { descriptor: FulfillmentCourierMeta.fileDescriptor as any },
-      { descriptor: FulfillmentProductMeta.fileDescriptor as any },
-    ]);
-
-    await this.server.bind(reflectionServiceName, {
-      service: ServerReflectionService,
-      implementation: reflectionService
-    });
-
     await this.server.bind(serviceNamesCfg.health, {
       service: HealthDefinition,
       implementation: new Health(
@@ -274,11 +261,23 @@ export class Worker {
         {
           logger,
           cfg,
-          dependencies: [],
-          readiness: async () => !!await (db as Arango).db.version()
+          dependencies: ['acs-srv'],
+          readiness: () => (db as Arango).db.version().then(v => !!v)
         }
       )
     } as BindConfig<HealthDefinition>);
+
+    // Add reflection service
+    const reflectionService = buildReflectionService([
+      { descriptor: FulfillmentMeta.fileDescriptor as any },
+      { descriptor: FulfillmentCourierMeta.fileDescriptor as any },
+      { descriptor: FulfillmentProductMeta.fileDescriptor as any },
+    ]);
+
+    await this.server.bind(serviceNamesCfg.reflection, {
+      service: ServerReflectionService,
+      implementation: reflectionService
+    });
 
     // start server
     await this.server.start();
@@ -288,9 +287,17 @@ export class Worker {
   async stop(): Promise<any> {
     this.logger.info('Shutting down');
     await Promise.allSettled([
-      this.server?.stop(),
-      this.events?.stop(),
-      this.offsetStore?.stop(),
+      this.events?.stop().catch(
+        error => this.logger?.error(error)
+      )
+    ]);
+    await Promise.allSettled([
+      this.server?.stop().catch(
+        error => this.logger?.error(error)
+      ),
+      this.offsetStore?.stop().catch(
+        error => this.logger?.error(error)
+      ),
     ]);
   }
 }
