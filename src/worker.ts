@@ -182,9 +182,11 @@ export class Worker {
     this.events = new Events(kafkaCfg, logger);
     await this.events.start();
     this.offsetStore = new OffsetStore(this.events, cfg, logger);
+
     const redisConfig = cfg.get('redis');
     redisConfig.db = this.cfg.get('redis:db-indexes:db-subject');
     this.redisClient = createClient(redisConfig);
+    await this.redisClient.connect();
 
     await Promise.all(Object.keys(kafkaCfg.topics).map(async key => {
       const topicName = kafkaCfg.topics[key].topic;
