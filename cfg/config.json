@@ -195,12 +195,6 @@
       "renderRequest": {
         "messageObject": "io.restorecommerce.rendering.RenderRequest"
       },
-      "setApiKeyCommand": {
-        "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
-      },
-      "setApiKeyResponse": {
-        "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
-      },
       "flushCacheCommand": {
         "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
       },
@@ -216,7 +210,6 @@
             "resetCommand": "fulfillmentCommandInterface.command",
             "versionCommand": "fulfillmentCommandInterface.command",
             "configUpdateCommand": "fulfillmentCommandInterface.command",
-            "setApiKeyCommand": "fulfillmentCommandInterface.command",
             "flushCacheCommand": "fulfillmentCommandInterface.command"
           }
         },
