@@ -6,6 +6,8 @@ import {
   Client
 } from '@restorecommerce/grpc-client';
 import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
+import { type Logger } from '@restorecommerce/logger';
+import { type ServiceConfig } from '@restorecommerce/service-config';
 import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { 
   ACSClientContext,
@@ -188,8 +190,8 @@ export class FulfillmentProductService
     protected readonly courier_srv: FulfillmentCourierService,
     topic: Topic,
     db: DatabaseProvider,
-    protected readonly cfg: any,
-    logger: any
+    protected readonly cfg: ServiceConfig,
+    logger: Logger
   ) {
     super(
       cfg.get('database:main:entities:2') ?? 'fulfillment_product',
@@ -741,9 +743,9 @@ export class FulfillmentProductService
             )
           ).then(
             cpts => cpts.find(
-              cpt => cpt.payload?.contact_point_type_ids.indexOf(
+              cpt => cpt.payload?.contact_point_type_ids.includes(
                 this.legal_address_type_id
-              ) >= 0
+              )
             ) ?? this.throwStatusCode<ContactPointResponse>(
               query.reference.instance_type,
               query.reference.instance_id,
@@ -772,9 +774,9 @@ export class FulfillmentProductService
             ].flatMap(id => id).filter(id => id)
           ).then(
             cps => cps.find(
-              cp => cp.payload?.contact_point_type_ids.indexOf(
+              cp => cp.payload?.contact_point_type_ids.includes(
                 this.legal_address_type_id
-              ) >= 0
+              )
             ) ?? this.throwStatusCode<ContactPointResponse>(
               query.reference.instance_type,
               query.reference.instance_id,

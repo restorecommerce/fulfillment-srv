@@ -1,5 +1,7 @@
 import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
+import { type Logger } from '@restorecommerce/logger';
 import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
+import { type ServiceConfig } from '@restorecommerce/service-config';
 import { Topic } from '@restorecommerce/kafka-client';
 import {
   ACSClientContext,
@@ -48,7 +50,13 @@ export class FulfillmentCourierService
     };
   }
 
-  constructor(topic: Topic, db: DatabaseProvider, cfg: any, logger: any) {
+  constructor(
+    topic:
+    Topic,
+    db: DatabaseProvider,
+    cfg: ServiceConfig,
+    logger: Logger
+  ) {
     super(
       cfg.get('database:main:entities:1') ?? 'fulfillment_courier',
       topic,

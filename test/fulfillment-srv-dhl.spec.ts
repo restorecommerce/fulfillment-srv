@@ -295,6 +295,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
       it(`should submit fulfillment by valid samples: ${sample_name}`, async function() {
         this.timeout(60000);
         const response = await fulfillment_client.submit(sample);
+        console.log(response);
         should.equal(
           response?.operationStatus?.code, 200,
           'response.operationStatus.code expected to be 200',

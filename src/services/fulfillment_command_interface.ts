@@ -1,6 +1,6 @@
-import { Logger } from 'winston';
 import { RedisClientType as RedisClient } from 'redis';
-import { ServiceConfig } from '@restorecommerce/service-config';
+import { type Logger } from '@restorecommerce/logger';
+import { type ServiceConfig } from '@restorecommerce/service-config';
 import { Events } from '@restorecommerce/kafka-client';
 import {
   Server,

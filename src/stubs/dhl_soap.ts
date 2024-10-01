@@ -143,6 +143,7 @@ interface Config
     endpoint?: string,
     username?: string,
     password?: string,
+    access_token?: string,
     wsdl_header?: {
       Authentification?: {
         user?: string,
@@ -603,7 +604,19 @@ class DHLSoap extends Stub {
               ? JSON.parse(config.ordering.wsdl_header)
               : config.ordering.wsdl_header
           );
-          client.setSecurity(new soap.BasicAuthSecurity(config.ordering.username, config.ordering.password));
+
+          if (config.ordering?.username && config.ordering?.password) {
+            client.setSecurity(new soap.BasicAuthSecurity(
+              config.ordering.username,
+              config.ordering.password,
+            ));
+          }
+
+          if (config.ordering?.access_token) {
+            client.addHttpHeader('Authorization', `Bearer ${config.ordering.access_token}`);
+          }
+
+          console.log(client.getHttpHeaders())
           return client;
         }
       );

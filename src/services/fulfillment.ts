@@ -12,6 +12,8 @@ import {
   DefaultResourceFactory,
   injects_meta_data
 } from '@restorecommerce/acs-client';
+import { type Logger } from '@restorecommerce/logger';
+import { type ServiceConfig } from '@restorecommerce/service-config';
 import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import {
@@ -33,6 +35,7 @@ import {
   createChannel,
   createClient,
 } from '@restorecommerce/grpc-client';
+import { type CallContext } from 'nice-grpc-common';
 import {
   FulfillmentState,
   FulfillmentListResponse,
@@ -184,8 +187,8 @@ export class FulfillmentService
     readonly fulfillmentProductSrv: FulfillmentProductService,
     readonly topic: Topic,
     readonly db: DatabaseProvider,
-    readonly cfg: any,
-    readonly logger: any,
+    readonly cfg: ServiceConfig,
+    readonly logger: Logger,
   ) {
     super(
       cfg.get('database:main:entities:0') ?? 'fulfillment',
@@ -315,7 +318,7 @@ export class FulfillmentService
   protected getProductsBySuper(
     ids: string[],
     subject?: Subject,
-    context?: any,
+    context?: CallContext,
   ): Promise<ResponseMap<FulfillmentProduct>> {
     ids = [...new Set(ids)];
 
@@ -365,7 +368,7 @@ export class FulfillmentService
   protected getCouriersBySuper(
     ids: string[],
     subject?: Subject,
-    context?: any,
+    context?: CallContext,
   ): Promise<ResponseMap<Courier>> {
     ids = [...new Set(ids)];
 
@@ -416,7 +419,7 @@ export class FulfillmentService
     ids: string[],
     service: CRUDClient,
     subject?: Subject,
-    context?: any,
+    context?: CallContext,
   ): Promise<ResponseMap<T>> {
     ids = [...new Set(ids)];
 
@@ -485,7 +488,7 @@ export class FulfillmentService
   protected getFulfillmentsByIds(
     ids: string[],
     subject?: Subject,
-    context?: any
+    context?: CallContext
   ): Promise<FulfillmentListResponse> {
     ids = [...new Set(ids)];
     if (ids.length > 1000) {
@@ -509,10 +512,10 @@ export class FulfillmentService
     return super.read(request, context);
   }
 
-  protected async aggregateFulfillments(
+  protected async aggregate(
     fulfillments: Fulfillment[],
     subject?: Subject,
-    context?: any,
+    context?: CallContext,
     evaluate?: boolean,
   ): Promise<AggregatedFulfillment[]> {
     const customer_map = await this.get<Customer>(
@@ -685,9 +688,9 @@ export class FulfillmentService
           )
         ).then(
           cpts => cpts.find(
-            cpt => cpt.payload?.contact_point_type_ids.indexOf(
+            cpt => cpt.payload?.contact_point_type_ids.includes(
               this.legal_address_type_id
-            ) >= 0
+            )
           ) ?? throwStatusCode<ContactPointResponse>(
             typeof (item),
             item.id,
@@ -723,9 +726,9 @@ export class FulfillmentService
           'Country'
         ).then(
           cps => cps.find(
-            cp => cp.payload?.contact_point_type_ids.indexOf(
+            cp => cp.payload?.contact_point_type_ids.includes(
               this.legal_address_type_id
-            ) >= 0
+            )
           ) ?? throwStatusCode<ContactPointResponse>(
             typeof (item),
             item.id,
@@ -819,7 +822,7 @@ export class FulfillmentService
   })
   public override read(
     request: ReadRequest,
-    context?: any
+    context?: CallContext
   ) {
     return super.read(request, context);
   }
@@ -835,7 +838,7 @@ export class FulfillmentService
   })
   public override create(
     request: FulfillmentList,
-    context?: any
+    context?: CallContext
   ) {
     request?.items?.forEach(
       item => {
@@ -857,7 +860,7 @@ export class FulfillmentService
   })
   public override update(
     request: FulfillmentList,
-    context?: any
+    context?: CallContext
   ) {
     return super.update(request, context);
   }
@@ -873,7 +876,7 @@ export class FulfillmentService
   })
   public override upsert(
     request: FulfillmentList,
-    context?: any
+    context?: CallContext
   ) {
     return super.upsert(request, context);
   }
@@ -888,10 +891,10 @@ export class FulfillmentService
   })
   public async evaluate(
     request: FulfillmentList,
-    context?: any,
+    context?: CallContext,
   ): Promise<FulfillmentListResponse> {
     try {
-      const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
+      const fulfillments = await this.aggregate(request.items, request.subject, context);
       const flat_fulfillments = flatMapAggregatedFulfillments(fulfillments);
       const invalid_fulfillments = flat_fulfillments.filter(f => f.status?.code !== 200);
       const responses = await Stub.evaluate(flat_fulfillments.filter(f => f.status?.code === 200));
@@ -925,10 +928,10 @@ export class FulfillmentService
   })
   public async submit(
     request: FulfillmentList,
-    context?: any
+    context?: CallContext
   ): Promise<FulfillmentListResponse> {
     try {
-      const fulfillments = await this.aggregateFulfillments(request.items, request.subject, context);
+      const fulfillments = await this.aggregate(request.items, request.subject, context);
       const flattened = flatMapAggregatedFulfillments(fulfillments);
       const valids = flattened.filter(
         f => {
@@ -1000,7 +1003,7 @@ export class FulfillmentService
   })
   public async track(
     request: FulfillmentIdList,
-    context?: any
+    context?: CallContext
   ): Promise<FulfillmentListResponse> {
     try {
       const request_map: { [id: string]: FulfillmentId } = request.items.reduce(
@@ -1040,7 +1043,7 @@ export class FulfillmentService
           item => item.payload as Fulfillment
         )
       ).then(
-        fulfillments => this.aggregateFulfillments(
+        fulfillments => this.aggregate(
           fulfillments,
           request.subject,
           context,
@@ -1057,8 +1060,7 @@ export class FulfillmentService
           f => {
             const request = request_map[f.payload?.id];
             if (
-              request.shipment_numbers?.length > 0 &&
-              request.shipment_numbers.indexOf(f.label.shipment_number) < 0
+              !request.shipment_numbers?.includes(f.label.shipment_number)
             ) {
               return false;
             }
@@ -1153,7 +1155,7 @@ export class FulfillmentService
     database: 'arangoDB',
     useCache: true,
   })
-  public async withdraw(request: FulfillmentIdList, context?: any): Promise<FulfillmentListResponse> {
+  public async withdraw(request: FulfillmentIdList, context?: CallContext): Promise<FulfillmentListResponse> {
     return null;
   }
 
@@ -1165,7 +1167,7 @@ export class FulfillmentService
     database: 'arangoDB',
     useCache: true,
   })
-  public async cancel(request: FulfillmentIdList, context?: any): Promise<FulfillmentListResponse> {
+  public async cancel(request: FulfillmentIdList, context?: CallContext): Promise<FulfillmentListResponse> {
     try {
       const request_map = request.items!.reduce(
         (a, b) => {
@@ -1185,7 +1187,7 @@ export class FulfillmentService
         )
       );
 
-      const agg_fulfillments = await this.aggregateFulfillments(
+      const agg_fulfillments = await this.aggregate(
         fulfillments,
         request.subject,
         context

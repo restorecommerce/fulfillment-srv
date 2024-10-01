@@ -38,8 +38,7 @@
     "offsetStoreInterval": 1000,
     "db-indexes": {
       "db-offsetStore": 0,
-      "db-subject": 4,
-      "db-orderStore": 9
+      "db-subject": 4
     }
   },
   "client": {
@@ -147,27 +146,7 @@
       "fulfillmentProductDeleted": {
         "messageObject": "io.restorecommerce.fulfillment_product.Deleted"
       },
-      "jobScheduled": {
-        "protos": [
-          "io/restorecommerce/job.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.job.ScheduledJob"
-      },
-      "jobDone": {
-        "protos": [
-          "io/restorecommerce/job.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.job.JobDone"
-      },
-      "jobFailed": {
-        "protos": [
-          "io/restorecommerce/job.proto"
-        ],
-        "protoRoot": "node_modules/@restorecommerce/protos/",
-        "messageObject": "io.restorecommerce.job.JobFailed"
-      },
+      
       "restoreCommand": {
         "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
       },
@@ -201,6 +180,17 @@
       "flushCacheResponse": {
         "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
       },
+
+      "queuedJob": {
+        "messageObject": "io.restorecommerce.job.ScheduledJob"
+      },
+      "jobDone": {
+        "messageObject": "io.restorecommerce.job.JobDone"
+      },
+      "jobFailed": {
+        "messageObject": "io.restorecommerce.job.JobFailed"
+      },
+
       "topics": {
         "command": {
           "topic": "io.restorecommerce.command",
@@ -353,20 +343,6 @@
   "preDefinedIds": {
     "legalAddressTypeId": "legal_address"
   },
-  "errors": {
-    "INVALID_CREDENTIALS": {
-      "code": 401,
-      "message": "Invalid credentials"
-    },
-    "USER_NOT_LOGGED_IN": {
-      "code": 401,
-      "message": "Invalid authentication context, please log in first"
-    },
-    "ACTION_NOT_ALLOWED": {
-      "code": 403,
-      "message": "Action not allowed on this resource"
-    }
-  },
   "stubs": {
     "DHLSoap": {
       "defaults": {
@@ -376,9 +352,10 @@
           "endpoint": "https://cig.dhl.de/services/sandbox/soap",
           "username": null,
           "password": null,
+          "access_token": null,
           "wsdl_header": {
             "Authentification": {
-              "user": "2222222222_01",
+              "user": "33333333331010",
               "signature": "pass"
             }
           }
