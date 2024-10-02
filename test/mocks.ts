@@ -308,7 +308,7 @@ const contactPoints = [
     payload: {
       id: 'contactPoint_1',
       contactPointTypeIds: [
-        'legal_address'
+        'legal'
       ],
       name: 'Contact Point 1',
       description: 'A mocked Contact Point for testing',
@@ -350,7 +350,7 @@ const shops: ShopResponse[] = [
       id: 'shop_1',
       name: 'Shop1',
       description: 'a mocked shop for unit tests',
-      domain: 'www.shop.com',
+      domains: ['www.shop.com'],
       organizationId: organizations[0].payload?.id,
       shopNumber: '0000000001',
     },

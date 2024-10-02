@@ -38,7 +38,8 @@ import { FulfillmentService } from './services/fulfillment.js';
 import { FulfillmentCourierService } from './services/fulfillment_courier.js';
 import { FulfillmentProductService } from './services/fulfillment_product.js';
 import { FulfillmentCommandInterface } from './services/fulfillment_command_interface.js';
-import './stubs/index.js';
+import { Stub } from './stub.js';
+import { DHLSoap } from './stubs/index.js';
 
 registerProtoMeta(
   FulfillmentMeta,
@@ -165,10 +166,14 @@ export class Worker {
   async start(cfg?: any, logger?: any): Promise<any> {
     // Load config
     this._cfg = cfg = cfg ?? createServiceConfig(process.cwd());
-    const logger_cfg = cfg.get('logger') ?? {};
+
     // create server
     this.logger = logger = logger ?? createLogger(cfg.get('logger'));
     this.server = new Server(cfg.get('server'), logger);
+
+    // register api stubs
+    Stub.logger = this.logger;
+    Stub.register('DHLSoap', DHLSoap);
 
     // get database connection
     const db = await database.get(cfg.get('database:main'), logger);

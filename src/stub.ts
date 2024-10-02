@@ -187,10 +187,17 @@ export abstract class Stub
   }
 
   public static register<T extends Stub>(
-    typeName: string,
+    type_name: string,
     type: (new (courier: Courier, kwargs?: { [key: string]: any }) => T)
   ) {
-    Stub.STUB_TYPES[typeName] = type;
+    Stub.STUB_TYPES[type_name] = type;
+    Stub.logger?.info(
+      'Courier Stub registered:',
+      {
+        name: type_name,
+        'type': type,
+      }
+    );
   }
 
   public static getInstance(courier: Courier, kwargs?: { [key: string]: any }): Stub

@@ -94,7 +94,7 @@ export const filterTax = (
   (
     !target.economic_areas ||
     origin.economic_areas?.some(
-      e => e in target.economic_areas
+      e => target.economic_areas.includes(e)
     )
   )
 );

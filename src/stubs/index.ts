@@ -1,3 +1,3 @@
 // Register Stubs here!
-import './dhl_soap.js';
-import './dummy.js';
+export { DHLSoap } from './dhl_soap.js';
+//export { DHLRest } from './dhl_rest.js';

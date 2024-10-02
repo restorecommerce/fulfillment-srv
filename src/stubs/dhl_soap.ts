@@ -300,7 +300,7 @@ const DHLShipmentCancelResponse2AggregatedFulfillment = (
   });
 };
 
-class DHLSoap extends Stub {
+export class DHLSoap extends Stub {
   protected static _clients: ClientMap = {};
   protected readonly stub_defaults: any;
   public readonly version: number[];
@@ -761,4 +761,4 @@ class DHLSoap extends Stub {
   }
 };
 
-Stub.register(DHLSoap.name, DHLSoap);
+Stub.register('DHLSoap', DHLSoap);

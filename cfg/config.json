@@ -341,7 +341,8 @@
     }
   },
   "preDefinedIds": {
-    "legalAddressTypeId": "legal_address"
+    "legalAddressTypeId": "legal",
+    "shippingAddressTypeId": "shipping"
   },
   "stubs": {
     "DHLSoap": {
