@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { BigNumber } from 'bignumber.js';
 import {
   createClient,
   createChannel,
@@ -838,12 +839,12 @@ export class FulfillmentProductService
                     !!customer.payload.private?.user_id,
                   )
                 );
-                const gross = price.sale ? price.sale_price : price.regular_price;
+                const gross = new BigNumber(price.sale ? price.sale_price : price.regular_price);
                 const vats = taxes.map((tax): VAT => ({
                   tax_id: tax.id,
-                  vat: gross * tax.rate,
+                  vat: gross.multipliedBy(tax.rate).decimalPlaces(2).toNumber(),
                 }));
-                const net = vats.reduce((a, b) => a + b.vat, gross);
+                const net = vats.reduce((a, b) => a.plus(b.vat), gross).decimalPlaces(2).toNumber();
 
                 return {
                   id: randomUUID(),
@@ -862,7 +863,7 @@ export class FulfillmentProductService
                   price,
                   amount: {
                     currency_id: price.currency_id,
-                    gross,
+                    gross: gross.toNumber(),
                     net,
                     vats,
                   }

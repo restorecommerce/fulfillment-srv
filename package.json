@@ -21,6 +21,7 @@
     "@restorecommerce/service-config": "^1.0.15",
     "@types/soap": "^0.21.0",
     "@types/xml-js": "^1.0.0",
+    "bignumber.js": "^9.1.2",
     "dayjs": "^1.11.10",
     "redis": "^4.6.14",
     "soap": "^1.0.1",

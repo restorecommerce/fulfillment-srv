@@ -615,8 +615,6 @@ export class DHLSoap extends Stub {
           if (config.ordering?.access_token) {
             client.addHttpHeader('Authorization', `Bearer ${config.ordering.access_token}`);
           }
-
-          console.log(client.getHttpHeaders())
           return client;
         }
       );

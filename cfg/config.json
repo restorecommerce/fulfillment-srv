@@ -356,8 +356,8 @@
           "access_token": null,
           "wsdl_header": {
             "Authentification": {
-              "user": "33333333331010",
-              "signature": "pass"
+              "user": "user-valid",
+              "signature": "SandboxPasswort2023!"
             }
           }
         },
