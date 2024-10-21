@@ -10,7 +10,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@restorecommerce/acs-client": "^3.0.0",
+    "@restorecommerce/acs-client": "^3.0.1",
     "@restorecommerce/cart": "^1.0.9",
     "@restorecommerce/chassis-srv": "^1.6.2",
     "@restorecommerce/grpc-client": "^2.2.4",

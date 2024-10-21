@@ -10,7 +10,8 @@ import {
   DefaultACSClientContextFactory,
   Operation,
   DefaultResourceFactory,
-  injects_meta_data
+  injects_meta_data,
+  resolves_subject
 } from '@restorecommerce/acs-client';
 import { type Logger } from '@restorecommerce/logger';
 import { type ServiceConfig } from '@restorecommerce/service-config';
@@ -827,6 +828,7 @@ export class FulfillmentService
     return super.read(request, context);
   }
 
+  @resolves_subject()
   @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.CREATE,
@@ -850,6 +852,7 @@ export class FulfillmentService
     return super.create(request, context);
   }
 
+  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
@@ -865,6 +868,7 @@ export class FulfillmentService
     return super.update(request, context);
   }
 
+  @resolves_subject()
   @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.MODIFY,
@@ -881,6 +885,7 @@ export class FulfillmentService
     return super.upsert(request, context);
   }
 
+  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
@@ -917,6 +922,7 @@ export class FulfillmentService
     }
   }
 
+  @resolves_subject()
   @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
@@ -993,6 +999,7 @@ export class FulfillmentService
     }
   }
 
+  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
@@ -1147,6 +1154,7 @@ export class FulfillmentService
     }
   }
 
+  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
@@ -1159,6 +1167,7 @@ export class FulfillmentService
     return null;
   }
 
+  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
@@ -1279,6 +1288,7 @@ export class FulfillmentService
     }
   }
 
+  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.DELETE,
     operation: Operation.isAllowed,
@@ -1294,6 +1304,7 @@ export class FulfillmentService
     return super.delete(request, context);
   }
 
+  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.CREATE,
     operation: Operation.isAllowed,

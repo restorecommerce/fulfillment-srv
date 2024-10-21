@@ -161,6 +161,16 @@ export class FulfillmentProductService
       id: '',
       code: 404,
       message: '{entity} {id} has no shipping address!',
+    },
+    NO_SHOP_ID: {
+      id: '',
+      code: 400,
+      message: 'Shop ID not provided!'
+    },
+    NO_CUSTOMER_ID: {
+      id: '',
+      code: 400,
+      message: 'Customer ID not provided!'
     }
   };
 
@@ -462,22 +472,34 @@ export class FulfillmentProductService
   }
 
   protected async findCouriers(
-    queries: PackageSolutionTotals[],
+    query: PackageSolutionTotals,
     subject?: Subject,
     context?: any,
   ): Promise<FulfillmentCourierListResponse> {
     const call = ReadRequest.fromPartial({
       filters: [{
-        filters: queries.flatMap(
-          item => item.preferences?.couriers?.map(
-            att => ({
-              field: att.id,
-              operation: Filter_Operation.eq,
-              value: att.value,
-            })
-          )
-        ).filter(item => !!item),
-        operator: FilterOp_Operator.or
+        filters: [{
+          filters: [{
+            filters: query.preferences?.couriers?.map(
+              att => ({
+                field: att.id,
+                operation: Filter_Operation.eq,
+                value: att.value,
+              })
+            ).filter(item => !!item),
+            operator: FilterOp_Operator.or
+          }]
+        },{
+          filters: [{
+            filters: [{
+              field: 'shop_ids',
+              operation: Filter_Operation.in,
+              value: query.shop_id
+            }],
+            operator: FilterOp_Operator.and
+          }],
+        }],
+        operator: FilterOp_Operator.and
       }],
       subject,
     });
@@ -496,12 +518,12 @@ export class FulfillmentProductService
   }
 
   protected async findFulfillmentProducts(
-    queries: PackageSolutionTotals[],
+    query: PackageSolutionTotals,
     subject?: Subject,
     context?: any,
   ): Promise<FulfillmentProductListResponse> {
     const stubs = await this.findCouriers(
-      queries,
+      query,
       subject,
       context,
     ).then(
@@ -625,14 +647,14 @@ export class FulfillmentProductService
         this.customer_service,
         request.subject,
         context,
-      );
+      ) ?? {};
 
       const shop_map = await this.get<Shop>(
         queries.map(q => q.shop_id),
         this.shop_service,
         request.subject,
         context,
-      );
+      ) ?? {};
 
       const orga_map = await this.get<Organization>(
         [
@@ -647,7 +669,7 @@ export class FulfillmentProductService
         this.organization_service,
         request.subject,
         context,
-      );
+      ) ?? {};
 
       const contact_point_map = await this.get<ContactPoint>(
         [
@@ -661,7 +683,7 @@ export class FulfillmentProductService
         this.contact_point_service,
         request.subject,
         context,
-      );
+      ) ?? {};
 
       const address_map = await this.get<Address>(
         Object.values(contact_point_map).map(
@@ -670,7 +692,7 @@ export class FulfillmentProductService
         this.address_service,
         request.subject,
         context,
-      );
+      ) ?? {};
 
       const country_map = await this.get<Country>(
         [
@@ -683,49 +705,64 @@ export class FulfillmentProductService
         this.country_service,
         request.subject,
         context,
-      );
+      ) ?? {};
 
-      const product_map = await this.findFulfillmentProducts(
-        queries,
-        request.subject,
-        context,
-      ).then(
-        response => response.items.reduce(
-          (a: ResponseMap<FulfillmentProduct>, b) => {
-            a[b.payload?.id ?? b.status?.id!] = b;
-            return a;
-          },
-          {} as ResponseMap<FulfillmentProduct>
-        )
-      );
-
-      const tax_map = await this.get<Tax>(
-        Object.values(product_map).flatMap(
-          p => p.payload.tax_ids
-        ),
-        this.tax_service,
-        request.subject,
-        context,
-      );
-
-      const offer_lists = Object.values(product_map).map(
-        (product): Offer[] => product.payload?.variants?.map(
-          (variant): Offer => (
-            {
-              name: `${product.payload?.id}\t${variant.id}`,
-              price: variant.price.sale ? variant.price.sale_price : variant.price.regular_price,
-              maxWeight: variant.max_weight,
-              width: variant.max_size?.width,
-              height: variant.max_size?.height,
-              depth: variant.max_size?.length,
-              type: 'parcel'
-            }
-          )
-        )
-      );
-
-      const promises = queries.map(async query => {
+      const promises = queries.flatMap(async query => {
         try {
+          if (!query.shop_id) {
+            this.throwStatusCode(
+              'Shop',
+              query.reference?.instance_id,
+              this.status_codes.NO_SHOP_ID,
+            );
+          }
+          if (!query.customer_id) {
+            this.throwStatusCode(
+              'Customer',
+              query.reference?.instance_id,
+              this.status_codes.NO_CUSTOMER_ID,
+            );
+          }
+
+          const product_map = await this.findFulfillmentProducts(
+            query,
+            request.subject,
+            context,
+          ).then(
+            response => response.items.reduce(
+              (a: ResponseMap<FulfillmentProduct>, b) => {
+                a[b.payload?.id ?? b.status?.id!] = b;
+                return a;
+              },
+              {} as ResponseMap<FulfillmentProduct>
+            )
+          );
+
+          const tax_map = await this.get<Tax>(
+            Object.values(product_map).flatMap(
+              p => p.payload.tax_ids
+            ),
+            this.tax_service,
+            request.subject,
+            context,
+          );
+
+          const offer_lists = Object.values(product_map).map(
+            (product): Offer[] => product.payload?.variants?.map(
+              (variant): Offer => (
+                {
+                  name: `${product.payload?.id}\t${variant.id}`,
+                  price: variant.price.sale ? variant.price.sale_price : variant.price.regular_price,
+                  maxWeight: variant.max_weight,
+                  width: variant.max_size?.width,
+                  height: variant.max_size?.height,
+                  depth: variant.max_size?.length,
+                  type: 'parcel'
+                }
+              )
+            )
+          );
+        
           const goods = query.items.map((good): IItem => ({
             desc: `${good.product_id}\t${good.variant_id}`,
             quantity: good.quantity,
@@ -776,7 +813,10 @@ export class FulfillmentProductService
                 contact_point.payload.physical_address_id
               )
             ).then(
-              address => this.getById(country_map, address.payload.country_id)
+              address => this.getById(
+                country_map,
+                address.payload.country_id
+              )
             );
 
           const customer = await this.getById(
@@ -922,7 +962,7 @@ export class FulfillmentProductService
           const solution: PackingSolutionResponse = {
             solutions,
             status: {
-              id: query.reference.instance_id,
+              id: query.reference?.instance_id,
               code: 200,
               message: `Best Solution: ${
                 Math.min(
@@ -940,7 +980,7 @@ export class FulfillmentProductService
           const solution: PackingSolutionResponse = {
             solutions: [],
             status: this.catchStatusError(
-              query.reference.instance_id,
+              query.reference?.instance_id,
               e,
             ),
           };
