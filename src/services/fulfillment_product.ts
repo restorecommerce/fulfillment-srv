@@ -905,6 +905,7 @@ export class FulfillmentProductService
           this.logger.debug('Offer List:', offer_lists);
         
           const goods = query.items.map((good): IItem => ({
+            sku: `${good.product_id}\t${good.variant_id}`,
             desc: `${good.product_id}\t${good.variant_id}`,
             quantity: good.quantity,
             weight: good.package?.weight_in_kg ?? this.throwStatusCode(
