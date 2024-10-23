@@ -5,6 +5,7 @@ import {
   FlatAggregatedFulfillment,
   extractCouriers,
 } from './utils.js';
+import { FulfillmentProduct, PackingSolutionQuery } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 
 export abstract class Stub
 {
@@ -23,8 +24,11 @@ export abstract class Stub
     public logger?: Logger
   ) {}
 
-  public abstract getTariffCode(fulfillment: FlatAggregatedFulfillment): Promise<string>;
-
+  public abstract matchesZone(
+    product: FulfillmentProduct,
+    query: PackingSolutionQuery,
+    helper?: any
+  ): Promise<boolean>;
   protected abstract evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;

@@ -340,9 +340,14 @@
       ]
     }
   },
-  "preDefinedIds": {
-    "legalAddressTypeId": "legal",
-    "shippingAddressTypeId": "shipping"
+  "tech_user": {
+    "id": "root_tech_user",
+    "token": "1a4c6789-6435-487a-9308-64d06384acf9" 
+  },
+  "contact_point_type_ids": {
+    "legal": "legal",
+    "shipping": "shipping",
+    "billing": "billing"
   },
   "stubs": {
     "DHLSoap": {

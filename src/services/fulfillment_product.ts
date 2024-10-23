@@ -162,16 +162,16 @@ export class FulfillmentProductService
       code: 404,
       message: '{entity} {id} has no shipping address!',
     },
-    NO_SHOP_ID: {
+    NO_ENTITY_ID: {
       id: '',
       code: 400,
-      message: 'Shop ID not provided!'
+      message: '{entity} ID not provided!'
     },
-    NO_CUSTOMER_ID: {
+    MISSING_PACKAGING_INFO: {
       id: '',
-      code: 400,
-      message: 'Customer ID not provided!'
-    }
+      code: 500,
+      message: '{entity} {id} is missing packaging info: {error}'
+    },
   };
 
   protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
@@ -193,8 +193,6 @@ export class FulfillmentProductService
     }
   };
 
-  protected readonly legal_address_type_id: string;
-  protected readonly shipping_address_type_id: string;
   protected readonly customer_service: Client<CustomerServiceDefinition>;
   protected readonly shop_service: Client<ShopServiceDefinition>;
   protected readonly organization_service: Client<OrganizationServiceDefinition>;
@@ -202,6 +200,12 @@ export class FulfillmentProductService
   protected readonly address_service: Client<AddressServiceDefinition>;
   protected readonly country_service: Client<CountryServiceDefinition>;
   protected readonly tax_service: Client<TaxServiceDefinition>;
+  protected readonly tech_user: Subject;
+  protected readonly contact_point_type_ids = {
+    legal: 'legal',
+    shipping: 'shipping',
+    billing: 'billing',
+  };
 
   constructor(
     protected readonly courier_srv: FulfillmentCourierService,
@@ -232,8 +236,10 @@ export class FulfillmentProductService
       ...cfg.get('operationStatusCodes'),
     };
 
-    this.legal_address_type_id = this.cfg.get('preDefinedIds:legalAddressTypeId');
-    this.shipping_address_type_id = this.cfg.get('preDefinedIds:shippingAddressTypeId');
+    this.contact_point_type_ids = {
+      ...this.contact_point_type_ids,
+      ...cfg.get('contactPointTypeIds')
+    };
 
     this.customer_service = createClient(
       {
@@ -297,6 +303,8 @@ export class FulfillmentProductService
       TaxServiceDefinition,
       createChannel(cfg.get('client:tax').address)
     );
+
+    this.tech_user = cfg.get('tech_user');
   }
 
   protected createStatusCode(
@@ -327,7 +335,8 @@ export class FulfillmentProductService
     throw this.createStatusCode(
       entity,
       id,
-      status,error
+      status,
+      error
     );
   }
 
@@ -416,22 +425,22 @@ export class FulfillmentProductService
     );
   }
 
-  async getById<T>(map: { [id: string]: T }, id: string): Promise<T> {
+  async getById<T>(map: { [id: string]: T }, id: string, entity: string): Promise<T> {
     if (id in map) {
       return map[id];
     }
     else {
       throw this.createStatusCode(
-        ({} as new() => T).name,
+        entity,
         id,
         this.status_codes.NOT_FOUND
       );
     }
   }
 
-  async getByIds<T>(map: { [id: string]: T }, ids: string[]): Promise<T[]> {
+  async getByIds<T>(map: { [id: string]: T }, ids: string[], entity: string): Promise<T[]> {
     return Promise.all(ids.map(
-      id => this.getById(map, id)
+      id => this.getById(map, id, entity)
     ));
   }
 
@@ -477,32 +486,28 @@ export class FulfillmentProductService
     context?: any,
   ): Promise<FulfillmentCourierListResponse> {
     const call = ReadRequest.fromPartial({
-      filters: [{
-        filters: [{
-          filters: [{
-            filters: query.preferences?.couriers?.map(
+      filters: [
+        {
+          filters: [
+            {
+              field: 'shop_ids',
+              operation: Filter_Operation.in,
+              value: query.shop_id
+            },
+            ...(query.preferences?.couriers?.map(
               att => ({
                 field: att.id,
                 operation: Filter_Operation.eq,
                 value: att.value,
               })
-            ).filter(item => !!item),
-            operator: FilterOp_Operator.or
-          }]
-        },{
-          filters: [{
-            filters: [{
-              field: 'shop_ids',
-              operation: Filter_Operation.in,
-              value: query.shop_id
-            }],
-            operator: FilterOp_Operator.and
-          }],
-        }],
-        operator: FilterOp_Operator.and
-      }],
+            ).filter(item => !!item) ?? [])
+          ],
+          operator: FilterOp_Operator.and
+        }
+      ],
       subject,
     });
+
     const response = await this.courier_srv.read(call, context).then(
       resp => {
         if (resp.operation_status?.code !== 200) {
@@ -513,12 +518,14 @@ export class FulfillmentProductService
         }
       }
     );
-    this.logger.debug('Available couriers', response);
+    this.logger.debug('Available Couriers:', response);
     return response;
   }
 
   protected async findFulfillmentProducts(
     query: PackageSolutionTotals,
+    sender_country: Country,
+    recipient_country: Country,
     subject?: Subject,
     context?: any,
   ): Promise<FulfillmentProductListResponse> {
@@ -546,18 +553,30 @@ export class FulfillmentProductService
 
     const call = ReadRequest.fromPartial({
       filters: [{
-        filters: [{
-          field: 'courier_id',
-          operation: Filter_Operation.in,
-          value: JSON.stringify(stubs.map(stub => stub.courier.id)),
-          type: Filter_ValueType.ARRAY
-        }],
-        operator: FilterOp_Operator.or
+        filters: [
+          {
+            field: 'courier_id',
+            operation: Filter_Operation.in,
+            value: JSON.stringify(stubs.map(stub => stub.courier.id)),
+            type: Filter_ValueType.ARRAY
+          },
+          {
+            field: 'start_zones',
+            operation: Filter_Operation.in,
+            value: sender_country.country_code
+          },
+          {
+            field: 'destination_zones',
+            operation: Filter_Operation.in,
+            value: recipient_country.country_code
+          }
+        ],
+        operator: FilterOp_Operator.and
       }],
       subject,
     });
 
-    return await super.read(call, context).then(
+    const response = await super.read(call, context).then(
       resp => {
         if (resp.operation_status?.code !== 200) {
           throw resp.operation_status;
@@ -567,6 +586,9 @@ export class FulfillmentProductService
         }
       }
     );
+
+    this.logger.debug('Available Fulfillment Products:', response);
+    return response;
   }
 
   public superRead(
@@ -645,7 +667,7 @@ export class FulfillmentProductService
       const customer_map = await this.get<Customer>(
         queries.map(q => q.customer_id),
         this.customer_service,
-        request.subject,
+        this.tech_user ?? request.subject,
         context,
       ) ?? {};
 
@@ -667,7 +689,7 @@ export class FulfillmentProductService
           ),
         ],
         this.organization_service,
-        request.subject,
+        this.tech_user ?? request.subject,
         context,
       ) ?? {};
 
@@ -681,7 +703,7 @@ export class FulfillmentProductService
           ),
         ],
         this.contact_point_service,
-        request.subject,
+        this.tech_user ?? request.subject,
         context,
       ) ?? {};
 
@@ -690,7 +712,7 @@ export class FulfillmentProductService
           item => item.payload?.physical_address_id
         ),
         this.address_service,
-        request.subject,
+        this.tech_user ?? request.subject,
         context,
       ) ?? {};
 
@@ -703,7 +725,7 @@ export class FulfillmentProductService
           ...queries.map(query => query.recipient?.address?.country_id)
         ],
         this.country_service,
-        request.subject,
+        this.tech_user ?? request.subject,
         context,
       ) ?? {};
 
@@ -713,19 +735,117 @@ export class FulfillmentProductService
             this.throwStatusCode(
               'Shop',
               query.reference?.instance_id,
-              this.status_codes.NO_SHOP_ID,
+              this.status_codes.NO_ENTITY_ID,
             );
           }
           if (!query.customer_id) {
             this.throwStatusCode(
               'Customer',
               query.reference?.instance_id,
-              this.status_codes.NO_CUSTOMER_ID,
+              this.status_codes.NO_ENTITY_ID,
             );
           }
 
+          const shop_country = (
+            query.sender?.address?.country_id
+            ? await this.getById(
+              country_map,
+              query.sender.address.country_id,
+              'Country',
+            )
+            : await this.getById(
+              shop_map,
+              query.shop_id,
+              'Shop',
+            ).then(
+              shop => this.getById(
+                orga_map,
+                shop.payload.organization_id,
+                'Organization',
+              )
+            ).then(
+              orga => this.getByIds(
+                contact_point_map,
+                orga.payload.contact_point_ids,
+                'ContactPoint',
+              )
+            ).then(
+              cpts => cpts.find(
+                cpt => cpt.payload?.contact_point_type_ids.includes(
+                  this.contact_point_type_ids.legal
+                )
+              ) ?? this.throwStatusCode<ContactPointResponse>(
+                'Shop',
+                query.shop_id,
+                this.status_codes.NO_LEGAL_ADDRESS,
+              )
+            ).then(
+              contact_point => this.getById(
+                address_map,
+                contact_point.payload.physical_address_id,
+                'Address',
+              )
+            ).then(
+              address => this.getById(
+                country_map,
+                address.payload.country_id,
+                'Country',
+              )
+            )
+          );
+          this.logger.debug('Shop Country:', shop_country);
+
+          const customer = await this.getById(
+            customer_map,
+            query.customer_id,
+            'Customer',
+          );
+
+          const customer_country = (
+            query.recipient?.address?.country_id
+            ? await this.getById(
+              country_map,
+              query.recipient.address.country_id,
+              'Country',
+            )
+            : await this.getByIds(
+              contact_point_map,
+              [
+                customer.payload.private?.contact_point_ids,
+                orga_map[customer.payload.commercial?.organization_id]?.payload.contact_point_ids,
+                orga_map[customer.payload.public_sector?.organization_id]?.payload.contact_point_ids,
+              ].flatMap(id => id).filter(id => id),
+              'ContactPoint',
+            ).then(
+              cps => cps.find(
+                cp => cp.payload?.contact_point_type_ids.includes(
+                  this.contact_point_type_ids.shipping
+                )
+              ) ?? this.throwStatusCode<ContactPointResponse>(
+                'Customer',
+                customer.payload.id,
+                this.status_codes.NO_SHIPPING_ADDRESS,
+              )
+            ).then(
+              cp => this.getById(
+                address_map,
+                cp.payload.physical_address_id,
+                'Address',
+              )
+            ).then(
+              address => this.getById(
+                country_map,
+                address.payload.country_id,
+                'Country',
+              )
+            )
+          );
+          this.logger.debug('Customer Country:', customer_country);
+
           const product_map = await this.findFulfillmentProducts(
             query,
+            shop_country.payload,
+            customer_country.payload,
             request.subject,
             context,
           ).then(
@@ -743,7 +863,7 @@ export class FulfillmentProductService
               p => p.payload.tax_ids
             ),
             this.tax_service,
-            request.subject,
+            this.tech_user ?? request.subject,
             context,
           );
 
@@ -753,111 +873,74 @@ export class FulfillmentProductService
                 {
                   name: `${product.payload?.id}\t${variant.id}`,
                   price: variant.price.sale ? variant.price.sale_price : variant.price.regular_price,
-                  maxWeight: variant.max_weight,
-                  width: variant.max_size?.width,
-                  height: variant.max_size?.height,
-                  depth: variant.max_size?.length,
+                  maxWeight: variant.max_weight ?? this.throwStatusCode(
+                    'FulfillmentProduct',
+                    product.payload?.id,
+                    this.status_codes.MISSING_PACKAGING_INFO,
+                    'Weight'
+                  ),
+                  width: variant.max_size?.width ?? this.throwStatusCode(
+                    'FulfillmentProduct',
+                    product.payload?.id,
+                    this.status_codes.MISSING_PACKAGING_INFO,
+                    'Width'
+                  ),
+                  height: variant.max_size?.height ?? this.throwStatusCode(
+                    'FulfillmentProduct',
+                    product.payload?.id,
+                    this.status_codes.MISSING_PACKAGING_INFO,
+                    'Height'
+                  ),
+                  depth: variant.max_size?.length ?? this.throwStatusCode(
+                    'FulfillmentProduct',
+                    product.payload?.id,
+                    this.status_codes.MISSING_PACKAGING_INFO,
+                    'Length'
+                  ),
                   type: 'parcel'
                 }
               )
             )
           );
+          this.logger.debug('Offer List:', offer_lists);
         
           const goods = query.items.map((good): IItem => ({
             desc: `${good.product_id}\t${good.variant_id}`,
             quantity: good.quantity,
-            weight: good.package.weight_in_kg,
-            width: good.package.size_in_cm.width,
-            height: good.package.size_in_cm.height,
-            depth: good.package.size_in_cm.length,
+            weight: good.package?.weight_in_kg ?? this.throwStatusCode(
+              'Product',
+              good.product_id,
+              this.status_codes.MISSING_PACKAGING_INFO,
+              'Weight'
+            ),
+            width: good.package?.size_in_cm.width ?? this.throwStatusCode(
+              'Product',
+              good.product_id,
+              this.status_codes.MISSING_PACKAGING_INFO,
+              'Width',
+            ),
+            height: good.package?.size_in_cm.height ?? this.throwStatusCode(
+              'Product',
+              good.product_id,
+              this.status_codes.MISSING_PACKAGING_INFO,
+              'Height'
+            ),
+            depth: good.package?.size_in_cm.length ?? this.throwStatusCode(
+              'Product',
+              good.product_id,
+              this.status_codes.MISSING_PACKAGING_INFO,
+              'Length',
+            ),
             price: 0.0, // placeholder
             taxType: 'vat_standard' // placeholder
           }));
+          this.logger.debug('Goods:', goods);
 
           const packer = new Packer({
             source: JSON.stringify({ zones: [] }),
             shipping: null
           });
-
-          const shop_country = query.sender?.address?.country_id
-            ? await this.getById(
-              country_map,
-              query.sender.address.country_id
-            )
-            : await this.getById(
-              shop_map,
-              query.shop_id
-            ).then(
-              shop => this.getById(
-                orga_map,
-                shop.payload.organization_id
-              )
-            ).then(
-              orga => this.getByIds(
-                contact_point_map,
-                orga.payload.contact_point_ids
-              )
-            ).then(
-              cpts => cpts.find(
-                cpt => cpt.payload?.contact_point_type_ids.includes(
-                  this.legal_address_type_id
-                )
-              ) ?? this.throwStatusCode<ContactPointResponse>(
-                'Shop',
-                query.shop_id,
-                this.status_codes.NO_LEGAL_ADDRESS,
-              )
-            ).then(
-              contact_point => this.getById(
-                address_map,
-                contact_point.payload.physical_address_id
-              )
-            ).then(
-              address => this.getById(
-                country_map,
-                address.payload.country_id
-              )
-            );
-
-          const customer = await this.getById(
-            customer_map,
-            query.customer_id
-          );
-
-          const customer_country = query.recipient?.address?.country_id
-            ? await this.getById(
-              country_map,
-              query.recipient.address.country_id
-            )
-            : await this.getByIds(
-              contact_point_map,
-              [
-                customer.payload.private?.contact_point_ids,
-                orga_map[customer.payload.commercial?.organization_id]?.payload.contact_point_ids,
-                orga_map[customer.payload.public_sector?.organization_id]?.payload.contact_point_ids,
-              ].flatMap(id => id).filter(id => id)
-            ).then(
-              cps => cps.find(
-                cp => cp.payload?.contact_point_type_ids.includes(
-                  this.shipping_address_type_id
-                )
-              ) ?? this.throwStatusCode<ContactPointResponse>(
-                'Customer',
-                customer.payload.id,
-                this.status_codes.NO_SHIPPING_ADDRESS,
-              )
-            ).then(
-              cp => this.getById(
-                address_map,
-                cp.payload.physical_address_id,
-              )
-            ).then(
-              address => this.getById(
-                country_map,
-                address.payload.country_id
-              )
-            );
-
+          
           const solutions: PackingSolution[] = offer_lists.map(
             offers => packer.canFit(offers, goods)
           ).map(
@@ -945,10 +1028,6 @@ export class FulfillmentProductService
               return {
                 parcels,
                 amounts,
-                compactness: 1,
-                homogeneity: 1,
-                score: 1,
-                reference: query.reference,
               };
             }
           ).sort(
@@ -960,6 +1039,7 @@ export class FulfillmentProductService
           );
 
           const solution: PackingSolutionResponse = {
+            reference: query.reference,
             solutions,
             status: {
               id: query.reference?.instance_id,
@@ -978,6 +1058,7 @@ export class FulfillmentProductService
         }
         catch (e: any) {
           const solution: PackingSolutionResponse = {
+            reference: query.reference,
             solutions: [],
             status: this.catchStatusError(
               query.reference?.instance_id,

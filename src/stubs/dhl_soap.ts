@@ -20,6 +20,7 @@ import {
   throwOperationStatusCode,
 } from '../utils.js';
 import { Stub } from '../stub.js';
+import { FulfillmentProduct, PackingSolutionQuery } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 
 dayjs.extend(customParseFormat);
 
@@ -754,8 +755,12 @@ export class DHLSoap extends Stub {
     return await Promise.all(promises);
   };
 
-  async getTariffCode(fulfillment: FlatAggregatedFulfillment): Promise<string> {
-    return fulfillment.recipient_country.country_code;
+  async matchesZone(
+    product: FulfillmentProduct,
+    query: PackingSolutionQuery,
+    helper: any,
+  ): Promise<boolean> {
+    return false;
   }
 };
 

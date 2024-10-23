@@ -173,7 +173,6 @@ export class FulfillmentService
   };
 
   protected readonly emitters: any;
-  protected readonly legal_address_type_id: string;
   protected readonly customer_service: Client<CustomerServiceDefinition>;
   protected readonly shop_service: Client<ShopServiceDefinition>;
   protected readonly organization_service: Client<OrganizationServiceDefinition>;
@@ -182,6 +181,11 @@ export class FulfillmentService
   protected readonly country_service: Client<CountryServiceDefinition>;
   protected readonly tax_service: Client<TaxServiceDefinition>;
   protected readonly credential_service: Client<CredentialServiceDefinition>;
+  protected readonly contact_point_type_ids = {
+    legal: 'legal',
+    shipping: 'shipping',
+    billing: 'billing',
+  };
 
   constructor(
     readonly fulfillmentCourierSrv: FulfillmentCourierService,
@@ -217,7 +221,10 @@ export class FulfillmentService
     };
 
     this.emitters = cfg.get('events:emitters');
-    this.legal_address_type_id = this.cfg.get('preDefinedIds:legalAddressTypeId');
+    this.contact_point_type_ids = {
+      ...this.contact_point_type_ids,
+      ...cfg.get('contactPointTypeIds')
+    };
 
     this.customer_service = createClient(
       {
@@ -690,7 +697,7 @@ export class FulfillmentService
         ).then(
           cpts => cpts.find(
             cpt => cpt.payload?.contact_point_type_ids.includes(
-              this.legal_address_type_id
+              this.contact_point_type_ids.legal
             )
           ) ?? throwStatusCode<ContactPointResponse>(
             typeof (item),
@@ -728,7 +735,7 @@ export class FulfillmentService
         ).then(
           cps => cps.find(
             cp => cp.payload?.contact_point_type_ids.includes(
-              this.legal_address_type_id
+              this.contact_point_type_ids.legal
             )
           ) ?? throwStatusCode<ContactPointResponse>(
             typeof (item),
