@@ -14,9 +14,7 @@ export abstract class Stub
   static cfg: any = null;
   static logger: Logger = null;
 
-  get type(): string {
-    return this.constructor.name;
-  }
+  abstract get type(): string;
 
   constructor(
     public courier: Courier,

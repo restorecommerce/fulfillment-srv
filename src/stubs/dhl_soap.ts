@@ -20,18 +20,12 @@ import {
   throwOperationStatusCode,
 } from '../utils.js';
 import { Stub } from '../stub.js';
-import { FulfillmentProduct, PackingSolutionQuery } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
+import {
+  FulfillmentProduct,
+  PackingSolutionQuery
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 
 dayjs.extend(customParseFormat);
-
-type ClientMap = { [id: string]: soap.Client };
-type RequestMap = {
-  [id: string]: {
-    courier: Courier,
-    credential: Credential,
-    fulfillments: FlatAggregatedFulfillment[],
-  }
-}
 
 interface Origin
 {
@@ -145,6 +139,7 @@ interface Config
     username?: string,
     password?: string,
     access_token?: string,
+    account_number?: string,
     wsdl_header?: {
       Authentification?: {
         user?: string,
@@ -302,9 +297,10 @@ const DHLShipmentCancelResponse2AggregatedFulfillment = (
 };
 
 export class DHLSoap extends Stub {
-  protected static _clients: ClientMap = {};
-  protected readonly stub_defaults: any;
   public readonly version: number[];
+  protected readonly stub_defaults: any;
+  private _stub_config: Config;
+  private _soap_client: soap.Client;
 
   protected readonly status_codes: { [key: string]: Status } = {
     OK: {
@@ -346,10 +342,26 @@ export class DHLSoap extends Stub {
       code: 500,
       message: 'Request timeout, DHL not responding!',
     },
+    UNAUTHORIZED: {
+      code: 401,
+      message: [
+        'DHLSoap: Connection to Courier {entity} is unauthorized.',
+        'Credentials or accountNumber are missing.',
+        'Credentials have to be set either in FulfillmentProduct, Courier, Credential or ServiceConfig.'
+      ].join(' ')
+    },
+    UNKNOWN_RESPONSE: {
+      code: 500,
+      message: 'DHLSoap: Unexpected response from SOAP-Client! {details}',
+    }
   };
 
-  get clients(): ClientMap {
-    return DHLSoap._clients;
+  get type(): string {
+    return 'DHLSoap';
+  }
+
+  get stub_config(): Config {
+    return this._stub_config;
   }
 
   constructor(courier?: Courier, kwargs?: { [key: string]: any }) {
@@ -389,28 +401,36 @@ export class DHLSoap extends Stub {
     }
   }
 
-  protected DHLShipmentLabels2FulfillmentResponses (
+  protected DHLResponse2FulfillmentResponses (
     fulfillments: FlatAggregatedFulfillment[],
     response: any,
     error: any,
   ): FlatAggregatedFulfillment[] {
     if (error) {
       if (response?.html) {
-        this.logger?.error(`${this.constructor.name}: ${response.html.head.title}`);
-        throwOperationStatusCode(
-          'Fulfillment',
-          {
-            code: response.statusCode,
-            message: response.html.head.title
-          }
-        );
+        this.logger?.error(`${this.type}: ${response.html.head?.title}`, response);
+        if (response.html.head?.title?.startsWith('401')) {
+          throwOperationStatusCode(
+            this.courier?.id,
+            this.operation_status_codes.UNAUTHORIZED,
+          );
+        }
+        else {
+          throwOperationStatusCode(
+            this.courier?.id,
+            {
+              code: 500,
+              message: response.html.head?.title
+            }
+          );
+        }
       }
       else {
         const message = error?.root?.Envelope?.Body?.Fault?.faultstring
           ?? error?.response?.statusText
           ?? error?.toString()
           ?? 'Server Error!';
-        this.logger?.error(`${this.constructor.name}: ${message}`);
+        this.logger?.error(`${this.type}: ${message}`);
         throwOperationStatusCode(
           'Fulfillment',
           {
@@ -421,7 +441,7 @@ export class DHLSoap extends Stub {
       }
     }
     else if (response?.html) {
-      this.logger?.error(`${this.constructor.name}: ${response.html}`);
+      this.logger?.error(`${this.type}: ${response.html}`);
       throwOperationStatusCode(
         'Fulfillment',
         {
@@ -430,10 +450,69 @@ export class DHLSoap extends Stub {
         },
       );
     }
-    else if (response) {
+    else if (!response) {
+      throwOperationStatusCode(
+        'Fulfillment',
+        {
+          code: 500,
+          message: 'Unexpected Error: No Response!',
+        }
+      );
+    }
+
+    if (response?.CreationState) {
+      return fulfillments.map((fulfillment, i) => {
+        const dhl_state = response.CreationState.find((state: any) => state.sequenceNumber === (i + 1).toString());
+        const code = dhl_state?.LabelData?.Status?.statusCode;
+        const state = code === 0 ? FulfillmentState.SUBMITTED : FulfillmentState.INVALID;
+        const status = this.DHLCode2StatusCode(
+          code,
+          fulfillment.payload?.id,
+          dhl_state?.LabelData?.Status?.statusMessage,
+        );
+
+        if (state === FulfillmentState.INVALID) {
+          fulfillment.payload.fulfillment_state = state;
+          fulfillment.status = status;
+          return fulfillment;
+        }
+
+        const label: Label = {
+          parcel_id: fulfillment.parcel.id,
+          shipment_number: dhl_state?.shipmentNumber,
+          url: dhl_state?.LabelData.labelUrl,
+          state,
+          status,
+        };
+
+        fulfillment.payload.fulfillment_state = state;
+        fulfillment.label = label;
+        fulfillment.status = status;
+        return fulfillment;
+      });
+    }
+    else if (response?.ValidationState) {
+      return fulfillments.map((fulfillment, i) => {
+        const dhl_state = response.ValidationState.find((state: any) => state.sequenceNumber === (i + 1).toString());
+        const code = dhl_state?.Status?.statusCode;
+        const status = this.DHLCode2StatusCode(
+          code,
+          fulfillment.payload?.id,
+          dhl_state?.Status?.statusMessage ?? dhl_state?.Status?.statusText,
+        );
+
+        if (code !== 0 ) {
+          fulfillment.payload.fulfillment_state = FulfillmentState.INVALID;
+        }
+
+        fulfillment.status = status;
+        return fulfillment;
+      });
+    }
+    if (response?.Status) {
       if (response?.Status?.statusCode !== 0) {
-        const message = JSON.stringify(response, null, 2);
-        this.logger?.error(`${this.constructor.name}: ${message}`);
+        const message = response?.Status?.statusMessage ?? response?.Status?.statusText ?? JSON.stringify(response);
+        this.logger?.error(`${this.type}: ${message}`);
         throwOperationStatusCode(
           'Fulfillment',
           {
@@ -445,49 +524,17 @@ export class DHLSoap extends Stub {
     }
     else {
       throwOperationStatusCode(
-        'Fulfillment',
-        {
-          code: 500,
-          message: 'Unexpected Error: No Response!',
-        }
+        this.type,
+        this.operation_status_codes.UNKNOWN_RESPONSE,
+        JSON.stringify(response)
       );
     }
-
-    return fulfillments.map((fulfillment, i) => {
-      const dhl_state = response?.CreationState?.find((state: any) => state.sequenceNumber === (i + 1).toString());
-      const code = dhl_state?.LabelData?.Status?.statusCode;
-      const state = code === 0 ? FulfillmentState.SUBMITTED : FulfillmentState.INVALID;
-      const status = this.DHLCode2StatusCode(
-        code,
-        fulfillment.payload?.id,
-        dhl_state?.LabelData?.Status?.statusMessage,
-      );
-
-      if (state === FulfillmentState.INVALID) {
-        fulfillment.payload.fulfillment_state = state;
-        fulfillment.status = status;
-        return fulfillment;
-      }
-
-      const label: Label = {
-        parcel_id: fulfillment.parcel.id,
-        shipment_number: dhl_state?.shipmentNumber,
-        url: dhl_state?.LabelData.labelUrl,
-        state,
-        status,
-      };
-
-      fulfillment.payload.fulfillment_state = state;
-      fulfillment.label = label;
-      fulfillment.status = status;
-      return fulfillment;
-    });
   }
 
   protected AggregatedFulfillmentRequests2DHLShipmentOrderRequest(
-    requests: FlatAggregatedFulfillment[]
+    requests: FlatAggregatedFulfillment[],
   ): ShipmentOrderRequest {
-    return {
+    const shipment_order_request = {
       Version: {
         majorRelease: this.version[0],
         minorRelease: this.version[1]
@@ -543,8 +590,10 @@ export class DHLSoap extends Stub {
               shipmentDate: new Date().toISOString().slice(0,10),
               costCenter: '',
               customerReference: request.payload.id,
-              product: request.product.attributes.find(att => att.id === this.cfg.get('urns:productName')).value,
-              accountNumber: request.product.attributes.find(att => att.id === this.cfg.get('urns:accountNumber')).value,
+              product: request.product.attributes.find(att => att.id === this.cfg.get('urns:productName'))?.value,
+              accountNumber: request.product.attributes.find(
+                att => att.id === this.cfg.get('urns:accountNumber')
+              )?.value ?? this.stub_config?.ordering?.account_number,
               // Service: parseService(request.parcel.attributes),
               ShipmentItem: {
                 heightInCM: request.parcel.package.size_in_cm.height,
@@ -562,6 +611,8 @@ export class DHLSoap extends Stub {
         };
       })
     };
+    this.logger.debug('ShipmentOrderRequest', shipment_order_request);
+    return shipment_order_request;
   }
 
   protected AggregatedFulfillment2DHLShipmentCancelRequest(
@@ -576,17 +627,16 @@ export class DHLSoap extends Stub {
     };
   }
 
-  async getSoapClient(courier: Courier, credential: Credential): Promise<soap.Client> {
-    this.courier = courier = courier ?? this.courier;
-    if (this.clients[courier.id]) {
-      return this.clients[courier.id];
+  async getSoapClient(credential?: Credential): Promise<soap.Client> {
+    if (this._soap_client) {
+      return this._soap_client;
     }
 
     try{
-      const config: Config = {
+      const config = this._stub_config = {
         ordering: {
           ...this.stub_defaults?.ordering,
-          ...JSON.parse(courier?.configuration?.value?.toString() ?? null)?.ordering,
+          ...JSON.parse(this.courier?.configuration?.value?.toString() ?? null)?.ordering,
           ...credential
               ? {
                   username: credential?.user,
@@ -597,7 +647,8 @@ export class DHLSoap extends Stub {
         }
       };
       
-      this.clients[courier.id] = await soap.createClientAsync(config.ordering.wsdl).then(
+      this.logger.debug('Create SOAP Client with:', config);
+      this._soap_client = await soap.createClientAsync(config.ordering.wsdl).then(
         client => {
           client.setEndpoint(config.ordering.endpoint);
           client.addSoapHeader(
@@ -621,64 +672,46 @@ export class DHLSoap extends Stub {
       );
     }
     catch (err) {
-      this.logger?.error(`${this.type}:\n Failed to create Client!`);
-      this.logger?.error(`${this.type}: ${JSON.stringify(err, null, 2)}`);
+      this.logger?.error(`${this.type}:\t Failed to create Client!`);
+      this.logger?.error(`${this.type}:\t ${JSON.stringify(err, null, 2)}`);
       throw err;
     }
-    return this.clients[courier.id];
+    return this._soap_client;
   };
 
   protected async soapCall(
     funcName: string,
     fulfillments: FlatAggregatedFulfillment[]
   ): Promise<FlatAggregatedFulfillment[]> {
-    if (fulfillments.length === 0) return [];
-    const request_map = fulfillments.reduce(
-      (a, b) => {
-        const c = a[b.courier?.id];
-        if (c) {
-          c.fulfillments.push(b);
-        }
-        else if (b.courier?.id) {
-          a[b.courier.id] = {
-            courier: b.courier,
-            credential: b.credential,
-            fulfillments: [b],
-          };
-        }
-        return a;
-      },
-      {} as RequestMap
+    fulfillments = fulfillments.filter(
+      fulfillment => fulfillment.courier.id === this.courier.id
     );
-    return await Promise.all(
-      Object.values(request_map).map(
-        ({courier, credential, fulfillments}) => this.getSoapClient(courier, credential).then(
-          client => new Promise<FlatAggregatedFulfillment[]>(
-            (resolve, reject): void => {
-              const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
-              client.GVAPI_2_0_de.GKVAPISOAP11port0[funcName](
-                this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments),
-                (error: any, result: any): any => {
-                  try {
-                    clearTimeout(timer);
-                    resolve(this.DHLShipmentLabels2FulfillmentResponses(fulfillments, result, error));
-                  }
-                  catch (e: any) {
-                    reject(e);
-                  }
-                }
-              )
+    if (fulfillments.length === 0) {
+      return []
+    };
+    return await this.getSoapClient(fulfillments[0].credential).then(
+      client => new Promise<FlatAggregatedFulfillment[]>(
+        (resolve, reject): void => {
+          const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
+          client.GVAPI_2_0_de.GKVAPISOAP11port0[funcName](
+            this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments),
+            (error: any, result: any): any => {
+              try {
+                clearTimeout(timer);
+                resolve(this.DHLResponse2FulfillmentResponses(fulfillments, result, error));
+              }
+              catch (e: any) {
+                reject(e);
+              }
             }
           )
-        )
+        }
       )
-    ).then(
-      p => p.flatMap(p => p)
     );
   }
 
   protected override async evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-    return await this.soapCall('evaluateShipmentOrder', fulfillments);
+    return await this.soapCall('validateShipment', fulfillments);
   }
 
   protected override async submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {

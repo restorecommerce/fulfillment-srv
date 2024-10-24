@@ -349,11 +349,25 @@
     "shipping": "shipping",
     "billing": "billing"
   },
+  "errors": {
+    "INVALID_CREDENTIALS": {
+      "code": "401",
+      "message": "Invalid credentials"
+    },
+    "USER_NOT_LOGGED_IN": {
+      "code": "401",
+      "message": "Invalid authentication context, please log in first"
+    },
+    "ACTION_NOT_ALLOWED": {
+      "code": "403",
+      "message": "Action not allowed on this resource"
+    }
+  },
   "stubs": {
     "DHLSoap": {
       "defaults": {
         "ordering": {
-          "wsdl": "./wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
+          "wsdl": "wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
           "version": [3, 4, 0],
           "endpoint": "https://cig.dhl.de/services/sandbox/soap",
           "username": null,

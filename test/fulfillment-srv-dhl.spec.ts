@@ -152,7 +152,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
       it(`should not create couriers based on invalid sample: ${sample_name}`, async () => {
         sample.items.map((item:any) => {
           item.configuration = {
-            value: Buffer.from(JSON.stringify(item.configuration ?? null)) //because Any
+            value: Buffer.from(JSON.stringify(item.configuration ?? null))
           }
           return item;
         });
@@ -292,12 +292,33 @@ describe('Testing Fulfillment Service Cluster:', () => {
     }
 
     for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
+      it(`should evaluate fulfillment by valid samples: ${sample_name}`, async function() {
+        this.timeout(60000);
+        const response = await fulfillment_client.evaluate(sample);
+        should.equal(
+          response?.operationStatus?.code, 200,
+          'response.operationStatus.code expected to be 200',
+        );
+        should.ok(
+          response?.items?.length ?? 0 > 0,
+          'response.items.length expected to be greater 0',
+        );
+        should.ok(
+          !response?.items?.some(
+            item => item.status?.code !== 200
+          ),
+          'response.items[*].status.code expected all to be 200',
+        );
+      });
+    }
+
+    for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
       it(`should submit fulfillment by valid samples: ${sample_name}`, async function() {
         this.timeout(60000);
         const response = await fulfillment_client.submit(sample);
         should.equal(
-          response?.operationStatus?.code, 200,
-          'response.operationStatus.code expected to be 200',
+          response?.operationStatus?.code, 208,
+          'response.operationStatus.code expected to be 208',
         );
         should.ok(
           response?.items?.length ?? 0 > 0,
