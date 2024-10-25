@@ -317,8 +317,8 @@ describe('Testing Fulfillment Service Cluster:', () => {
         this.timeout(60000);
         const response = await fulfillment_client.submit(sample);
         should.equal(
-          response?.operationStatus?.code, 208,
-          'response.operationStatus.code expected to be 208',
+          response?.operationStatus?.code, 207,
+          'response.operationStatus.code expected to be 207',
         );
         should.ok(
           response?.items?.length ?? 0 > 0,
