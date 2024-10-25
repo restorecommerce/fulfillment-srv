@@ -180,7 +180,7 @@ export class FulfillmentProductService
       message: 'SUCCESS',
     },
     PARTIAL: {
-      code: 400,
+      code: 207,
       message: 'Patrial executed with errors!',
     },
     LIMIT_EXHAUSTED: {

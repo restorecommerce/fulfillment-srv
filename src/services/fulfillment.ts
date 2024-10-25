@@ -164,7 +164,7 @@ export class FulfillmentService
       message: 'SUCCESS',
     },
     PARTIAL: {
-      code: 208,
+      code: 207,
       message: 'Patrial executed with errors!',
     },
     LIMIT_EXHAUSTED: {
@@ -890,13 +890,14 @@ export class FulfillmentService
         );
 
         if (evaluate) {
-          item.packaging?.parcels?.forEach(
-            p => {
+          await Promise.all(item.packaging?.parcels?.map(
+            async p => {
               const product = product_map[p.product_id].payload;
               const variant = product.variants.find(
                 v => v.id === p.variant_id
               );
-              const price = variant?.price;
+              const courier = courier_map[product.courier_id]?.payload;
+              const stub = Stub.getInstance(courier);
               const taxes = product.tax_ids.map(
                 id => tax_map[id]?.payload
               ).filter(
@@ -907,22 +908,25 @@ export class FulfillmentService
                   !!customer.payload.private?.user_id,
                 )
               );
-              const gross = price.sale ? price.sale_price : price.regular_price;
+              const gross = await stub.calcGross(variant, p.package);
               const vats = taxes.map((tax): VAT => ({
                 tax_id: tax.id,
-                vat: gross * tax.rate,
+                vat: gross.multipliedBy(tax.rate).decimalPlaces(2).toNumber(),
               }));
-              const net = vats.reduce((a, b) => a + b.vat, gross);
+              const net = vats.reduce(
+                (a, b) => a.plus(b.vat),
+                gross
+              );
 
               p.price = variant.price;
               p.amount = {
-                currency_id: price.currency_id,
-                gross,
-                net,
+                currency_id: variant.price.currency_id,
+                gross: gross.decimalPlaces(2).toNumber(),
+                net: net.decimalPlaces(2).toNumber(),
                 vats,
               };
             }
-          );
+          ));
         }
 
         const aggreagatedFulfillment: AggregatedFulfillment = {

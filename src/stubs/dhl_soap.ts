@@ -14,7 +14,6 @@ import {
 import {
   Credential
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
-import { OperationStatus, Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
   FlatAggregatedFulfillment,
   throwOperationStatusCode,
@@ -22,8 +21,11 @@ import {
 import { Stub } from '../stub.js';
 import {
   FulfillmentProduct,
-  PackingSolutionQuery
+  PackingSolutionQuery,
+  Variant
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
+import { BigNumber } from 'bignumber.js';
+import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 
 dayjs.extend(customParseFormat);
 
@@ -157,14 +159,16 @@ interface Config
   },
 }
 
-const parseService = (attributes: any[]) => attributes.filter((att: any) =>
-  att.id.startsWith('urn:restorecommerce:fufs:names:service:attr:dhl')
-).map((att: any) => ({
-  [att.value]: {
-    attributes: Object.assign({}, ...att.attribute.map((att: any) => ({
-      [att.id]: att.value
-    })))}
-}));
+const DefaultUrns = {
+  dhl_service: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
+  dhl_productName: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
+  dhl_accountNumber: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
+  dhl_roundWeightUp: 'urn:restorecommerce:fulfillment:product:attribute:dhl:roundWeightUp',
+  dhl_stepPrice: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepPrice',
+  dhl_stepWeight: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepWeightInKg',
+};
+
+type KnownUrns = typeof DefaultUrns;
 
 const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
   timestamp: dayjs(attributes['event-timestamp'], 'DD.MM.YYYY HH:mm').toDate(),
@@ -299,10 +303,11 @@ const DHLShipmentCancelResponse2AggregatedFulfillment = (
 export class DHLSoap extends Stub {
   public readonly version: number[];
   protected readonly stub_defaults: any;
+  protected readonly urns: KnownUrns;
   private _stub_config: Config;
   private _soap_client: soap.Client;
 
-  protected readonly status_codes: { [key: string]: Status } = {
+  protected readonly status_codes = {
     OK: {
       id: '',
       code: 200,
@@ -313,10 +318,20 @@ export class DHLSoap extends Stub {
       code: 404,
       message: '{entity} {id} not found! {details}',
     },
+    WEAK_ERROR: {
+      id: '',
+      code: 207,
+      message: '{entity} {id} week validation error! {details}',
+    },
     INVALID_ADDRESS: {
       id: '',
       code: 400,
       message: '{entity} {id} address invalid! {details}',
+    },
+    INVALID_PRICE: {
+      id: '',
+      code: 500,
+      message: '{entity} {id} price calculation failed! {details}',
     },
     UNKNOWN_ERROR: {
       id: '',
@@ -325,7 +340,7 @@ export class DHLSoap extends Stub {
     },
   };
 
-  protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
+  protected readonly operation_status_codes = {
     SUCCESS: {
       code: 200,
       message: 'SUCCESS',
@@ -378,6 +393,59 @@ export class DHLSoap extends Stub {
       ...this.operation_status_codes,
       ...this.cfg?.get('operationStatusCodes'),
     };
+
+    this.urns = {
+      ...DefaultUrns,
+      ...this.cfg?.get('urns'),
+      ...this.cfg?.get('urns:authentication'),
+    };
+  }
+
+  public async calcGross(
+    product: Variant,
+    pack: Package
+  ): Promise<BigNumber> {
+    try{
+      const step_weight = Number.parseFloat(
+        product.attributes.find(attr => attr.id === this.urns.dhl_stepWeight)?.value ?? '1'
+      );
+      const step_price = Number.parseFloat(
+        product.attributes.find(attr => attr.id === this.urns.dhl_stepPrice)?.value ?? '1'
+      );
+      const precision = Number.parseInt(
+        product.attributes.find(attr => attr.id === this.urns.dhl_stepPrice)?.value ?? '3'
+      );
+      const price = new BigNumber(
+        pack.weight_in_kg / step_weight * step_price
+      ).plus(
+        product.price.sale ? product.price.sale_price : product.price.regular_price
+      ).decimalPlaces(
+        precision, BigNumber.ROUND_UP
+      );
+      if (price.isNaN()) {
+        throw 'NaN detected!'
+      }
+      return price;
+    }
+    catch (e: any) {
+      this.throwStatusCode(
+        'FulfillmentProduct',
+        product?.id,
+        this.status_codes.INVALID_PRICE,
+        e?.message ?? e.details ?? JSON.stringify(e)
+      );
+    }
+  }
+
+  protected parseService (attributes: any[]) {
+    return attributes.filter((att: any) =>
+      att.id.startsWith(this.urns.dhl_service)
+    ).map((att: any) => ({
+      [att.value]: {
+        attributes: Object.assign({}, ...att.attribute.map((att: any) => ({
+          [att.id]: att.value
+        })))}
+    }));
   }
 
   protected DHLCode2StatusCode(
@@ -392,10 +460,22 @@ export class DHLSoap extends Stub {
         this.status_codes.OK,
         details,
       );
+      case 1101: return this.createStatusCode(
+        'Fulfillment',
+        id,
+        this.status_codes.INVALID_ADDRESS,
+        details,
+      );
+      case 207: return this.createStatusCode(
+        'Fulfillment',
+        id,
+        this.status_codes.WEAK_ERROR,
+        details,
+      );
       default: return this.createStatusCode(
         'Fulfillment',
         id,
-        this.status_codes.UNKOWN_ERROR,
+        this.status_codes.UNKNOWN_ERROR,
         details,
       );
     }
@@ -463,12 +543,13 @@ export class DHLSoap extends Stub {
     if (response?.CreationState) {
       return fulfillments.map((fulfillment, i) => {
         const dhl_state = response.CreationState.find((state: any) => state.sequenceNumber === (i + 1).toString());
-        const code = dhl_state?.LabelData?.Status?.statusCode;
+        const weak = dhl_state?.Status?.statusText?.startsWith('Weak');
+        const code = weak ? 207 : dhl_state?.LabelData?.Status?.statusCode;
         const state = code === 0 ? FulfillmentState.SUBMITTED : FulfillmentState.INVALID;
         const status = this.DHLCode2StatusCode(
           code,
           fulfillment.payload?.id,
-          dhl_state?.LabelData?.Status?.statusMessage,
+          dhl_state?.LabelData?.Status?.statusMessage ?? dhl_state?.Status?.statusText,
         );
 
         if (state === FulfillmentState.INVALID) {
@@ -494,7 +575,8 @@ export class DHLSoap extends Stub {
     else if (response?.ValidationState) {
       return fulfillments.map((fulfillment, i) => {
         const dhl_state = response.ValidationState.find((state: any) => state.sequenceNumber === (i + 1).toString());
-        const code = dhl_state?.Status?.statusCode;
+        const weak = dhl_state?.Status?.statusText?.startsWith('Weak');
+        const code = weak ? 207 : dhl_state?.Status?.statusCode;
         const status = this.DHLCode2StatusCode(
           code,
           fulfillment.payload?.id,
@@ -505,6 +587,7 @@ export class DHLSoap extends Stub {
           fulfillment.payload.fulfillment_state = FulfillmentState.INVALID;
         }
 
+        this.logger.debug('DHLSoap Evaluation:', status);
         fulfillment.status = status;
         return fulfillment;
       });
@@ -590,9 +673,11 @@ export class DHLSoap extends Stub {
               shipmentDate: new Date().toISOString().slice(0,10),
               costCenter: '',
               customerReference: request.payload.id,
-              product: request.product.attributes.find(att => att.id === this.cfg.get('urns:productName'))?.value,
+              product: request.product.attributes.find(
+                att => att.id === this.urns.dhl_productName
+              )?.value,
               accountNumber: request.product.attributes.find(
-                att => att.id === this.cfg.get('urns:accountNumber')
+                att => att.id === this.urns.dhl_accountNumber
               )?.value ?? this.stub_config?.ordering?.account_number,
               // Service: parseService(request.parcel.attributes),
               ShipmentItem: {

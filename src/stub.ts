@@ -5,7 +5,13 @@ import {
   FlatAggregatedFulfillment,
   extractCouriers,
 } from './utils.js';
-import { FulfillmentProduct, PackingSolutionQuery } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
+import {
+  FulfillmentProduct,
+  PackingSolutionQuery,
+  Variant
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
+import { BigNumber } from 'bignumber.js';
+import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 
 export abstract class Stub
 {
@@ -22,15 +28,12 @@ export abstract class Stub
     public logger?: Logger
   ) {}
 
-  public abstract matchesZone(
-    product: FulfillmentProduct,
-    query: PackingSolutionQuery,
-    helper?: any
-  ): Promise<boolean>;
   protected abstract evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
   protected abstract cancelImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
+  public abstract matchesZone<T>(product: FulfillmentProduct, query: PackingSolutionQuery, helper?: T): Promise<boolean>;
+  public abstract calcGross(product: Variant, pack: Package): Promise<BigNumber>;
 
   protected createStatusCode(
     entity: string,
