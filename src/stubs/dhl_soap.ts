@@ -26,6 +26,7 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { BigNumber } from 'bignumber.js';
 import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import { Attribute } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js';
 
 dayjs.extend(customParseFormat);
 
@@ -166,6 +167,7 @@ const DefaultUrns = {
   dhl_roundWeightUp: 'urn:restorecommerce:fulfillment:product:attribute:dhl:roundWeightUp',
   dhl_stepPrice: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepPrice',
   dhl_stepWeight: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepWeightInKg',
+  dhl_premium: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
 };
 
 type KnownUrns = typeof DefaultUrns;
@@ -437,14 +439,20 @@ export class DHLSoap extends Stub {
     }
   }
 
-  protected parseService (attributes: any[]) {
-    return attributes.filter((att: any) =>
-      att.id.startsWith(this.urns.dhl_service)
+  protected parseService (attributes: Attribute[]) {
+    return attributes?.reverse().filter((att: Attribute) =>
+      att.id?.startsWith(this.urns.dhl_service)
     ).map((att: any) => ({
       [att.value]: {
-        attributes: Object.assign({}, ...att.attribute.map((att: any) => ({
-          [att.id]: att.value
-        })))}
+        attributes: Object.assign(
+          {
+            active: "1",
+          },
+          ...att.attribute.map(
+            (att: any) => ({[att.id]: att.value})
+          )
+        )
+      }
     }));
   }
 
@@ -624,6 +632,17 @@ export class DHLSoap extends Stub {
       },
       ShipmentOrder: requests.map((request, i): ShipmentOrder => {
         const packaging = request.payload.packaging;
+        const variant = {
+          ...(request.product.variants?.find(
+            v => packaging.parcels.map(
+              p => p.variant_id.includes(v.id)
+            )
+          ) ?? {})
+        }
+        variant.attributes = [
+          ...(variant.attributes ?? []),
+          ...(request.product?.attributes ?? []),
+        ];
         return {
           sequenceNumber: i + 1,
           Shipment: {
@@ -673,24 +692,19 @@ export class DHLSoap extends Stub {
               shipmentDate: new Date().toISOString().slice(0,10),
               costCenter: '',
               customerReference: request.payload.id,
-              product: request.product.attributes.find(
+              product: variant.attributes.find(
                 att => att.id === this.urns.dhl_productName
               )?.value,
-              accountNumber: request.product.attributes.find(
+              accountNumber: variant.attributes.find(
                 att => att.id === this.urns.dhl_accountNumber
               )?.value ?? this.stub_config?.ordering?.account_number,
-              // Service: parseService(request.parcel.attributes),
+              Service: this.parseService(variant.attributes),
               ShipmentItem: {
                 heightInCM: request.parcel.package.size_in_cm.height,
                 lengthInCM: request.parcel.package.size_in_cm.length,
                 widthInCM: request.parcel.package.size_in_cm.width,
                 weightInKG: request.parcel.package.weight_in_kg,
               },
-              /* No longer supported!!!
-              Notification: {
-                recipientEmailAddress: packaging.notify
-              }
-              */
             }
           }
         };

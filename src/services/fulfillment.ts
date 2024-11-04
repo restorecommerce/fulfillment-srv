@@ -896,6 +896,10 @@ export class FulfillmentService
               const variant = product.variants.find(
                 v => v.id === p.variant_id
               );
+              variant.attributes = [
+                ...(variant.attributes ?? []),
+                ...(product.attributes ?? []),
+              ];
               const courier = courier_map[product.courier_id]?.payload;
               const stub = Stub.getInstance(courier);
               const taxes = product.tax_ids.map(
