@@ -442,15 +442,15 @@ export class DHLSoap extends Stub {
   protected parseService (attributes: Attribute[]) {
     return attributes?.reverse().filter((att: Attribute) =>
       att.id?.startsWith(this.urns.dhl_service)
-    ).map((att: any) => ({
+    ).map(att=> ({
       [att.value]: {
         attributes: Object.assign(
           {
             active: "1",
           },
-          ...att.attribute.map(
-            (att: any) => ({[att.id]: att.value})
-          )
+          ...(att.attributes?.map(
+            att=> ({[att.id]: att.value})
+          ) ?? [])
         )
       }
     }));
