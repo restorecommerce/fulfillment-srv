@@ -485,6 +485,9 @@ export class FulfillmentProductService
     subject?: Subject,
     context?: any,
   ): Promise<FulfillmentCourierListResponse> {
+    const ids = [...new Set(
+      query.preferences?.courier_ids?.map(id => id) ?? []
+    ).values()];
     const call = ReadRequest.fromPartial({
       filters: [
         {
@@ -494,13 +497,15 @@ export class FulfillmentProductService
               operation: Filter_Operation.in,
               value: query.shop_id
             },
-            ...(query.preferences?.courier_ids?.map(
-              id => ({
+            ...(
+              ids?.length ?
+              [{
                 field: '_key', // _key is faster
-                operation: Filter_Operation.eq,
-                value: id,
-              })
-            ).filter(item => !!item) ?? [])
+                operation: Filter_Operation.in,
+                type: Filter_ValueType.ARRAY,
+                value: JSON.stringify(ids),
+              }] : []
+            )
           ],
           operator: FilterOp_Operator.and
         }
@@ -551,9 +556,21 @@ export class FulfillmentProductService
       throw this.operation_status_codes.COURIERS_NOT_FOUND;
     }
 
+    const ids = [...new Set(
+      query.preferences?.courier_ids?.map(id => id) ?? []
+    ).values()];
     const call = ReadRequest.fromPartial({
       filters: [{
         filters: [
+          ...(
+            ids?.length ?
+            [{
+              field: '_key', // _key is faster
+              operation: Filter_Operation.in,
+              type: Filter_ValueType.ARRAY,
+              value: JSON.stringify(ids),
+            }] : []
+          ),
           {
             field: 'courier_id',
             operation: Filter_Operation.in,
