@@ -54,13 +54,13 @@ import {
   Item,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import {
-  PackingSolutionQuery,
-  PackingSolutionQueryList,
-  PackingSolution,
-  PackingSolutionListResponse,
+  FulfillmentSolutionQuery,
+  FulfillmentSolutionQueryList,
+  FulfillmentSolution,
+  FulfillmentSolutionListResponse,
   FulfillmentProductList,
   FulfillmentProductListResponse,
-  PackingSolutionResponse,
+  FulfillmentSolutionResponse,
   FulfillmentProductServiceImplementation,
   FulfillmentProduct,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
@@ -80,7 +80,7 @@ import {
 import { Stub } from './../stub.js';
 
 
-interface PackageSolutionTotals extends PackingSolutionQuery {
+interface PackageSolutionTotals extends FulfillmentSolutionQuery {
   volume: number;
   total_weight: number;
   max_width: number;
@@ -88,8 +88,8 @@ interface PackageSolutionTotals extends PackingSolutionQuery {
   max_length: number;
 }
 
-const buildQueryTotals = (queries: PackingSolutionQuery[]): PackageSolutionTotals[] => queries.map(
-  (item: PackingSolutionQuery): PackageSolutionTotals => item.items.reduce((a: PackageSolutionTotals, b: any) => {
+const buildQueryTotals = (queries: FulfillmentSolutionQuery[]): PackageSolutionTotals[] => queries.map(
+  (item: FulfillmentSolutionQuery): PackageSolutionTotals => item.items.reduce((a: PackageSolutionTotals, b: any) => {
     a.volume += b.width_in_cm * b.height_in_cm * b.length_in_cm * b.quantity;
     a.total_weight += b.weight_in_kg * b.quantity;
     a.max_width = Math.max(a.max_width, b.width_in_cm);
@@ -495,10 +495,10 @@ export class FulfillmentProductService
               value: query.shop_id
             },
             ...(query.preferences?.couriers?.map(
-              att => ({
-                field: att.id,
+              id => ({
+                field: '_key', // _key is faster
                 operation: Filter_Operation.eq,
-                value: att.value,
+                value: id,
               })
             ).filter(item => !!item) ?? [])
           ],
@@ -660,7 +660,7 @@ export class FulfillmentProductService
     return super.upsert(request, context);
   }
 
-  async find(request: PackingSolutionQueryList, context?: any): Promise<PackingSolutionListResponse> {
+  async find(request: FulfillmentSolutionQueryList, context?: any): Promise<FulfillmentSolutionListResponse> {
     try {
       const queries = buildQueryTotals(request.items);
 
@@ -942,7 +942,8 @@ export class FulfillmentProductService
             shipping: null
           });
           
-          const solutions: PackingSolution[] = offer_lists.map(
+          const courier_ids = new Set<string>();
+          const solutions: FulfillmentSolution[] = offer_lists.map(
             offers => packer.canFit(offers, goods)
           ).map(
             containers => {
@@ -969,6 +970,7 @@ export class FulfillmentProductService
                   vat: gross.multipliedBy(tax.rate).decimalPlaces(2).toNumber(),
                 }));
                 const net = vats.reduce((a, b) => a.plus(b.vat), gross).decimalPlaces(2).toNumber();
+                courier_ids.add(product?.courier_id);
 
                 return {
                   id: randomUUID(),
@@ -1027,9 +1029,10 @@ export class FulfillmentProductService
               });
 
               return {
+                courier_ids: [...courier_ids.values()],
                 parcels,
                 amounts,
-              };
+              } as FulfillmentSolution;
             }
           ).sort(
             (a, b) => Math.min(
@@ -1039,7 +1042,7 @@ export class FulfillmentProductService
             )
           );
 
-          const solution: PackingSolutionResponse = {
+          const solution: FulfillmentSolutionResponse = {
             reference: query.reference,
             solutions,
             status: {
@@ -1058,7 +1061,7 @@ export class FulfillmentProductService
           return solution;
         }
         catch (e: any) {
-          const solution: PackingSolutionResponse = {
+          const solution: FulfillmentSolutionResponse = {
             reference: query.reference,
             solutions: [],
             status: this.catchStatusError(
