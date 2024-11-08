@@ -494,7 +494,7 @@ export class FulfillmentProductService
               operation: Filter_Operation.in,
               value: query.shop_id
             },
-            ...(query.preferences?.couriers?.map(
+            ...(query.preferences?.courier_ids?.map(
               id => ({
                 field: '_key', // _key is faster
                 operation: Filter_Operation.eq,
