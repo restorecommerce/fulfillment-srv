@@ -66,7 +66,7 @@ export class FulfillmentCourierService
         cfg.get('database:main:collections:1') ?? 'fulfillment_couriers',
         cfg.get('fieldHandlers:fulfillment_courier')
       ),
-      true
+      cfg.get('events:enableEvents')?.toString() === 'true'
     );
   }
 

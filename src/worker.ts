@@ -32,6 +32,9 @@ import {
   CommandInterfaceServiceDefinition,
   protoMetadata as CommandInterfaceMeta,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/commandinterface.js';
+import {
+  protoMetadata as ResourceBaseMeta,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base.js';
 import { HealthDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/grpc/health/v1/health.js';
 import { ServerReflectionService } from 'nice-grpc-server-reflection';
 import { FulfillmentService } from './services/fulfillment.js';
@@ -45,7 +48,8 @@ registerProtoMeta(
   FulfillmentMeta,
   FulfillmentCourierMeta,
   FulfillmentProductMeta,
-  CommandInterfaceMeta
+  CommandInterfaceMeta,
+  ResourceBaseMeta,
 );
 
 export class Worker {

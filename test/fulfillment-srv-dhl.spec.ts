@@ -191,7 +191,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
       });
     }
 
-    for (let [sample_name, sample] of Object.entries(samples.packingSolutionQueries.valid)) {
+    for (let [sample_name, sample] of Object.entries(samples.FulfillmentSolutionQueries.valid)) {
       it(`should find PackingSolution by valid samples: ${sample_name}`, async () => {
         const response = await product_client.find(sample);
         should.equal(

@@ -21,7 +21,7 @@ import {
 import { Stub } from '../stub.js';
 import {
   FulfillmentProduct,
-  PackingSolutionQuery,
+  FulfillmentSolutionQuery,
   Variant
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { BigNumber } from 'bignumber.js';
@@ -889,7 +889,7 @@ export class DHLSoap extends Stub {
 
   async matchesZone(
     product: FulfillmentProduct,
-    query: PackingSolutionQuery,
+    query: FulfillmentSolutionQuery,
     helper: any,
   ): Promise<boolean> {
     return false;

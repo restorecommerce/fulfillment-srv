@@ -61,7 +61,7 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/credential';
 import {
   FulfillmentProductList,
-  PackingSolutionQueryList
+  FulfillmentSolutionQueryList
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/fulfillment_product';
 import {
   FulfillmentCourierList
@@ -722,7 +722,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
   }
 }; 
 
-const validPackingSolutionQueries: { [key: string]: PackingSolutionQueryList } = {
+const validFulfillmentSolutionQueries: { [key: string]: FulfillmentSolutionQueryList } = {
   dhl_1: {
     items: [
       {
@@ -735,7 +735,8 @@ const validPackingSolutionQueries: { [key: string]: PackingSolutionQueryList } =
         sender: businessAddresses[0],
         recipient: residentialAddresses[0],
         preferences: {
-          couriers: [],
+          courierIds: [],
+          fulfillmentProductIds: [],
           options: [],
         },
         items: [
@@ -917,8 +918,8 @@ export const samples = {
     valid: validFulfillmentProducts,
     invalid: [],
   },
-  packingSolutionQueries: {
-    valid: validPackingSolutionQueries,
+  FulfillmentSolutionQueries: {
+    valid: validFulfillmentSolutionQueries,
     invalid: [],
   },
   fulfillments: {

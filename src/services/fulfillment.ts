@@ -210,11 +210,12 @@ export class FulfillmentService
         cfg.get('database:main:collections:0') ?? 'fulfillments',
         cfg.get('fieldHandlers:fulfillment'),
       ),
-      !!cfg.get('events:enableEvents'),
+      cfg.get('events:enableEvents')?.toString() === 'true',
     );
 
     Stub.cfg = cfg;
     Stub.logger = logger;
+    this.isEventsEnabled = cfg.get('events:enableEvents')?.toString() === 'true';
 
     this.status_codes = {
       ...this.status_codes,
@@ -1173,9 +1174,9 @@ export class FulfillmentService
           switch (item.payload.fulfillment_state) {
             case FulfillmentState.INVALID:
             case FulfillmentState.FAILED:
-              this.topic.emit(this.emitters[item.payload.fulfillment_state], item);
+              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
             default:
-              this.topic.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
               break;
           }
         }
@@ -1304,7 +1305,7 @@ export class FulfillmentService
       ).then(
         merged_fulfillments => merged_fulfillments.filter(
           item => {
-            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            response_map[item.payload?.id ?? item.status?.id] = item;
             return item.status.code === 200;
           }
         ).map(
@@ -1322,14 +1323,15 @@ export class FulfillmentService
       ).then(
         updates => updates.items.forEach(
           item => {
-            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            response_map[item.payload?.id ?? item.status?.id] = item;
             if (this.emitters && item.payload.fulfillment_state in this.emitters) {
               switch (item.payload.fulfillment_state) {
                 case FulfillmentState.INVALID:
                 case FulfillmentState.FAILED:
-                  this.topic.emit(this.emitters[item.payload.fulfillment_state], item);
+                  this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                  break;
                 default:
-                  this.topic.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                  this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
                   break;
               }
             }
@@ -1468,9 +1470,9 @@ export class FulfillmentService
           switch (item.payload.fulfillment_state) {
             case FulfillmentState.INVALID:
             case FulfillmentState.FAILED:
-              this.topic.emit(this.emitters[item.payload.fulfillment_state], item);
+              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
             default:
-              this.topic.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
               break;
           }
         }

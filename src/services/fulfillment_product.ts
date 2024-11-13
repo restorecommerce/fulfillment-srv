@@ -223,7 +223,7 @@ export class FulfillmentProductService
         cfg.get('database:main:collections:2') ?? 'fulfillment_products',
         cfg.get('fieldHandlers:fulfillment_product')
       ),
-      true
+      cfg.get('events:enableEvents')?.toString() === 'true'
     );
 
     this.status_codes = {

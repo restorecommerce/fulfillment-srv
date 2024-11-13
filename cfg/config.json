@@ -126,7 +126,7 @@
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
       "fulfillmentDeleted": {
-        "messageObject": "io.restorecommerce.fulfillment.Deleted"
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
       "fulfillmentCourierCreated": {
         "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
@@ -135,7 +135,7 @@
         "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
       },
       "fulfillmentCourierDeleted": {
-        "messageObject": "io.restorecommerce.fulfillment_courier.Deleted"
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
       "fulfillmentProductCreated": {
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
@@ -144,7 +144,7 @@
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
       },
       "fulfillmentProductDeleted": {
-        "messageObject": "io.restorecommerce.fulfillment_product.Deleted"
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
       
       "restoreCommand": {
