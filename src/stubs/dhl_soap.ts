@@ -181,7 +181,9 @@ const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
   },
   status: {
     id: attributes['event-short-status'],
-    code: attributes['standard-event-code'],
+    // TODO: parse DHL event codes
+    // code: attributes['standard-event-code'],
+    code: 200,
     message: attributes['event-text']
   }
 });
