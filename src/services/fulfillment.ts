@@ -94,6 +94,7 @@ import {
   createOperationStatusCode,
   ResponseMap,
   Courier,
+  unique,
 } from './../utils.js';
 import { Stub } from './../stub.js';
 
@@ -596,12 +597,12 @@ export class FulfillmentService
         ...Object.values(address_map).map(
           item => item.payload?.country_id
         ),
-        ...fulfillments?.map(
+        ...(fulfillments?.map(
           item => item.packaging?.sender?.address?.country_id
-        ),
-        ...fulfillments?.map(
+        ) ?? []),
+        ...(fulfillments?.map(
           item => item.packaging?.recipient?.address?.country_id
-        ),
+        ) ?? []),
       ],
       this.country_service,
       this.tech_user ?? subject,
@@ -775,15 +776,18 @@ export class FulfillmentService
           'Courier'
         );
         
-        couriers.every(
-          courier => courier.payload?.shop_ids?.includes(
-            item.shop_id
+        if (!couriers.every(
+            courier => courier.payload?.shop_ids?.includes(
+              item.shop_id
+            )
           )
-        ) || throwStatusCode<any>(
-          'Fulfillment',
-          item.id,
-          this.status_codes.SHOP_ID_NOT_IDENTICAL,
-        );
+        ) {
+          throwStatusCode<any>(
+            'Fulfillment',
+            item.id,
+            this.status_codes.SHOP_ID_NOT_IDENTICAL,
+          );
+        }
 
         const credentials = await this.getByIds(
           credential_map,
@@ -798,8 +802,8 @@ export class FulfillmentService
         const status: Status[] = [
           sender_country?.status,
           recipient_country?.status,
-          ...products?.map(p => p?.status),
-          ...couriers?.map(c => c?.status),
+          ...(products?.map(p => p?.status) ?? []),
+          ...(couriers?.map(c => c?.status) ?? []),
         ];
 
         const shop_country = await this.getById(
@@ -897,10 +901,12 @@ export class FulfillmentService
               const variant = product.variants.find(
                 v => v.id === p.variant_id
               );
-              variant.attributes = [
-                ...(variant.attributes ?? []),
-                ...(product.attributes ?? []),
-              ];
+              variant.attributes = unique(
+                [
+                  ...(product.attributes ?? []),
+                  ...(variant.attributes ?? []),
+                ]
+              );
               const courier = courier_map[product.courier_id]?.payload;
               const stub = Stub.getInstance(courier);
               const taxes = product.tax_ids.map(
@@ -1169,18 +1175,21 @@ export class FulfillmentService
         subject: request.subject
       }, context);
 
-      upsert_results.items.forEach(item => {
-        if (this.emitters && item.payload.fulfillment_state in this.emitters) {
-          switch (item.payload.fulfillment_state) {
-            case FulfillmentState.INVALID:
-            case FulfillmentState.FAILED:
-              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
-            default:
-              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
-              break;
+      if (this.isEventsEnabled) {
+        upsert_results.items.forEach(item => {
+          if (this.emitters && item.payload.fulfillment_state in this.emitters) {
+            switch (item.payload.fulfillment_state) {
+              case FulfillmentState.INVALID:
+              case FulfillmentState.FAILED:
+                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                break;
+              default:
+                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                break;
+            }
           }
-        }
-      });
+        });
+      }
 
       upsert_results.items.push(
         ...merged.filter(item => item.payload?.labels?.length === 0)
@@ -1321,17 +1330,17 @@ export class FulfillmentService
           context
         )
       ).then(
-        updates => updates.items.forEach(
+        updates => this.isEventsEnabled && updates.items.forEach(
           item => {
             response_map[item.payload?.id ?? item.status?.id] = item;
             if (this.emitters && item.payload.fulfillment_state in this.emitters) {
               switch (item.payload.fulfillment_state) {
                 case FulfillmentState.INVALID:
                 case FulfillmentState.FAILED:
-                  this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                  this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
                   break;
                 default:
-                  this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                  this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
                   break;
               }
             }
@@ -1465,18 +1474,21 @@ export class FulfillmentService
         subject: request.subject
       }, context);
 
-      update_results.items.forEach(item => {
-        if (this.emitters && item.payload.fulfillment_state in this.emitters) {
-          switch (item.payload.fulfillment_state) {
-            case FulfillmentState.INVALID:
-            case FulfillmentState.FAILED:
-              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
-            default:
-              this.isEventsEnabled && this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
-              break;
+      if (this.isEventsEnabled) {
+        update_results.items.forEach(item => {
+          if (this.emitters && item.payload.fulfillment_state in this.emitters) {
+            switch (item.payload.fulfillment_state) {
+              case FulfillmentState.INVALID:
+              case FulfillmentState.FAILED:
+                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                break;
+              default:
+                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                break;
+            }
           }
-        }
-      });
+        });
+      }
 
       update_results.items.push(
         ...items.filter(i => i.status?.code !== 200)

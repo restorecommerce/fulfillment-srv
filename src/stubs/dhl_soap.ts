@@ -17,6 +17,7 @@ import {
 import {
   FlatAggregatedFulfillment,
   throwOperationStatusCode,
+  unique,
 } from '../utils.js';
 import { Stub } from '../stub.js';
 import {
@@ -442,7 +443,7 @@ export class DHLSoap extends Stub {
   }
 
   protected parseService (attributes: Attribute[]) {
-    return attributes?.reverse().filter((att: Attribute) =>
+    return attributes?.filter((att: Attribute) =>
       att.id?.startsWith(this.urns.dhl_service)
     ).map(att=> ({
       [att.value]: {
@@ -641,10 +642,12 @@ export class DHLSoap extends Stub {
             )
           ) ?? {})
         }
-        variant.attributes = [
-          ...(variant.attributes ?? []),
-          ...(request.product?.attributes ?? []),
-        ];
+        variant.attributes = unique(
+          [
+            ...(request.product.attributes ?? []),
+            ...(variant.attributes ?? []),
+          ]
+        );
         return {
           sequenceNumber: i + 1,
           Shipment: {

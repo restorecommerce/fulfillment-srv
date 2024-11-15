@@ -113,7 +113,9 @@ const countItems = (goods: Item[], container: Container) => {
   container.getLevels().forEach((level) =>
     level.forEach((a) => {
       const item = item_map.get(a.getBox().getName());
-      item && (item.quantity += 1);
+      if (item) {
+        item.quantity += 1
+      }
     })
   );
   return [...item_map.values()];
@@ -412,7 +414,7 @@ export class FulfillmentProductService
         if (response.operation_status?.code === 200) {
           return response.items?.reduce(
             (a: ResponseMap<T>, b: Response<T>) => {
-              a[b.payload?.id!] = b;
+              a[b.payload?.id] = b;
               return a;
             },
             {}
@@ -868,7 +870,7 @@ export class FulfillmentProductService
           ).then(
             response => response.items.reduce(
               (a: ResponseMap<FulfillmentProduct>, b) => {
-                a[b.payload?.id ?? b.status?.id!] = b;
+                a[b.payload?.id ?? b.status?.id] = b;
                 return a;
               },
               {} as ResponseMap<FulfillmentProduct>
@@ -959,11 +961,11 @@ export class FulfillmentProductService
             shipping: null
           });
           
-          const courier_ids = new Set<string>();
           const solutions: FulfillmentSolution[] = offer_lists.map(
             offers => packer.canFit(offers, goods)
           ).map(
             containers => {
+              const courier_ids = new Set<string>();
               const parcels = containers.map((container): Parcel => {
                 const [product_id, variant_id] = container.getOffer().name.split('\t');
                 const product = product_map[product_id].payload;
@@ -1053,9 +1055,9 @@ export class FulfillmentProductService
             }
           ).sort(
             (a, b) => Math.min(
-              ...a.amounts?.map(am => am.net)
+              ...(a.amounts?.map(am => am.net) ?? [])
             ) - Math.min(
-              ...b.amounts?.map(am => am.net)
+              ...(b.amounts?.map(am => am.net) ?? [])
             )
           );
 
