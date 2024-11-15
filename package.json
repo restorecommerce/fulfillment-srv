@@ -59,8 +59,8 @@
     "build:es": "esbuild ./src/start.ts --bundle --platform=node --outfile=lib/start.cjs --minify --tree-shaking=true --sourcemap=inline",
     "build:clean": "rimraf lib",
     "build": "npm-run-all build:clean build:es",
-    "test": "c8 --reporter=text npm run mocha",
-    "mocha": "cross-env NODE_ENV=test node_modules/.bin/mocha --full-trace --exit --timeout 30000 -r dotenv/config",
+    "test": "npm-run-all lint mocha",
+    "mocha": "c8 --reporter=text cross-env NODE_ENV=test node_modules/.bin/mocha --full-trace --exit --timeout 30000 -r dotenv/config",
     "lcov-report": "c8 report --reporter=lcov",
     "prepare": "node -e \"try { require('husky').install() } catch (e) {}\""
   },
