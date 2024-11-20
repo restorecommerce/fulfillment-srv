@@ -287,8 +287,9 @@ export class Worker {
     });
 
     // start server
+    this.logger.info('Server starting...');
     await this.server.start();
-    this.logger.info('server started successfully');
+    this.logger.info('Server started and ready to use.');
   }
 
   async stop(): Promise<any> {

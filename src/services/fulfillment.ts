@@ -1056,7 +1056,7 @@ export class FulfillmentService
   ): Promise<FulfillmentListResponse> {
     try {
       await this.getFulfillmentsByIds(
-        request.items.map(item => item.id),
+        request.items?.map(item => item.id),
         request.subject,
         context,
       ).then(
@@ -1065,8 +1065,8 @@ export class FulfillmentService
             throw response.operation_status;
           }
           else {
-            const result_map = new Map(response.items.map(item => [item.payload.id, item]));
-            request.items = request.items.map(
+            const result_map = new Map(response.items?.map(item => [item.payload.id, item]));
+            request.items = request.items?.map(
               item => ({
                 ...result_map.get(item.id)?.payload,
                 ...item

@@ -225,7 +225,7 @@ export class FulfillmentProductService
         cfg.get('database:main:collections:2') ?? 'fulfillment_products',
         cfg.get('fieldHandlers:fulfillment_product')
       ),
-      cfg.get('events:enableEvents')?.toString() === 'true'
+      cfg.get('events:enableEvents')?.toString() === 'true',
     );
 
     this.status_codes = {
@@ -559,7 +559,7 @@ export class FulfillmentProductService
     }
 
     const ids = [...new Set(
-      query.preferences?.courier_ids?.map(id => id) ?? []
+      query.preferences?.fulfillment_product_ids?.map(id => id) ?? []
     ).values()];
     const call = ReadRequest.fromPartial({
       filters: [{

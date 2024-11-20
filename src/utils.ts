@@ -56,6 +56,7 @@ import {
   Status
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import { Attribute } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js';
+import { PhysicalProduct, PhysicalVariant } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 
 export type CRUDClient = Client<TaxServiceDefinition>
 | Client<UserServiceDefinition>
