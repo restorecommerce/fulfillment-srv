@@ -326,7 +326,7 @@ export class DHLSoap extends Stub {
     WEAK_ERROR: {
       id: '',
       code: 207,
-      message: '{entity} {id} week validation error! {details}',
+      message: '{entity} {id} weak validation error! {details}',
     },
     INVALID_ADDRESS: {
       id: '',
