@@ -653,9 +653,15 @@ export class DHLSoap extends Stub {
           Shipment: {
             Shipper: {
               Name: {
-                'cis:name1': packaging.sender.address.residential_address?.family_name ?? packaging.sender.address.business_address?.name,
-                'cis:name2': packaging.sender.address.residential_address?.given_name,
-                'cis:name3': packaging.sender.address.residential_address?.mid_name,
+                'cis:name1': [
+                  packaging.sender.address.residential_address?.title,
+                  packaging.sender.address.residential_address?.given_name,
+                  packaging.sender.address.residential_address?.mid_name,
+                  packaging.sender.address.residential_address?.family_name,
+                  packaging.sender.address.business_address?.name
+                ].filter(s => s).join(' '),
+                'cis:name2': packaging.sender.address.address_addition?.field1,
+                'cis:name3': packaging.sender.address.address_addition?.field2,
               },
               Address: {
                 'cis:streetName': packaging.sender.address?.street,
@@ -674,10 +680,16 @@ export class DHLSoap extends Stub {
               }
             },
             Receiver: {
-              name1: packaging.recipient.address.residential_address?.family_name ?? packaging.recipient.address.business_address?.name,
+              name1: [
+                packaging.recipient.address.residential_address?.title,
+                packaging.recipient.address.residential_address?.given_name,
+                packaging.recipient.address.residential_address?.mid_name,
+                packaging.recipient.address.residential_address?.family_name,
+                packaging.recipient.address.business_address?.name
+              ].filter(s => s).join(' '),
               Address: {
-                name2: packaging.recipient.address.residential_address?.given_name,
-                name3: packaging.recipient.address.residential_address?.mid_name,
+                name2: packaging.recipient.address.address_addition?.field1,
+                name3: packaging.recipient.address.address_addition?.field2,
                 'cis:streetName': packaging.recipient.address?.street,
                 'cis:streetNumber': packaging.recipient.address?.building_number,
                 'cis:zip': packaging.recipient.address?.postcode,
