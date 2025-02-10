@@ -1,12 +1,9 @@
+import * as fs from 'node:fs';
+import { parse as CSV } from 'csv-parse/sync';
+import { type CallContext } from 'nice-grpc-common';
 import {
-  ResourcesAPIBase,
-  ServiceBase
-} from '@restorecommerce/resource-base-interface';
-import {
-  ACSClientContext,
   AuthZAction,
   access_controlled_function,
-  access_controlled_service,
   DefaultACSClientContextFactory,
   Operation,
   DefaultResourceFactory,
@@ -18,25 +15,12 @@ import { type ServiceConfig } from '@restorecommerce/service-config';
 import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import {
-  DeleteRequest,
-  ReadRequest
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base.js';
-import {
-  OperationStatus,
   Status,
   StatusListResponse,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
-  Filter_Operation,
-  Filter_ValueType,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter.js';
-import {
   Client,
-  GrpcClientConfig,
-  createChannel,
-  createClient,
 } from '@restorecommerce/grpc-client';
-import { type CallContext } from 'nice-grpc-common';
 import {
   FulfillmentState,
   FulfillmentListResponse,
@@ -49,117 +33,129 @@ import {
   FulfillmentId,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
-import { Address, AddressServiceDefinition, ShippingAddress } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
+import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
 import {
-  Country,
   CountryServiceDefinition,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
-import { Tax, TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
+import { TaxServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
 import { InvoiceListResponse } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice.js';
 import {
-  ContactPoint,
-  ContactPointResponse,
   ContactPointServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
 import {
-  Customer,
   CustomerServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
 import {
-  Credential,
-  CredentialServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
-import {
-  Shop,
   ShopServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
 import {
-  Organization,
+  NotificationReqServiceDefinition,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/notification_req.js';
+import {
   OrganizationServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
-import { VAT } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
-import { FulfillmentProduct } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
-import { FulfillmentCourierService } from './fulfillment_courier.js';
-import { FulfillmentProductService } from './fulfillment_product.js';
 import {
-  AggregatedFulfillment,
+  Setting,
+  SettingServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
+import {
+  Template,
+  TemplateServiceDefinition,
+  TemplateUseCase
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/template.js';
+import {
+  Payload,
+  RenderRequest,
+  RenderResponse,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/rendering.js';
+import { UserServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
+import { CurrencyServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
+import { Product, ProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import {
   mergeFulfillments,
-  flatMapAggregatedFulfillments,
+  flatMapAggregatedFulfillmentListResponse,
   StateRank,
-  CRUDClient,
-  filterTax,
-  throwOperationStatusCode,
   throwStatusCode,
   createStatusCode,
   createOperationStatusCode,
-  ResponseMap,
-  Courier,
-  unique,
+  AggregatedFulfillmentListResponse,
+  FulfillmentAggregationTemplate,
+  DefaultUrns,
+  DefaultSetting,
+  resolveCustomerAddress as resolveRecipientAddress,
+  resolveShopAddress as resolveSenderAddress,
+  mergeFulfillmentProductVariant,
+  calcAmount,
+  SettingMap,
+  parseSetting,
+  marshallProtobufAny,
 } from './../utils.js';
 import { Stub } from './../stub.js';
+import { AccessControlledServiceBase, ACSContextFactory } from '../experimental/AccessControlledServiceBase.js';
+import { ClientRegister } from '../experimental/ClientRegister.js';
+import { ResourceAggregator } from '../experimental/ResourceAggregator.js';
+import { ResourceAwaitQueue } from '../experimental/ResourceAwaitQueue.js';
+import { ResourceMap } from '../experimental/ResourceMap.js';
+import { FulfillmentCourierService } from './fulfillment_courier.js';
+import { FulfillmentProductService } from './fulfillment_product.js';
 
 
-@access_controlled_service
 export class FulfillmentService
-  extends ServiceBase<FulfillmentListResponse, FulfillmentList>
+  extends AccessControlledServiceBase<FulfillmentListResponse, FulfillmentList>
   implements FulfillmentServiceImplementation
 {
-  private static async ACSContextFactory(
-    self: FulfillmentService,
-    request: FulfillmentList & FulfillmentIdList & FulfillmentInvoiceRequestList & DeleteRequest,
-    context: any,
-  ): Promise<ACSClientContext> {
-    const ids = request.ids ?? request.items?.map((item: any) => item.id);
-    const resources = await self.getFulfillmentsByIds(ids, request.subject, context);
-    return {
-      ...context,
-      subject: request.subject,
-      resources: [
-        ...resources.items ?? [],
-        ...request.items ?? [],
-      ],
-    };
-  }
-
-  protected readonly status_codes: { [key: string]: Status } = {
+  protected readonly status_codes = {
     OK: {
-      id: '',
       code: 200,
       message: 'OK',
     },
     NOT_FOUND: {
-      id: '',
       code: 404,
       message: '{entity} {id} not found!',
     },
     NO_LEGAL_ADDRESS: {
-      id: '',
       code: 404,
       message: '{entity} {id} has no legal address!',
     },
     NO_SHIPPING_ADDRESS: {
-      id: '',
       code: 404,
       message: '{entity} {id} has no shipping address!',
     },
+    NO_BILLING_ADDRESS: {
+      code: 404,
+      message: '{entity} {id} has no billing address!',
+    },
     NO_LABEL: {
-      id: '',
       code: 404,
       message: '{entity} {id} has no label!',
     },
     NOT_SUBMITTED: {
-      id: '',
       code: 400,
       message: '{entity} {id} is not submitted!',
     },
     SHOP_ID_NOT_IDENTICAL: {
-      id: '',
       code: 400,
       message: '{entity} {id} Fulfillment.shopId must be listed in Courier.shopIds!',
     },
+    CONFLICT: {
+      code: 409,
+      message: 'Resource conflict, ID already in use!'
+    },
+    CONTENT_NOT_SUPPORTED: {
+      code: 400,
+      message: '{entity} {id}: Content type {error} is not supported!',
+    },
+    PROTOCOL_NOT_SUPPORTED: {
+      code: 400,
+      message: '{entity} {id}: Protocol of {error} is not supported!',
+    },
+    FETCH_FAILED: {
+      code: 500,
+      message: '{entity} {id}: {error}!',
+    },
   };
 
-  protected readonly operation_status_codes: { [key: string]: OperationStatus } = {
+  protected readonly operation_status_codes = {
     SUCCESS: {
       code: 200,
       message: 'SUCCESS',
@@ -176,18 +172,24 @@ export class FulfillmentService
       code: 500,
       message: 'Request timeout, API not responding!',
     },
+    NO_ITEM: {
+      code: 400,
+      message: 'No {entity} in query!',
+    },
+    NO_TEMPLATES: {
+      code: 500,
+      message: 'No render templates defined!',
+    },
   };
 
-  protected readonly emitters: any;
-  protected readonly customer_service: Client<CustomerServiceDefinition>;
-  protected readonly shop_service: Client<ShopServiceDefinition>;
-  protected readonly organization_service: Client<OrganizationServiceDefinition>;
-  protected readonly contact_point_service: Client<ContactPointServiceDefinition>;
-  protected readonly address_service: Client<AddressServiceDefinition>;
-  protected readonly country_service: Client<CountryServiceDefinition>;
-  protected readonly tax_service: Client<TaxServiceDefinition>;
-  protected readonly credential_service: Client<CredentialServiceDefinition>;
   protected readonly tech_user: Subject;
+  protected readonly notification_service: Client<NotificationReqServiceDefinition>;
+  protected readonly awaits_render_result = new ResourceAwaitQueue<string[]>;
+  protected readonly default_setting: DefaultSetting;
+  protected readonly default_templates: Template[] = [];
+  protected readonly kafka_timeout = 5000;
+  protected readonly emitters: Record<string, string>;
+  protected readonly urns = DefaultUrns;
   protected readonly contact_point_type_ids = {
     legal: 'legal',
     shipping: 'shipping',
@@ -195,29 +197,35 @@ export class FulfillmentService
   };
 
   constructor(
-    readonly fulfillmentCourierSrv: FulfillmentCourierService,
-    readonly fulfillmentProductSrv: FulfillmentProductService,
-    readonly topic: Topic,
-    readonly db: DatabaseProvider,
-    readonly cfg: ServiceConfig,
-    readonly logger: Logger,
+    protected readonly fulfillmentCourierSrv: FulfillmentCourierService,
+    protected readonly fulfillmentProductSrv: FulfillmentProductService,
+    protected readonly fulfillmentTopic: Topic,
+    protected readonly renderingTopic: Topic,
+    db: DatabaseProvider,
+    protected readonly cfg: ServiceConfig,
+    logger: Logger,
+    client_register = new ClientRegister(cfg, logger),
+    protected readonly aggregator = new ResourceAggregator(cfg, logger, client_register),
   ) {
     super(
       cfg.get('database:main:entities:0') ?? 'fulfillment',
-      topic,
+      fulfillmentTopic,
+      db,
+      cfg,
       logger,
-      new ResourcesAPIBase(
-        db,
-        cfg.get('database:main:collections:0') ?? 'fulfillments',
-        cfg.get('fieldHandlers:fulfillment'),
-      ),
       cfg.get('events:enableEvents')?.toString() === 'true',
+      cfg.get('database:main:collections:0') ?? 'fulfillments',
     );
 
     Stub.cfg = cfg;
     Stub.logger = logger;
     this.isEventsEnabled = cfg.get('events:enableEvents')?.toString() === 'true';
 
+    this.urns = {
+      ...this.urns,
+      ...cfg.get('urns'),
+      ...cfg.get('authentication:urns'),
+    };
     this.status_codes = {
       ...this.status_codes,
       ...cfg.get('statusCodes'),
@@ -233,767 +241,448 @@ export class FulfillmentService
       ...this.contact_point_type_ids,
       ...cfg.get('contactPointTypeIds')
     };
+    this.default_setting = {
+      ...DefaultSetting,
+      ...cfg.get('default:Setting'),
+    };
 
-    this.customer_service = createClient(
-      {
-        ...cfg.get('client:customer'),
-        logger
-      } as GrpcClientConfig,
-      CustomerServiceDefinition,
-      createChannel(cfg.get('client:customer:address'))
-    );
-
-    this.shop_service = createClient(
-      {
-        ...cfg.get('client:shop'),
-        logger
-      } as GrpcClientConfig,
-      ShopServiceDefinition,
-      createChannel(cfg.get('client:shop:address'))
-    );
-
-    this.organization_service = createClient(
-      {
-        ...cfg.get('client:organization'),
-        logger
-      } as GrpcClientConfig,
-      OrganizationServiceDefinition,
-      createChannel(cfg.get('client:organization:address'))
-    );
-
-    this.contact_point_service = createClient(
-      {
-        ...cfg.get('client:contact_point'),
-        logger
-      } as GrpcClientConfig,
-      ContactPointServiceDefinition,
-      createChannel(cfg.get('client:contact_point:address'))
-    );
-
-    this.address_service = createClient(
-      {
-        ...cfg.get('client:address'),
-        logger
-      } as GrpcClientConfig,
-      AddressServiceDefinition,
-      createChannel(cfg.get('client:address:address'))
-    );
-
-    this.country_service = createClient(
-      {
-        ...cfg.get('client:country'),
-        logger
-      } as GrpcClientConfig,
-      CountryServiceDefinition,
-      createChannel(cfg.get('client:country:address'))
-    );
-
-    this.tax_service = createClient(
-      {
-        ...cfg.get('client:tax'),
-        logger
-      } as GrpcClientConfig,
-      TaxServiceDefinition,
-      createChannel(cfg.get('client:tax:address'))
-    );
-
-    this.credential_service = createClient(
-      {
-        ...cfg.get('client:credential'),
-        logger
-      } as GrpcClientConfig,
-      CredentialServiceDefinition,
-      createChannel(cfg.get('client:credential:address'))
-    );
+    this.default_setting.customer_locales.filter(
+      locale => locale === 'fr'
+    )
 
     this.tech_user = cfg.get('tech_user');
   }
 
-  protected handleStatusError<T>(id: string, e: any, payload?: any): T {
-    this.logger?.warn(e);
+  protected async aggregateProductBundles(
+    products: ResourceMap<Product>,
+    output?: ResourceMap<Product>,
+    subject?: Subject,
+  ): Promise<ResourceMap<Product>> {
+    output ??= products;
+    const ids = products?.all.filter(
+      p => p.bundle
+    ).flatMap(
+      p => p.bundle.products.map(
+        p => p.product_id
+      )
+    ).filter(
+      id => !output.has(id)
+    );
+
+    if (ids?.length) {
+      const bundled_products = await this.aggregator.getByIds<Product>(
+        ids,
+        ProductServiceDefinition
+      );
+
+      bundled_products.forEach(
+        p => output.set(p.id, p)
+      );
+
+      await this.aggregateProductBundles(
+        bundled_products,
+        output,
+        subject,
+      );
+    }
+    return output;
+  }
+
+  private resolveSettings(
+    ...settings: Setting[]
+  ): DefaultSetting {
+    const smap = new Map<string, string>(
+      settings?.flatMap(
+        s => s?.settings?.map(
+          s => [s.id, s.value]
+        ) ?? []
+      ) ?? []
+    );
+    const sobj = Object.assign(
+      {},
+      ...Object.entries(this.urns).filter(
+        ([key, value]) => smap.has(value)
+      ).map(
+        ([key, value]) => ({ [key]: parseSetting(key, smap.get(value)) })
+      )
+    );
+    
     return {
-      payload,
-      status: {
-        id,
-        code: e?.code ?? 500,
-        message: e?.message ?? e?.details ?? e?.toString(),
-      }
-    } as T;
+      ...this.default_setting,
+      ...sobj,
+    };
   }
 
-  protected handleOperationError<T>(e: any, items?: any[]): T {
-    this.logger?.error(e);
-    return {
-      items,
-      total_count: items?.length ?? 0,
-      operation_status: {
-        code: e?.code ?? 500,
-        message: e?.message ?? e?.details ?? e?.toString(),
-      }
-    } as T;
-  }
-
-  protected getProductsBySuper(
-    ids: string[],
-    subject?: Subject,
-    context?: CallContext,
-  ): Promise<ResponseMap<FulfillmentProduct>> {
-    ids = [...new Set(ids)];
-
-    if (ids.length > 1000) {
-      throwOperationStatusCode(
-        'FulfillmentProduct',
-        this.operation_status_codes.LIMIT_EXHAUSTED,
-      );
-    }
-
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filters: [
-          {
-            field: 'id',
-            operation: Filter_Operation.in,
-            value: JSON.stringify(ids),
-            type: Filter_ValueType.ARRAY,
-          }
-        ]
-      }],
-      limit: ids.length,
-      subject,
-    });
-
-    return this.fulfillmentProductSrv.superRead(
-      request,
-      context,
-    ).then(
-      (response: any) => {
-        if (response.operation_status?.code === 200) {
-          return response.items?.reduce(
-            (a: ResponseMap<FulfillmentProduct>, b: any) => {
-              a[b.payload?.id] = b;
-              return a;
-            },
-            {} as ResponseMap<FulfillmentProduct>
-          );
+  private async aggregateSettings(
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<SettingMap> {
+    const resolved_settings: SettingMap = new Map(
+      aggregation.items.map(
+        (item) => {
+          const shop = aggregation.shops.get(item.payload.shop_id);
+          const customer = aggregation.customers.get(item.payload.customer_id);
+          const settings = [
+            aggregation.settings.get(shop.setting_id),
+            aggregation.settings.get(customer.setting_id)
+          ];
+          return [item.payload.id, this.resolveSettings(
+            ...settings
+          )];
         }
-        else {
-          throw response.operation_status;
-        }
-      }
+      )
     );
+    return resolved_settings;
   }
 
-  protected getCouriersBySuper(
-    ids: string[],
+  protected async loadDefaultTemplates(
     subject?: Subject,
-    context?: CallContext,
-  ): Promise<ResponseMap<Courier>> {
-    ids = [...new Set(ids)];
+    context?: any
+  ) {
+    if(this.default_templates.length) {
+      return this.default_templates;
+    }
 
-    if (ids.length > 1000) {
-      throwOperationStatusCode(
-        'Courier',
-        this.operation_status_codes.LIMIT_EXHAUSTED,
+    this.default_templates.push(...(this.cfg.get('default:Templates') ?? []));
+    const ids = this.default_templates.map(t => t.id);
+    if (ids.length) {
+      await this.aggregator.getByIds(
+        ids,
+        TemplateServiceDefinition,
+        this.tech_user ?? subject,
+        context,
+      ).then(
+        resp_map => {
+          this.default_templates.forEach(
+            template => Object.assign(
+              template,
+              resp_map.get(template.id, null) // null for ignore missing
+            )
+          )
+        }
       );
     }
 
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filters: [
-          {
-            field: 'id',
-            operation: Filter_Operation.in,
-            value: JSON.stringify(ids),
-            type: Filter_ValueType.ARRAY,
-          }
-        ]
-      }],
-      limit: ids.length,
-      subject,
-    });
-
-    return this.fulfillmentCourierSrv.superRead(
-      request,
-      context,
-    ).then(
-      (response: any) => {
-        if (response.operation_status?.code === 200) {
-          return response.items?.reduce(
-            (a: ResponseMap<Courier>, b: any) => {
-              a[b.payload?.id] = b;
-              return a;
-            },
-            {} as ResponseMap<Courier>
-          );
-        }
-        else {
-          throw response.operation_status;
-        }
-      }
-    );
-  }
-
-  protected async get<T>(
-    ids: string[],
-    service: CRUDClient,
-    subject?: Subject,
-    context?: CallContext,
-  ): Promise<ResponseMap<T>> {
-    ids = [...new Set(ids)].filter(id => id);
-
-    if (ids.length > 1000) {
-      throwOperationStatusCode(
-        service.constructor?.name,
-        this.operation_status_codes.LIMIT_EXHAUSTED,
-      );
-    }
-
-    if (!ids.length) {
-      return {} as ResponseMap<T>;
-    }
-
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filters: [
-          {
-            field: '_key',
-            operation: Filter_Operation.in,
-            value: JSON.stringify(ids),
-            type: Filter_ValueType.ARRAY,
-          }
-        ]
-      }],
-      limit: ids.length,
-      subject,
-    });
-
-    return await service.read(
-      request,
-      context,
-    ).then(
-      (response: any) => {
-        if (response.operation_status?.code === 200) {
-          return response.items?.reduce(
-            (a: ResponseMap<T>, b: any) => {
-              a[b.payload?.id] = b;
-              return a;
-            },
-            {} as ResponseMap<T>
-          );
-        }
-        else {
-          throw response.operation_status;
-        }
-      }
-    );
-  }
-
-  async getById<T>(map: { [id: string]: T }, id: string, name: string): Promise<T> {
-    if (map && id in map) {
-      return map[id];
-    }
-    else {
-      throwStatusCode<T>(
-        name,
-        id,
-        this.status_codes.NOT_FOUND
-      );
-    }
-  }
-
-  async getByIds<T>(map: { [id: string]: T }, ids: string[], name: string): Promise<T[]> {
-    return Promise.all(ids.map(
-      id => this.getById(map, id, name)
-    ));
-  }
-
-  protected getFulfillmentsByIds(
-    ids: string[],
-    subject?: Subject,
-    context?: CallContext
-  ): Promise<FulfillmentListResponse> {
-    ids = [...new Set(ids)];
-    if (ids.length > 1000) {
-      throw {
-        code: 500,
-        message: 'Query for fulfillments exceeds limit of 1000!'
-      } as OperationStatus;
-    }
-
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filters: [{
-          field: 'id',
-          operation: Filter_Operation.in,
-          value: JSON.stringify(ids),
-          type: Filter_ValueType.ARRAY
-        }]
-      }],
-      subject
-    });
-    return super.read(request, context);
+    return this.default_templates;
   }
 
   protected async aggregate(
-    fulfillments: Fulfillment[],
+    fulfillments: FulfillmentListResponse,
     subject?: Subject,
     context?: CallContext,
-    evaluate?: boolean,
-  ): Promise<AggregatedFulfillment[]> {
-    const customer_map = await this.get<Customer>(
-      fulfillments.map(q => q.customer_id),
-      this.customer_service,
-      this.tech_user ?? subject,
+  ): Promise<AggregatedFulfillmentListResponse> {
+    const aggregation = await this.aggregator.aggregate(
+      fulfillments,
+      [
+        {
+          service: ShopServiceDefinition,
+          map_by_ids: (fulfillments) => fulfillments.items?.map(
+            i => i.payload.shop_id
+          ),
+          container: 'shops',
+          entity: 'Shop',
+        },
+        {
+          service: CustomerServiceDefinition,
+          map_by_ids: (fulfillments) => fulfillments.items?.map(
+            i => i.payload.customer_id
+          ),
+          container: 'customers',
+          entity: 'Customer',
+        },
+        {
+          service: ProductServiceDefinition,
+          map_by_ids: (fulfillments) => fulfillments.items?.flatMap(
+            item => item.payload.packaging?.parcels
+          )?.flatMap(
+            parcel => parcel?.items
+          )?.flatMap(
+            item => item?.product_id
+          ),
+          container: 'products',
+          entity: 'Product',
+        },
+      ],
+      FulfillmentAggregationTemplate,
+      subject,
       context,
+    ).then(
+      async aggregation => {
+        aggregation.fulfillment_products = await this.fulfillmentProductSrv.get(
+          aggregation.items?.flatMap(
+            item => item.payload.packaging?.parcels
+          )?.flatMap(
+            item => item?.product_id
+          ),
+          subject,
+          context,
+        ).then(
+          response => new ResourceMap(
+            response.items.map(item => item.payload),
+            'FulfillmentProduct'
+          )
+        );
+
+        aggregation.fulfillment_couriers= await this.fulfillmentCourierSrv.get(
+          aggregation.fulfillment_products.all.map(
+            item => item.courier_id
+          ),
+          subject,
+          context,
+        ).then(
+          response => new ResourceMap(
+            response.items.map(item => item.payload),
+            'FulfillmentCourier'
+          )
+        );
+
+        await this.aggregateProductBundles(
+          aggregation.products,
+          aggregation.products,
+          subject,
+        );
+        return aggregation;
+      }
+    ).then(
+      async aggregation => await this.aggregator.aggregate(
+        aggregation,
+        [
+          {
+            service: TaxServiceDefinition,
+            map_by_ids: (aggregation) => aggregation.fulfillment_products?.all.flatMap(
+              product => product.tax_ids
+            ),
+            container: 'taxes',
+            entity: 'Tax',
+          },
+          {
+            service: TemplateServiceDefinition,
+            map_by_ids: (aggregation) => aggregation.shops?.all.flatMap(
+              shop => shop?.template_ids
+            ),
+            container: 'templates',
+            entity: 'Template',
+          },
+          {
+            service: SettingServiceDefinition,
+            map_by_ids: (aggregation) => aggregation.shops?.all.map(
+              shop => shop?.setting_id
+            ),
+            container: 'settings',
+            entity: 'Setting',
+          },
+          {
+            service: CurrencyServiceDefinition,
+            map_by_ids: (aggregation) => aggregation.fulfillment_products?.all.flatMap(
+              product => product.variants?.map(
+                t => t.price?.currency_id
+              ),
+            ),
+            container: 'currencies',
+            entity: 'Currency'
+          }
+        ],
+        FulfillmentAggregationTemplate,
+        subject,
+        context,
+      )
+    ).then(
+      async aggregation => await this.aggregator.aggregate(
+        aggregation,
+        [
+          {
+            service: UserServiceDefinition,
+            map_by_ids: (aggregation) => [].concat(
+              aggregation.items?.map(item => item.payload.user_id),
+              aggregation.customers?.all.map(customer => customer.private?.user_id)
+            ),
+            container: 'users',
+            entity: 'User',
+          },
+          {
+            service: OrganizationServiceDefinition,
+            map_by_ids: (aggregation) => [].concat(
+              aggregation.customers?.all.map(
+                customer => customer.public_sector?.organization_id
+              ),
+              aggregation.customers?.all.map(
+                customer => customer.commercial?.organization_id
+              ),
+              aggregation.shops?.all.map(
+                shop => shop?.organization_id
+              ),
+            ),
+            container: 'organizations',
+            entity: 'Organization',
+          },
+        ],
+        FulfillmentAggregationTemplate,
+        this.tech_user ?? subject,
+        context,
+      )
+    ).then(
+      async aggregation => await this.aggregator.aggregate(
+        aggregation,
+        [
+          {
+            service: ContactPointServiceDefinition,
+            map_by_ids: (aggregation) => [
+              aggregation.customers.all.flatMap(
+                customer => customer.private?.contact_point_ids
+              ),
+              aggregation.organizations.all.flatMap(
+                organization => organization.contact_point_ids
+              )
+            ].flatMap(ids => ids),
+            container: 'contact_points',
+            entity: 'ContactPoint',
+          },
+        ],
+        FulfillmentAggregationTemplate,
+        this.tech_user ?? subject,
+        context,
+      )
+    ).then(
+      async aggregation => await this.aggregator.aggregate(
+        aggregation,
+        [
+          {
+            service: AddressServiceDefinition,
+            map_by_ids: (aggregation) => [].concat(
+              aggregation.contact_points.all.map(
+                cp => cp.physical_address_id
+              ),
+              aggregation.items.map(
+                item => item.payload?.packaging?.sender?.address?.id
+              ),
+              aggregation.items.map(
+                item => item.payload?.packaging?.recipient?.address?.id
+              ),
+            ),
+            container: 'addresses',
+            entity: 'Address',
+          },
+        ],
+        FulfillmentAggregationTemplate,
+        this.tech_user ?? subject,
+        context,
+      )
+    ).then(
+      async aggregation => await this.aggregator.aggregate(
+        aggregation,
+        [
+          {
+            service: CountryServiceDefinition,
+            map_by_ids: (aggregation) => [].concat(
+              aggregation.addresses.all.map(
+                a => a.country_id
+              ),
+              aggregation.taxes.all.map(
+                tax => tax.country_id
+              ),
+              aggregation.currencies.all.flatMap(
+                currency => currency.country_ids
+              ),
+            ),
+            container: 'countries',
+            entity: 'Country',
+          },
+        ],
+        FulfillmentAggregationTemplate,
+        this.tech_user ?? subject,
+        context,
+      )
     );
 
-    const shop_map = await this.get<Shop>(
-      fulfillments.map(q => q.shop_id),
-      this.shop_service,
-      subject,
-      context,
-    ) ?? {};
+    return aggregation;
+  }
 
-    const orga_map = await this.get<Organization>(
-      [
-        ...Object.values(shop_map).map(
-          item => item.payload?.organization_id
-        ),
-        ...Object.values(customer_map).map(
-          item => item.payload?.commercial?.organization_id
-            ?? item.payload?.public_sector?.organization_id
-        ),
-      ],
-      this.organization_service,
-      this.tech_user ?? subject,
-      context,
-    ) ?? {};
-
-    const contact_point_map = await this.get<ContactPoint>(
-      [
-        ...Object.values(orga_map).flatMap(
-          item => item.payload?.contact_point_ids
-        ),
-        ...Object.values(customer_map).flatMap(
-          item => item.payload?.private?.contact_point_ids
-        ),
-      ],
-      this.contact_point_service,
-      this.tech_user ?? subject,
-      context,
-    ) ?? {};
-
-    const address_map = await this.get<Address>(
-      Object.values(contact_point_map).map(
-        item => item.payload?.physical_address_id
-      ),
-      this.address_service,
-      this.tech_user ?? subject,
-      context,
-    ) ?? {};
-
-    const country_map = await this.get<Country>(
-      [
-        ...Object.values(address_map).map(
-          item => item.payload?.country_id
-        ),
-        ...(fulfillments?.map(
-          item => item.packaging?.sender?.address?.country_id
-        ) ?? []),
-        ...(fulfillments?.map(
-          item => item.packaging?.recipient?.address?.country_id
-        ) ?? []),
-      ],
-      this.country_service,
-      this.tech_user ?? subject,
-      context,
-    ) ?? {};
-
-    const product_map = await this.getProductsBySuper(
-      fulfillments.flatMap(
-        f => f.packaging.parcels.map(p => p.product_id)
-      ),
-      subject,
-      context,
-    ) ?? {};
-
-    const courier_map = await this.getCouriersBySuper(
-      Object.values(product_map).map(
-        p => p.payload?.courier_id
-      ),
-      subject,
-      context,
-    ) ?? {};
-
-    const credential_map = await this.get<Credential>(
-      Object.values(courier_map).map(
-        c => c.payload?.credential_id
-      ),
-      this.credential_service,
-      subject,
-      context,
-    ) ?? {};
-
-    const tax_map = await this.get<Tax>(
-      Object.values(product_map).flatMap(
-        p => p.payload?.tax_ids
-      ),
-      this.tax_service,
-      this.tech_user ?? subject,
-      context,
-    ) ?? {};
-
-    const promises = fulfillments.map(async (item): Promise<AggregatedFulfillment> => {
+  protected async validateFulfillmentListResponse(
+    aggregation: AggregatedFulfillmentListResponse
+  ): Promise<AggregatedFulfillmentListResponse> {
+    const promises = aggregation.items.map(async (item): Promise<FulfillmentResponse> => {
       try {
-        item.packaging.sender ??= await this.getById(
-          shop_map,
-          item.shop_id,
-          'Shop'
-        ).then(
-          shop => this.getById(
-            orga_map,
-            shop.payload.organization_id,
-            'Organization',
-          )
-        ).then(
-          orga => this.getByIds(
-            contact_point_map,
-            orga.payload.contact_point_ids,
-            'ContactPoint'
-          )
-        ).then(
-          async cps => {
-            const cp = cps.find(
-              cp => cp.payload.contact_point_type_ids?.includes(
-                this.contact_point_type_ids.shipping
-              )
-            )?.payload;
-
-            if (!cp) {
-              throwStatusCode(
-                'Shop',
-                item.shop_id,
-                this.status_codes.NO_SHIPPING_ADDRESS,
-              );
-            }
-
-            const address = await this.getById(
-              address_map,
-              cp?.physical_address_id,
-              'Address',
-            )?.then(
-              address => address.payload
-            );
-
-            delete address.meta;
-            return {
-              address,
-              contact: {
-                name: cp.name,
-                email: cp.email,
-                phone: cp.telephone,
-              },
-            } as ShippingAddress
-          }
+        item.payload.packaging.sender ??= resolveSenderAddress(
+          item.payload.shop_id,
+          aggregation,
+          this.contact_point_type_ids.shipping,
         );
-
-        item.packaging.recipient ??= await this.getById(
-          customer_map,
-          item.customer_id,
-          'Customer'
-        ).then(
-          async customer => {
-            const orga_id = (
-              customer.payload.commercial?.organization_id
-              ?? customer.payload.public_sector?.organization_id
-            );
-
-            const orga = orga_id && await this.getById(
-              orga_map,
-              orga_id,
-              'Organization'
-            );
-
-            const cps = await this.getByIds(
-              contact_point_map,
-              [
-                ...(orga?.payload?.contact_point_ids ?? []),
-                ...(customer.payload?.private?.contact_point_ids ?? [])
-              ],
-              'ContactPoint'
-            );
-
-            const cp = cps.find(
-              cp => cp.payload.contact_point_type_ids?.includes(
-                this.contact_point_type_ids.shipping
-              )
-            )?.payload;
-            const address = await this.getById(
-              address_map,
-              cp?.physical_address_id,
-              'Address',
-            )?.then(
-              address => address.payload
-            );
-
-            delete address.meta;
-            return {
-              address,
-              contact: {
-                name: cp.name,
-                email: cp.email,
-                phone: cp.telephone,
-              },
-            } as ShippingAddress
-          }
+        item.payload.packaging.recipient ??= resolveRecipientAddress(
+          item.payload.customer_id,
+          aggregation,
+          this.contact_point_type_ids.shipping,
         );
+        item.payload.packaging.notify ??= item.payload.packaging.sender?.contact?.email
 
-        const sender_country = await this.getById(
-          country_map,
-          item.packaging.sender?.address?.country_id,
-          'Country'
-        );
-
-        const recipient_country = await this.getById(
-          country_map,
-          item.packaging.recipient?.address?.country_id,
-          'Country'
-        );
-
-        const products = await this.getByIds(
-          product_map,
-          item.packaging.parcels.map(
-            parcel => parcel?.product_id
-          ),
-          'Product'
-        );
-
-        const couriers = await this.getByIds(
-          courier_map,
-          products.map(
-            product => product.payload?.courier_id
-          ),
-          'Courier'
-        );
-        
-        if (!couriers.every(
-            courier => courier.payload?.shop_ids?.includes(
-              item.shop_id
-            )
-          )
-        ) {
-          throwStatusCode<any>(
+        if (!item.payload.packaging.sender?.address) {
+          throwStatusCode(
             'Fulfillment',
-            item.id,
-            this.status_codes.SHOP_ID_NOT_IDENTICAL,
+            item.payload.id,
+            this.status_codes.NO_SHIPPING_ADDRESS,
           );
         }
 
-        const credentials = await this.getByIds(
-          credential_map,
-          couriers.map(
-            c => c.payload?.credential_id
-          ).filter(
-            id => id
-          ),
-          'Credential'
-        );
-
-        const status: Status[] = [
-          sender_country?.status,
-          recipient_country?.status,
-          ...(products?.map(p => p?.status) ?? []),
-          ...(couriers?.map(c => c?.status) ?? []),
-        ];
-
-        const shop_country = await this.getById(
-          shop_map,
-          item.shop_id,
-          'Shop'
-        ).then(
-          shop => this.getById(
-            orga_map,
-            shop.payload!.organization_id,
-            'Organization'
-          )
-        ).then(
-          orga => this.getByIds(
-            contact_point_map,
-            orga.payload!.contact_point_ids,
-            'ContactPoint'
-          )
-        ).then(
-          cpts => cpts.find(
-            cpt => cpt.payload?.contact_point_type_ids.includes(
-              this.contact_point_type_ids.legal
-            )
-          ) ?? throwStatusCode<ContactPointResponse>(
-            'Shop',
-            item.shop_id,
-            this.status_codes.NO_LEGAL_ADDRESS,
-          )
-        ).then(
-          contact_point => this.getById(
-            address_map,
-            contact_point.payload!.physical_address_id,
-            'ContactPoint'
-          )
-        ).then(
-          address => this.getById(
-            country_map,
-            address.payload!.country_id,
-            'Country'
-          )
-        );
-
-        const customer = await this.getById(
-          customer_map,
-          item.customer_id,
-          'Customer'
-        );
-
-        const customer_country = await this.getByIds(
-          contact_point_map,
-          [
-            customer.payload.private?.contact_point_ids,
-            orga_map[customer.payload.commercial?.organization_id]?.payload.contact_point_ids,
-            orga_map[customer.payload.public_sector?.organization_id]?.payload.contact_point_ids,
-          ].flatMap(id => id).filter(id => id),
-          'ContactPoint'
-        ).then(
-          async cps => {
-            const cp = cps.find(
-              cp => cp.payload?.contact_point_type_ids.includes(
-                this.contact_point_type_ids.legal
-              )
-            );
-
-            if (cp) {
-              return this.getById(
-                address_map,
-                cp.payload.physical_address_id,
-                'Address'
-              ).then(
-                address => this.getById(
-                  country_map,
-                  address.payload.country_id,
-                  'Country'
-                )
-              );
-            }
-            else if (recipient_country) {
-              return recipient_country
-            }
-            else {
-              throwStatusCode<ContactPointResponse>(
-                'Customer',
-                item.customer_id,
-                this.status_codes.NO_LEGAL_ADDRESS,
-              );
-            }
-          }
-        );
-
-        if (evaluate) {
-          await Promise.all(item.packaging?.parcels?.map(
-            async p => {
-              const product = product_map[p.product_id].payload;
-              const variant = product.variants.find(
-                v => v.id === p.variant_id
-              );
-              variant.attributes = unique(
-                [
-                  ...(product.attributes ?? []),
-                  ...(variant.attributes ?? []),
-                ]
-              );
-              const courier = courier_map[product.courier_id]?.payload;
-              const stub = Stub.getInstance(courier);
-              const taxes = product.tax_ids.map(
-                id => tax_map[id]?.payload
-              ).filter(
-                tax => filterTax(
-                  tax,
-                  shop_country.payload,
-                  customer_country.payload,
-                  !!customer.payload.private?.user_id,
-                )
-              );
-              const gross = await stub.calcGross(variant, p.package);
-              const vats = taxes.map((tax): VAT => ({
-                tax_id: tax.id,
-                vat: gross.multipliedBy(tax.rate).decimalPlaces(2).toNumber(),
-              }));
-              const net = vats.reduce(
-                (a, b) => a.plus(b.vat),
-                gross
-              );
-
-              p.price = variant.price;
-              p.amount = {
-                currency_id: variant.price.currency_id,
-                gross: gross.decimalPlaces(2).toNumber(),
-                net: net.decimalPlaces(2).toNumber(),
-                vats,
-              };
-            }
-          ));
+        if (!item.payload.packaging.recipient?.address) {
+          throwStatusCode(
+            'Fulfillment',
+            item.payload.id,
+            this.status_codes.NO_SHIPPING_ADDRESS,
+          );
         }
-
-        const aggreagatedFulfillment: AggregatedFulfillment = {
-          payload: item,
-          products,
-          couriers,
-          credentials,
-          sender_country,
-          recipient_country,
-          options: null,
-          status: status.reduce(
-            (a, b) => b.code > a.code ? b : a,
-            {
-              id: item.id,
-              code: 200,
-              message: 'OK'
+        
+        await Promise.all(item.payload.packaging?.parcels?.map(
+          async p => {
+            const customer = aggregation.customers.get(item.payload.customer_id);
+            const origin = aggregation.countries.get(item.payload.packaging.sender.address.country_id);
+            const destination = aggregation.countries.get(item.payload.packaging.recipient.address.country_id);
+            const product = aggregation.fulfillment_products.get(p.product_id);
+            const courier = aggregation.fulfillment_couriers.get(product.courier_id);
+            const variant = mergeFulfillmentProductVariant(product, p.variant_id);
+            if (!variant) {
+              throw createStatusCode(
+                'FulfillmentProductVariant',
+                p.variant_id,
+                this.status_codes.NOT_FOUND,
+              );
             }
-          )
-        };
+            const currency = aggregation.currencies.get(variant.price?.currency_id);
+            const stub = Stub.getInstance(courier);
+            const taxes = aggregation.taxes.getMany(product.tax_ids);
+            const gross = await stub.calcGross(variant, p.package);
+            p.price = variant.price;
+            p.amount = calcAmount(
+              gross, taxes, origin, destination,
+              currency,
+              !!customer?.private?.user_id,
+            );
+          }
+        ));
 
-        return aggreagatedFulfillment;
+        return { 
+          ...item,
+          status: this.status_codes.OK,
+        };
       }
       catch (e: any) {
-        return this.handleStatusError<AggregatedFulfillment>(item?.id, e, item);
+        return this.catchStatusError(e, item);
       }
     });
 
-    return await Promise.all(promises);
+    const items = await Promise.all(promises);
+    const operation_status = items.some(
+      a => a.status?.code !== 200
+    ) ? createOperationStatusCode(
+      this.operation_status_codes.PARTIAL,
+      'order',
+    ) : createOperationStatusCode(
+      this.operation_status_codes.SUCCESS,
+      'order',
+    );
+
+    aggregation.operation_status = operation_status;
+    return aggregation;
   }
 
-  @access_controlled_function({
-    action: AuthZAction.READ,
-    operation: Operation.whatIsAllowed,
-    context: DefaultACSClientContextFactory,
-    resource: [{ resource: 'fulfillment' }],
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override read(
-    request: ReadRequest,
-    context?: CallContext
-  ) {
-    return super.read(request, context);
-  }
-
-  @resolves_subject()
-  @injects_meta_data()
-  @access_controlled_function({
-    action: AuthZAction.CREATE,
-    operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override create(
+  protected override superCreate(
     request: FulfillmentList,
     context?: CallContext
   ) {
@@ -1004,40 +693,7 @@ export class FulfillmentService
         }
       }
     );
-    return super.create(request, context);
-  }
-
-  @resolves_subject()
-  @access_controlled_function({
-    action: AuthZAction.MODIFY,
-    operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override update(
-    request: FulfillmentList,
-    context?: CallContext
-  ) {
-    return super.update(request, context);
-  }
-
-  @resolves_subject()
-  @injects_meta_data()
-  @access_controlled_function({
-    action: AuthZAction.MODIFY,
-    operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override upsert(
-    request: FulfillmentList,
-    context?: CallContext
-  ) {
-    return super.upsert(request, context);
+    return super.superCreate(request, context);
   }
 
   @resolves_subject()
@@ -1054,33 +710,31 @@ export class FulfillmentService
     request: FulfillmentList,
     context?: CallContext,
   ): Promise<FulfillmentListResponse> {
+    if (!request?.items?.length) {
+      return {
+        operation_status: createOperationStatusCode(
+          this.operation_status_codes.NO_ITEM,
+          'fulfillment',
+        )
+      };
+    }
+
+    const response: FulfillmentListResponse = {
+      ...request,
+      items: request.items.map(
+        payload => ({ payload })
+      ),
+    };
+
     try {
-      await this.getFulfillmentsByIds(
-        request.items?.map(item => item.id),
-        request.subject,
-        context,
-      ).then(
-        response => {
-          if (response.operation_status?.code !== 200) {
-            throw response.operation_status;
-          }
-          else {
-            const result_map = new Map(response.items?.map(item => [item.payload.id, item]));
-            request.items = request.items?.map(
-              item => ({
-                ...result_map.get(item.id)?.payload,
-                ...item
-              })
-            )
-          }
-        }
+      const aggregation = await this.aggregate(response, request.subject, context).then(
+        aggregation => this.validateFulfillmentListResponse(aggregation)
       );
-      const fulfillments = await this.aggregate(request.items, request.subject, context);
-      const flat_fulfillments = flatMapAggregatedFulfillments(fulfillments);
+      const flat_fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
       const invalid_fulfillments = flat_fulfillments.filter(f => f.status?.code !== 200);
-      const responses = await Stub.evaluate(flat_fulfillments.filter(f => f.status?.code === 200));
+      const evaluated_fulfillments = await Stub.evaluate(flat_fulfillments.filter(f => f.status?.code === 200));
       const items = mergeFulfillments([
-        ...responses,
+        ...evaluated_fulfillments,
         ...invalid_fulfillments,
       ]);
 
@@ -1088,15 +742,14 @@ export class FulfillmentService
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          this.name,
           this.operation_status_codes.SUCCESS,
+          this.name,
         )
       };
     }
     catch (e: any) {
-      return this.handleOperationError<FulfillmentListResponse>(
-        e,
-        request.items?.map(item => this.handleStatusError(item.id, e, item)),
+      return this.catchOperationError<FulfillmentListResponse>(
+        e, response,
       );
     }
   }
@@ -1106,7 +759,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: ACSContextFactory,
     resource: DefaultResourceFactory('execution.submitFulfillments'),
     database: 'arangoDB',
     useCache: true,
@@ -1115,8 +768,29 @@ export class FulfillmentService
     request: FulfillmentList,
     context?: CallContext
   ): Promise<FulfillmentListResponse> {
+    if (!request?.items?.length) {
+      return {
+        operation_status: createOperationStatusCode(
+          this.operation_status_codes.NO_ITEM,
+          'fulfillment',
+        )
+      };
+    }
+
+    const response: FulfillmentListResponse = {
+      ...request,
+      items: request.items.map(
+        payload => ({ payload })
+      ),
+    };
+
     try {
-      await this.getFulfillmentsByIds(
+      const response_map = new Map<string, FulfillmentResponse>(
+        request.items.map(
+          payload => [payload.id, {payload}]
+        )
+      );
+      await this.get(
         request.items.map(item => item.id),
         request.subject,
         context,
@@ -1126,19 +800,27 @@ export class FulfillmentService
             throw response.operation_status;
           }
           else {
-            const result_map = new Map(response.items.map(item => [item.payload.id, item]));
-            request.items = request.items.map(
-              item => ({
-                ...result_map.get(item.id)?.payload,
-                ...item
-              })
+            response.items?.forEach(
+              item => {
+                const entry = response_map.get(item.payload?.id);
+                entry.payload = {
+                  ...item.payload,
+                  ...entry.payload
+                };
+                entry.status = item.status;
+              }
             )
           }
         }
       );
-      const fulfillments = await this.aggregate(request.items, request.subject, context);
-      const flattened = flatMapAggregatedFulfillments(fulfillments);
-      const valids = flattened.filter(
+      const aggregation = await this.aggregate(response, request.subject, context).then(
+        aggregation => this.validateFulfillmentListResponse(aggregation)
+      );
+      const settings = await this.aggregateSettings(
+        aggregation
+      );
+      const flat = flatMapAggregatedFulfillmentListResponse(aggregation);
+      const valid = flat.filter(
         f => {
           if (f.status?.code !== 200) {
             return false;
@@ -1147,21 +829,21 @@ export class FulfillmentService
             f.status = createStatusCode(
               this.name,
               f.payload?.id,
-              this.status_codes.ALREADY_SUBMITTED,
+              this.status_codes.CONFLICT,
             );
             return false;
           }
           return true;
         }
       );
-      const invalids = flattened.filter(
-        f => f.status?.code !== 200 || StateRank[f.payload?.fulfillment_state] >= StateRank[FulfillmentState.SUBMITTED]
+      const invalid = flat.filter(
+        f => f.status?.code !== 200
       );
-      this.logger.debug('Submitting:', valids);
-      const responses = await Stub.submit(valids);
+      this.logger.debug('Submitting:', valid);
+      const submitted = await Stub.submit(valid);
       const merged = mergeFulfillments([
-        ...responses,
-        ...invalids,
+        ...submitted,
+        ...invalid,
       ]);
       const items = merged.filter(
         item => item.payload?.labels?.length > 0
@@ -1169,41 +851,82 @@ export class FulfillmentService
         item => item.payload
       );
 
-      const upsert_results = await super.upsert({
+      const upserted = await super.upsert({
         items,
         total_count: items.length,
         subject: request.subject
       }, context);
 
       if (this.isEventsEnabled) {
-        upsert_results.items.forEach(item => {
+        upserted.items.forEach(item => {
           if (this.emitters && item.payload.fulfillment_state in this.emitters) {
             switch (item.payload.fulfillment_state) {
               case FulfillmentState.INVALID:
               case FulfillmentState.FAILED:
-                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item);
                 break;
               default:
-                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
                 break;
             }
           }
         });
       }
 
-      upsert_results.items.push(
+      if (this.notification_service) {
+        this.logger?.debug('Send notifications on submit...');
+        const default_templates = await this.loadDefaultTemplates().then(
+          df => df.filter(
+            template => template.use_case?.toString() === 'FULFILLMENT_CONFIRMATION_EMAIL' // TemplateUseCase.FULFILLMENT_CONFIRMATION_EMAIL
+          )
+        );
+        await Promise.all(upserted.items.filter(
+          item => item.status?.code === 200
+            && settings.get(item.payload.id)?.shop_fulfillment_send_confirm_enabled
+        ).map(
+          async (item) => {
+            const render_id = `fulfillment/confirm/${item.payload.id}`;
+            return await this.emitRenderRequest(
+              item.payload,
+              aggregation,
+              render_id,
+              'FULFILLMENT_CONFIRMATION_EMAIL', // TemplateUseCase.ORDER_CONFIRMATION,
+              default_templates,
+              request.subject,
+            ).then(
+              () => this.awaits_render_result.await(render_id, this.kafka_timeout)
+            ).then(
+              async (bodies) => {
+                const setting = settings.get(item.payload.id);
+                const title = bodies.shift();
+                const body = bodies.join('');
+  
+                return this.sendNotification(
+                  item.payload,
+                  body,
+                  setting,
+                  title,
+                  'SUBMIT_NOTIFIED' as FulfillmentState,
+                  context,
+                );
+              }
+            )
+          }
+        ));
+      }
+
+      upserted.items.push(
         ...merged.filter(item => item.payload?.labels?.length === 0)
       );
-      upsert_results.total_count = upsert_results.items.length;
-      if (invalids.length) {
-        upsert_results.operation_status = this.operation_status_codes.PARTIAL;
+      upserted.total_count = upserted.items.length;
+      if (upserted.items.some(item => item.status.code !== 200)) {
+        upserted.operation_status = this.operation_status_codes.PARTIAL;
       }
-      return upsert_results;
+      return upserted;
     }
     catch (e: any) {
-      return this.handleOperationError<FulfillmentListResponse>(
-        e,
-        request.items?.map(item => this.handleStatusError(item.id, e, item)),
+      return this.catchOperationError<FulfillmentListResponse>(
+        e, response
       );
     }
   }
@@ -1212,7 +935,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: ACSContextFactory,
     resource: DefaultResourceFactory('execution.trackFulfillments'),
     database: 'arangoDB',
     useCache: true,
@@ -1245,35 +968,30 @@ export class FulfillmentService
         {} as { [id: string]: FulfillmentResponse },
       );
 
-      await this.getFulfillmentsByIds(
+      await this.get(
         request.items.map(item => item.id),
         request.subject,
         context,
       ).then(
         response => response.items.filter(
           item => {
-            response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
+            response_map[item.payload?.id ?? item.status?.id] = item;
             return item.status?.code === 200;
           }
-        ).map(
-          item => item.payload as Fulfillment
         )
       ).then(
-        fulfillments => this.aggregate(
-          fulfillments,
+        items => this.aggregate(
+          { items },
           request.subject,
           context,
         ),
       ).then(
-        aggregated => flatMapAggregatedFulfillments(
-          aggregated.filter(
-            item => {
-              response_map[item.payload?.id ?? item.status?.id] = item as FulfillmentResponse;
-              return item.status?.code === 200;
-            }
-          )
+        aggregated => flatMapAggregatedFulfillmentListResponse(
+          aggregated
         ).filter(
           f => {
+            response_map[f.payload?.id ?? f.status?.id] = f;
+            if (f.status?.code !== 200) return false;
             const request = request_map[f.payload?.id];
             if (
               !request.shipment_numbers?.includes(f.label.shipment_number)
@@ -1337,10 +1055,10 @@ export class FulfillmentService
               switch (item.payload.fulfillment_state) {
                 case FulfillmentState.INVALID:
                 case FulfillmentState.FAILED:
-                  this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                  this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item);
                   break;
                 default:
-                  this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                  this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
                   break;
               }
             }
@@ -1354,13 +1072,13 @@ export class FulfillmentService
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          this.name,
           this.operation_status_codes.SUCCESS,
+          this.name,
         ),
       };
     }
     catch (e: any) {
-      return this.handleOperationError<FulfillmentListResponse>(e);
+      return this.catchOperationError<FulfillmentListResponse>(e);
     }
   }
 
@@ -1368,8 +1086,8 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
-    resource: DefaultResourceFactory('execution.withdrawOrder'),
+    context: DefaultACSClientContextFactory,
+    resource: DefaultResourceFactory('execution.withdrawFulfillments'),
     database: 'arangoDB',
     useCache: true,
   })
@@ -1381,7 +1099,7 @@ export class FulfillmentService
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
+    context: DefaultACSClientContextFactory,
     resource: DefaultResourceFactory('execution.cancelFulfillments'),
     database: 'arangoDB',
     useCache: true,
@@ -1396,14 +1114,10 @@ export class FulfillmentService
         {} as { [key: string]: string[] }
       );
 
-      const fulfillments = await this.getFulfillmentsByIds(
+      const fulfillments = await this.get(
         request.items.map(item => item.id),
         request.subject,
         context
-      ).then(
-        response => response.items.map(
-          item => item.payload as Fulfillment
-        )
       );
 
       const agg_fulfillments = await this.aggregate(
@@ -1412,7 +1126,7 @@ export class FulfillmentService
         context
       );
 
-      const flat_fulfillments = flatMapAggregatedFulfillments(
+      const flat_fulfillments = flatMapAggregatedFulfillmentListResponse(
         agg_fulfillments,
       ).map(
         f => {
@@ -1480,10 +1194,10 @@ export class FulfillmentService
             switch (item.payload.fulfillment_state) {
               case FulfillmentState.INVALID:
               case FulfillmentState.FAILED:
-                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item);
                 break;
               default:
-                this.topic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
                 break;
             }
           }
@@ -1497,31 +1211,15 @@ export class FulfillmentService
       return update_results;
     }
     catch (e: any) {
-      return this.handleOperationError<FulfillmentListResponse>(e);
+      return this.catchOperationError<FulfillmentListResponse>(e);
     }
-  }
-
-  @resolves_subject()
-  @access_controlled_function({
-    action: AuthZAction.DELETE,
-    operation: Operation.isAllowed,
-    context: FulfillmentService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override delete(
-    request: DeleteRequest,
-    context: any,
-  ) {
-    return super.delete(request, context);
   }
 
   @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.CREATE,
     operation: Operation.isAllowed,
-    context: FulfillmentService?.ACSContextFactory,
+    context: DefaultACSClientContextFactory,
     resource: [{ resource: 'invoice' }],
     database: 'arangoDB',
     useCache: true,
@@ -1538,5 +1236,235 @@ export class FulfillmentService
     context: any
   ): Promise<StatusListResponse> {
     return null;
+  }
+
+  protected async fetchFile(url: string, subject?: Subject): Promise<string> {
+    if (url?.startsWith('file://')) {
+      return fs.readFileSync(url.slice(7)).toString();
+    }
+    else if (url?.startsWith('http')) {
+      return fetch(
+        url,
+        subject?.token ? {
+          headers: {
+            Authorization: `Bearer ${subject.token}`
+          }
+        } : undefined
+      ).then(resp => resp.text())
+    }
+    else {
+      throw createStatusCode(
+        'Template',
+        undefined,
+        this.status_codes.PROTOCOL_NOT_SUPPORTED,
+        url,
+      );
+    }
+  }
+
+  protected async fetchLocalization(
+    template: Template,
+    locales: string[],
+    subject?: Subject,
+  ) {
+    const locale = locales?.find(
+      a => template.localization?.some(
+        b => b.local_codes?.includes(a)
+      )
+    ) ?? 'en';
+    const L = template.localization?.find(
+      a => a.local_codes?.includes(locale)
+    );
+    const url = L?.l10n?.url;
+    const l10n = url ? await this.fetchFile(url, subject).then(
+      text => {
+        if (L.l10n.content_type === 'application/json') {
+          return JSON.parse(text);
+        }
+        else if (L.l10n.content_type === 'text/csv') {
+          return CSV(text, {
+            columns: true,
+            skip_empty_lines: true,
+            objname: 'key',
+            escape: '\\',
+            trim: true,
+            delimiter: ',',
+            ignore_last_delimiters: true,
+          });
+        }
+        else {
+          throw createStatusCode(
+            'Template',
+            template.id,
+            this.status_codes.CONTENT_NOT_SUPPORTED,
+            L.l10n.content_type,
+          );
+        }
+      }
+    ).then(
+      l10n => Object.assign(l10n, { _locale: locale })
+    ) : undefined;
+  
+    return l10n;
+  }
+
+  protected async emitRenderRequest(
+    item: Fulfillment,
+    aggregation: AggregatedFulfillmentListResponse,
+    render_id: string,
+    use_case: TemplateUseCase | string,
+    default_templates?: Template[],
+    subject?: Subject,
+  ) {
+    const shop = aggregation.shops.get(item.shop_id);
+    const customer = aggregation.customers.get(item.customer_id);
+    const setting = this.resolveSettings(
+      aggregation.settings.get(
+        customer.setting_id
+      ),
+      aggregation.settings.get(
+        shop.setting_id
+      ),
+    );
+    const locales = [
+      ...(setting?.customer_locales ?? []),
+      ...(setting?.shop_locales ?? []),
+    ];
+    const templates = shop.template_ids?.map(
+      id => aggregation.templates?.get(id)
+    ).filter(
+      template => template.use_case === use_case
+    ).sort(
+      (a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0)
+    ) ?? [];
+
+    if (templates.length === 0 && default_templates.length > 0) {
+      templates.push(...default_templates);
+    }
+    else {
+      throw createOperationStatusCode(
+        this.operation_status_codes.NO_TEMPLATES
+      );
+    }
+
+    const bodies = await Promise.all(
+      templates.map(
+        template => template.body?.url ? this.fetchFile(
+          template.body.url, subject
+        ) : undefined
+      )
+    );
+    const layouts = await Promise.all(
+      templates.map(
+        template => template.layout?.url ? this.fetchFile(
+          template.layout.url, subject
+        ) : undefined
+      )
+    );
+    const l10n = await Promise.all(
+      templates.map(
+        template => this.fetchLocalization(
+          template, locales, subject
+        )
+      )
+    );
+
+    const payloads: Payload[] = templates.map(
+      (template, i) => ({
+        content_type: 'text/html',
+        data: marshallProtobufAny(item),
+        templates: marshallProtobufAny({
+          [i]: {
+            body: bodies[i],
+            layout: layouts[i],
+          },
+        }),
+        style_url: template.styles?.find(s => s.url).url,
+        options: l10n[i] ? marshallProtobufAny({
+          locale: l10n[i]._locale,
+          texts: l10n[i]
+        }) : undefined
+      })
+    );
+
+    return this.renderingTopic.emit(
+      'renderRequest',
+      {
+        id: render_id,
+        payloads,
+      } as RenderRequest
+    );
+  }
+
+  public async handleRenderResponse(
+    response: RenderResponse,
+    context?: any,
+  ) {
+    try {
+      const [entity] = response.id.split('/');
+      if (entity !== 'order') return;
+      const content = response.responses.map(
+        r => JSON.parse(r.value.toString())
+      );
+      const errors = content.filter(
+        c => c.error
+      ).map(
+        c => c.error
+      );
+
+      if (errors?.length) {
+        const status: Status = {
+          code: 500,
+          message: errors.join('\n'),
+        };
+
+        this.awaits_render_result.reject(response.id, status);
+      }
+      else {
+        const bodies = content.map(
+          (c, i) => c[i]
+        ) as string[];
+        this.awaits_render_result.resolve(response.id, bodies);
+      }
+    }
+    catch (e: any) {
+      this.logger?.error('Error on handleRenderResponse:', e);
+    }
+  }
+
+  protected async sendNotification(
+    fulfillment: Fulfillment,
+    body: string,
+    setting: DefaultSetting,
+    title?: string,
+    state?: FulfillmentState, 
+    context?: any,
+  ) {
+    const status = await this.notification_service.send(
+      {
+        transport: 'email',
+        provider: setting.shop_email_provider,
+        email: {
+          to: [fulfillment.packaging.notify],
+          cc: [
+            ...(setting.customer_email_cc ?? []),
+            ...(setting.shop_email_cc ?? []),
+          ],
+          bcc: [
+            ...(setting.customer_email_bcc ?? []),
+            ...(setting.shop_email_bcc ?? []),
+          ],
+        },
+        subject: title ?? fulfillment.id,
+        body,
+      },
+      context
+    );
+
+    if (state && status?.operation_status?.code === 200) {
+      fulfillment.fulfillment_state = state;
+    }
+
+    return fulfillment;
   }
 }

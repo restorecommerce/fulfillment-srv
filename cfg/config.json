@@ -42,38 +42,77 @@
     }
   },
   "client": {
+    "fulfillment_product": {
+      "fullName": "io.restorecommerce.fulfillment_product.FulfillmentProductService",
+      "address": "localhost:50067"
+    },
+    "fulfillment_courier": {
+      "fullName": "io.restorecommerce.fulfillment_courier.FulfillmentCourierService",
+      "address": "localhost:50067"
+    },
     "acs-srv": {
       "address": "localhost:50061"
     },
     "user": {
+      "fullName": "io.restorecommerce.user.UserService",
       "address": "localhost:50051"
     },
     "customer": {
+      "fullName": "io.restorecommerce.customer.CustomerService",
       "address": "localhost:50063"
     },
     "shop": {
+      "fullName": "io.restorecommerce.shop.ShopService",
       "address": "localhost:50063"
     },
     "organization": {
+      "fullName": "io.restorecommerce.organization.OrganizationService",
       "address": "localhost:50063"
     },
     "contact_point": {
+      "fullName": "io.restorecommerce.contact_point.ContactPointService",
       "address": "localhost:50063"
     },
     "address": {
+      "fullName": "io.restorecommerce.address.AddressService",
       "address": "localhost:50063"
     },
     "country": {
+      "fullName": "io.restorecommerce.contact_point.ContactPointService",
       "address": "localhost:50063"
     },
     "tax": {
+      "fullName": "io.restorecommerce.customer.CustomerService",
       "address": "localhost:50063"
     },
     "credential": {
+      "fullName": "io.restorecommerce.creadential.CredentialService",
       "address": "localhost:50063"
     },
     "product": {
+      "fullName": "io.restorecommerce.product.ProductService",
       "address": "localhost:50068"
+    },
+    "ostorage": {
+      "fullName": "io.restorecommerce.ostorage.OstorageService",
+      "address": "localhost:50066"
+    },
+    "notification_req": {
+      "fullName": "io.restorecommerce.notification_req.NotificationReqService",
+      "address": "localhost:50052",
+      "disabled": true
+    },
+    "template": {
+      "fullName": "io.restorecommerce.template.TemplateService",
+      "address": "localhost:50053"
+    },
+    "setting": {
+      "fullName": "io.restorecommerce.setting.SettingService",
+      "address": "localhost:50053"
+    },
+    "currency": {
+      "fullName": "io.restorecommerce.currency.CurrencyService",
+      "address": "localhost:50053"
     }
   },
   "events": {

@@ -49,8 +49,32 @@
     "tax": {
       "address": "resource-srv:50051"
     },
-    "product": {
+    "template": {
       "address": "resource-srv:50051"
+    },
+    "setting": {
+      "address": "resource-srv:50051"
+    },
+    "currency": {
+      "address": "resource-srv:50051"
+    },
+    "product": {
+      "address": "catalog-srv:50051"
+    },
+    "manufacturer": {
+      "address": "catalog-srv:50051"
+    },
+    "fulfillment_courier": {
+      "address": "fulfillment-srv:50051"
+    },
+    "fulfillment_product": {
+      "address": "fulfillment-srv:50051"
+    },
+    "notification_req": {
+      "address": "notification-srv:50051"
+    },
+    "ostorage": {
+      "address": "ostorage-srv:50051"
     }
   },
   "events": {

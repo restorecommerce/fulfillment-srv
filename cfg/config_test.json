@@ -176,6 +176,45 @@
           ]
         }
       }
-    }
+    },
+    "template": {
+      "address": "localhost:50174",
+      "mock": {
+        "protoPath": "io/restorecommerce/template.proto",
+        "packageName": "io.restorecommerce.template",
+        "serviceName": "TemplateService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "setting": {
+      "address": "localhost:50175",
+      "mock": {
+        "protoPath": "io/restorecommerce/setting.proto",
+        "packageName": "io.restorecommerce.setting",
+        "serviceName": "SettingService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
+    "currency": {
+      "address": "localhost:50176",
+      "mock": {
+        "protoPath": "io/restorecommerce/currency.proto",
+        "packageName": "io.restorecommerce.currency",
+        "serviceName": "CurrencyService",
+        "protoLoadOptions": {
+          "includeDirs": [
+            "node_modules/@restorecommerce/protos/"
+          ]
+        }
+      }
+    },
   }
 }

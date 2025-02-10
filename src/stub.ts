@@ -3,7 +3,7 @@ import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/i
 import {
   Courier,
   FlatAggregatedFulfillment,
-  extractCouriers,
+  unique,
 } from './utils.js';
 import {
   FulfillmentProduct,
@@ -92,19 +92,19 @@ export abstract class Stub
   }
 
   public readonly evaluate = (fulfillments: FlatAggregatedFulfillment[]) => this.evaluateImpl(
-    fulfillments.filter(f => f.product?.courier_id === this.courier.id)
+    fulfillments.filter(f => f.courier?.id === this.courier.id)
   );
 
   public readonly submit = (fulfillments: FlatAggregatedFulfillment[]) => this.submitImpl(
-    fulfillments.filter(f => f.product?.courier_id === this.courier.id)
+    fulfillments.filter(f => f.courier?.id === this.courier.id)
   );
 
   public readonly track = (fulfillments: FlatAggregatedFulfillment[]) => this.trackImpl(
-    fulfillments.filter(f => f.product?.courier_id === this.courier.id)
+    fulfillments.filter(f => f.courier?.id === this.courier.id)
   );
 
   public readonly cancel = (fulfillments: FlatAggregatedFulfillment[]) => this.cancelImpl(
-    fulfillments.filter(f => f.product?.courier_id === this.courier.id)
+    fulfillments.filter(f => f.courier?.id === this.courier.id)
   );
 
   public static all() {
@@ -115,7 +115,7 @@ export abstract class Stub
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
       (courier) => Stub.getInstance(
         courier,
         {
@@ -135,7 +135,7 @@ export abstract class Stub
     fulfillments: FlatAggregatedFulfillment[],
     kwargs?: any
   ) {
-    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
       (courier) => Stub.getInstance(
         courier,
         {

@@ -449,7 +449,7 @@ export class DHLSoap extends Stub {
       [att.value]: {
         attributes: Object.assign(
           {
-            active: "1",
+            active: '1',
           },
           ...(att.attributes?.map(
             att=> ({[att.id]: att.value})
@@ -502,17 +502,17 @@ export class DHLSoap extends Stub {
         this.logger?.error(`${this.type}: ${response.html.head?.title}`, response);
         if (response.html.head?.title?.startsWith('401')) {
           throwOperationStatusCode(
-            this.courier?.id,
             this.operation_status_codes.UNAUTHORIZED,
+            this.courier?.id,
           );
         }
         else {
           throwOperationStatusCode(
-            this.courier?.id,
             {
               code: 500,
               message: response.html.head?.title
-            }
+            },
+            this.courier?.id,
           );
         }
       }
@@ -523,31 +523,31 @@ export class DHLSoap extends Stub {
           ?? 'Server Error!';
         this.logger?.error(`${this.type}: ${message}`);
         throwOperationStatusCode(
-          'Fulfillment',
           {
             code: error?.response?.status ?? 500,
             message
           },
+          'Fulfillment',
         );
       }
     }
     else if (response?.html) {
       this.logger?.error(`${this.type}: ${response.html}`);
       throwOperationStatusCode(
-        'Fulfillment',
         {
           code: response?.statusCode,
           message: response?.html
         },
+        'Fulfillment',
       );
     }
     else if (!response) {
       throwOperationStatusCode(
-        'Fulfillment',
         {
           code: 500,
           message: 'Unexpected Error: No Response!',
-        }
+        },
+        'Fulfillment',
       );
     }
 
@@ -608,18 +608,18 @@ export class DHLSoap extends Stub {
         const message = response?.Status?.statusMessage ?? response?.Status?.statusText ?? JSON.stringify(response);
         this.logger?.error(`${this.type}: ${message}`);
         throwOperationStatusCode(
-          'Fulfillment',
           {
             code: response.Status?.statusCode,
             message
           },
+          'Fulfillment',
         );
       }
     }
     else {
       throwOperationStatusCode(
-        this.type,
         this.operation_status_codes.UNKNOWN_RESPONSE,
+        this.type,
         JSON.stringify(response)
       );
     }

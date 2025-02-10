@@ -1,55 +1,28 @@
-import { ResourcesAPIBase, ServiceBase } from '@restorecommerce/resource-base-interface';
 import { type Logger } from '@restorecommerce/logger';
 import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { type ServiceConfig } from '@restorecommerce/service-config';
 import { Topic } from '@restorecommerce/kafka-client';
 import {
-  ACSClientContext,
-  AuthZAction,
-  DefaultACSClientContextFactory,
-  DefaultResourceFactory,
-  Operation,
-  access_controlled_function,
-  access_controlled_service,
-  injects_meta_data
-} from '@restorecommerce/acs-client';
-import {
   FulfillmentCourierListResponse,
   FulfillmentCourierList,
   FulfillmentCourierServiceImplementation,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
-import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
-import { OperationStatus } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
-  DeleteRequest,
   ReadRequest
 } from '@restorecommerce/rc-grpc-clients';
+import { AccessControlledServiceBase } from '../experimental/AccessControlledServiceBase.js';
+import { FulfillmentSolutionQuery } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
+import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
 import {
   Filter_Operation,
-  Filter_ValueType
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/filter.js';
+  Filter_ValueType,
+  FilterOp_Operator
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/resource_base.js';
 
-@access_controlled_service
 export class FulfillmentCourierService
-  extends ServiceBase<FulfillmentCourierListResponse, FulfillmentCourierList>
-  implements FulfillmentCourierServiceImplementation {
-  private static async ACSContextFactory(
-    self: FulfillmentCourierService,
-    request: FulfillmentCourierList,
-    context: any,
-  ): Promise<ACSClientContext> {
-    const ids = request.items?.map((item: any) => item.id);
-    const resources = await self.getCouriersByIds(ids, request.subject, context);
-    return {
-      ...context,
-      subject: request.subject,
-      resources: [
-        ...resources.items ?? [],
-        ...request.items ?? [],
-      ],
-    };
-  }
-
+  extends AccessControlledServiceBase<FulfillmentCourierListResponse, FulfillmentCourierList>
+  implements FulfillmentCourierServiceImplementation
+{
   constructor(
     topic:
     Topic,
@@ -60,124 +33,58 @@ export class FulfillmentCourierService
     super(
       cfg.get('database:main:entities:1') ?? 'fulfillment_courier',
       topic,
+      db,
+      cfg,
       logger,
-      new ResourcesAPIBase(
-        db,
-        cfg.get('database:main:collections:1') ?? 'fulfillment_couriers',
-        cfg.get('fieldHandlers:fulfillment_courier')
-      ),
       cfg.get('events:enableEvents')?.toString() === 'true',
+      cfg.get('database:main:collections:1') ?? 'fulfillment_couriers',
     );
   }
 
-  protected getCouriersByIds(
-    ids: string[],
+  public async find(
+    query: FulfillmentSolutionQuery,
     subject?: Subject,
-    context?: any
+    context?: any,
   ): Promise<FulfillmentCourierListResponse> {
-    ids = [...new Set(ids)];
-    if (ids.length > 1000) {
-      throw {
-        code: 500,
-        message: 'Query for fulfillments exceeds limit of 1000!'
-      } as OperationStatus;
-    }
-
-    const request = ReadRequest.fromPartial({
-      filters: [{
-        filters: [{
-          field: 'id',
-          operation: Filter_Operation.in,
-          value: JSON.stringify(ids),
-          type: Filter_ValueType.ARRAY
-        }]
-      }],
-      subject
+    const ids = [...new Set(
+      query.preferences?.courier_ids?.map(id => id) ?? []
+    ).values()];
+    const call = ReadRequest.fromPartial({
+      filters: [
+        {
+          filters: [
+            {
+              field: 'shop_ids',
+              operation: Filter_Operation.in,
+              value: query.shop_id
+            },
+            ...(
+              ids?.length ?
+              [{
+                field: '_key', // _key is faster
+                operation: Filter_Operation.in,
+                type: Filter_ValueType.ARRAY,
+                value: JSON.stringify(ids),
+              }] : []
+            )
+          ],
+          operator: FilterOp_Operator.and
+        }
+      ],
+      subject,
     });
-    return super.read(request, context);
-  }
 
-  public superRead(
-    request: ReadRequest,
-    context?: any,
-  ) {
-    return super.read(request, context);
-  }
-
-  @access_controlled_function({
-    action: AuthZAction.READ,
-    operation: Operation.whatIsAllowed,
-    context: DefaultACSClientContextFactory,
-    resource: [{ resource: 'fulfillment_courier' }],
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override read(
-    request: ReadRequest,
-    context?: any,
-  ) {
-    return super.read(request, context);
-  }
-
-  @injects_meta_data()
-  @access_controlled_function({
-    action: AuthZAction.CREATE,
-    operation: Operation.isAllowed,
-    context: FulfillmentCourierService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment_courier'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override create(
-    request: FulfillmentCourierList,
-    context?: any
-  ) {
-    return super.create(request, context);
-  }
-
-  @access_controlled_function({
-    action: AuthZAction.MODIFY,
-    operation: Operation.isAllowed,
-    context: FulfillmentCourierService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment_courier'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override update(
-    request: FulfillmentCourierList,
-    context?: any
-  ) {
-    return super.update(request, context);
-  }
-
-  @injects_meta_data()
-  @access_controlled_function({
-    action: AuthZAction.MODIFY,
-    operation: Operation.isAllowed,
-    context: FulfillmentCourierService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment_courier'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override upsert(
-    request: FulfillmentCourierList,
-    context?: any
-  ) {
-    return super.upsert(request, context);
-  }
-
-  @access_controlled_function({
-    action: AuthZAction.DELETE,
-    operation: Operation.isAllowed,
-    context: FulfillmentCourierService.ACSContextFactory,
-    resource: DefaultResourceFactory('fulfillment_courier'),
-    database: 'arangoDB',
-    useCache: true,
-  })
-  public override delete(
-    request: DeleteRequest,
-    context: any,
-  ) {
-    return super.delete(request, context);
+    const response = await this.read(call, context).then(
+      resp => {
+        if (resp.operation_status?.code !== 200) {
+          throw resp.operation_status;
+        }
+        else {
+          return resp;
+        }
+      }
+    );
+    this.logger.debug('Available Couriers:', response);
+    return response;
   }
 }

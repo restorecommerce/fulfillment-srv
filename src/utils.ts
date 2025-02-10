@@ -1,111 +1,153 @@
-import { randomUUID } from 'node:crypto';
-import { Client } from '@restorecommerce/grpc-client';
+import { BigNumber } from 'bignumber.js';
 import {
   FulfillmentResponse,
   Label,
   Parcel,
   FulfillmentState,
   Tracking,
+  FulfillmentListResponse,
+  Fulfillment,
+  FulfillmentList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import {
   FulfillmentCourier,
   FulfillmentCourierResponse,
-  FulfillmentCourierServiceImplementation,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
 import {
   FulfillmentProduct,
   FulfillmentProductResponse,
-  FulfillmentProductServiceImplementation,
+  FulfillmentSolutionQueryList,
+  Variant,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import {
   Credential,
   CredentialResponse,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
 import {
-  UserServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
-import {
-  CustomerServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
-import {
-  ShopServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
-import {
-  OrganizationServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
-import {
-  ContactPointServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
-import {
   Tax,
-  TaxServiceDefinition,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
-import {
-  AddressServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
 import {
   Country,
   CountryResponse,
-  CountryServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
-import {
-  InvoiceServiceDefinition
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice.js';
 import {
   OperationStatus,
   Status
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
-import { Attribute } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js';
-import { PhysicalProduct, PhysicalVariant } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import {
+  Position,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice.js';
+import {
+  Amount,
+  VAT
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/amount.js';
+import {
+  Shop,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
+import {
+  Customer,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
+import {
+  Organization,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
+import {
+  ContactPoint,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/contact_point.js';
+import {
+  Address,
+  ShippingAddress,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
+import {
+  Currency,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
+import {
+  User,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
+import {
+  Manufacturer,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/manufacturer.js';
+import {
+  ProductCategory,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product_category.js';
+import {
+  ProductPrototype,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product_prototype.js';
+import {
+  TaxType,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax_type.js';
+import {
+  Locale,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/locale.js';
+import {
+  Timezone,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/timezone.js';
+import {
+  Template,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/template.js';
+import {
+  Payload_Strategy
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/rendering.js';
+import {
+  Any
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/google/protobuf/any.js';
+import {
+  type Aggregation,
+  resolve,
+  Resolver,
+  ArrayResolver,
+  ResourceMap,
+} from './experimental/index.js';
+import { Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import { Setting } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
 
-export type CRUDClient = Client<TaxServiceDefinition>
-| Client<UserServiceDefinition>
-| Client<CustomerServiceDefinition>
-| Client<ShopServiceDefinition>
-| Client<OrganizationServiceDefinition>
-| Client<ContactPointServiceDefinition>
-| Client<AddressServiceDefinition>
-| Client<CountryServiceDefinition>
-| Client<InvoiceServiceDefinition>
-| FulfillmentCourierServiceImplementation
-| FulfillmentProductServiceImplementation;
+export declare const AggregationBaseTemplate: {
+  readonly shops?: ResourceMap<Shop>;
+  readonly customers?: ResourceMap<Customer>;
+  readonly organizations?: ResourceMap<Organization>;
+  readonly contact_points?: ResourceMap<ContactPoint>;
+  readonly addresses?: ResourceMap<Address>;
+  readonly countries?: ResourceMap<Country>;
+}
+export type AggregationBaseTemplate = typeof AggregationBaseTemplate;
+
+export declare const FulfillmentAggregationTemplate: AggregationBaseTemplate & {
+  readonly users?: ResourceMap<User>;
+  readonly products?: ResourceMap<Product>;
+  readonly taxes?: ResourceMap<Tax>;
+  readonly tax_types?: ResourceMap<TaxType>;
+  fulfillment_products?: ResourceMap<FulfillmentProduct>;
+  fulfillment_couriers?: ResourceMap<FulfillmentCourier>;
+  readonly locales?: ResourceMap<Locale>;
+  readonly timezones?: ResourceMap<Timezone>;
+  readonly currencies?: ResourceMap<Currency>;
+  readonly templates?: ResourceMap<Template>;
+  readonly settings?: ResourceMap<Setting>;
+  readonly credentials?: ResourceMap<Credential>;
+};
+export type FulfillmentAggregationTemplate = typeof FulfillmentAggregationTemplate;
+
+export declare const FulfillmentSolutionQueryAggregationTemplate: AggregationBaseTemplate & {
+  readonly products?: ResourceMap<Product>;
+};
+export type FulfillmentSolutionQueryAggregationTemplate = typeof FulfillmentSolutionQueryAggregationTemplate;
+
+export type AggregatedFulfillmentListResponse = Aggregation<
+  FulfillmentListResponse,
+  FulfillmentAggregationTemplate
+>;
+export type AggregatedFulfillmentSolutionQueryList = Aggregation<
+  FulfillmentSolutionQueryList,
+  FulfillmentSolutionQueryAggregationTemplate
+>;
 
 export type Courier = FulfillmentCourier;
 export type CourierResponse = FulfillmentCourierResponse;
-export type CourierMap = { [id: string]: Courier };
-
-export type Payload = { id?: string };
-export type Response<T extends Payload> = {
-  payload?: T;
-  status?: Status;
-};
-export type ResponseList<T extends Payload> = {
-  items?: Response<T>[];
-  operation_status?: OperationStatus;
-};
-export type ResponseMap<T extends Payload> = { [id: string]: Response<T> };
-
-export const filterTax = (
-  tax: Tax,
-  origin: Country,
-  target: Country,
-  commercial: boolean,
-) => (
-  commercial &&
-  tax.country_id === origin.id &&
-  (
-    !target.economic_areas ||
-    origin.economic_areas?.some(
-      e => target.economic_areas.includes(e)
-    )
-  )
-);
-
 export const StateRank = Object.values(FulfillmentState).reduce((a, b, i) => {
   a[b] = i;
   return a;
 }, {} as { [key: string]: number });
 
+/*
 export interface AggregatedFulfillment extends FulfillmentResponse
 {
   products: FulfillmentProductResponse[];
@@ -115,20 +157,109 @@ export interface AggregatedFulfillment extends FulfillmentResponse
   recipient_country: CountryResponse;
   options: any;
 }
+  */
 
 export interface FlatAggregatedFulfillment extends FulfillmentResponse
 {
-  uuid: string;
-  product: FulfillmentProduct;
-  courier: Courier;
-  credential: Credential;
-  sender_country: Country;
-  recipient_country: Country;
-  parcel: Parcel;
-  label: Label;
-  tracking: Tracking;
-  options: any;
+  product?: FulfillmentProduct;
+  courier?: Courier;
+  credential?: Credential;
+  sender_country?: Country;
+  recipient_country?: Country;
+  parcel?: Parcel;
+  label?: Label;
+  tracking?: Tracking;
+  options?: Any;
 }
+
+export declare const DefaultUrns: {
+  readonly instanceType: 'urn:restorecommerce:acs:model:order:Order';
+  readonly ownerIndicatoryEntity: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity';
+  readonly ownerInstance: 'urn:restorecommerce:acs:names:ownerInstance';
+  readonly organization: 'urn:restorecommerce:acs:model:organization.Organization';
+  readonly user: 'urn:restorecommerce:acs:model:user.User';
+
+  readonly shop_fulfillment_send_confirm_enabled:  'urn:restorecommerce:shop:setting:fulfillment:submit:notification:enabled';       // Sends notification on order submit if enabled (default: true)
+  readonly shop_fulfillment_send_cancel_enabled:   'urn:restorecommerce:shop:setting:fulfillment:cancel:notification:enabled';       // Sends notification on order cancel if enabled (default: true)
+  readonly shop_fulfillment_send_withdrawn_enabled:'urn:restorecommerce:shop:setting:fulfillment:withdrawn:notification:enabled'; // Sends notification on order withdrawn if enabled (default: true)
+
+  readonly shop_invoice_create_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:create:enabled';     // Creates invoice on order submit if enabled (default: true)
+  readonly shop_invoice_render_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:render:enabled';     // Renders invoice on order submit if enabled, overrides create! (default: true)
+  readonly shop_invoice_send_enabled:        'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:send:enabled';       // Sends invoice on order submit if enabled, overrides render! (default: true)
+  readonly shop_email_render_options:        'urn:restorecommerce:shop:setting:fulfillment:email:render:options';              // [json]: override email rendering options - default: cfg -> null
+  readonly shop_email_render_strategy:       'urn:restorecommerce:shop:setting:fulfillment:email:render:strategy';             // [enum]: override email rendering strategy - default: cfg -> INLINE
+  readonly shop_email_provider:              'urn:restorecommerce:shop:setting:fulfillment:email:provider';                    // [string]: override to supported email provider - default: cfg -> null
+  readonly shop_email_cc:                    'urn:restorecommerce:shop:setting:fulfillment:email:cc';                          // [string]: add recipients in CC (comma separated) - default: cfg -> null
+  readonly shop_email_bcc:                   'urn:restorecommerce:shop:setting:fulfillment:email:bcc';                         // [string]: add recipients in BC (comma separated) - default: cfg -> null
+  readonly customer_locales:                 'urn:restorecommerce:customer:setting:locales';                             // [string]: list of locales in descending preference (comma separated) - default: cfg -> 'en'
+  readonly customer_email_cc:                'urn:restorecommerce:customer:setting:fulfillment:email:cc';                      // [string]: add recipients in CC (comma separated) - default: cfg -> null
+  readonly customer_email_bcc:               'urn:restorecommerce:customer:setting:fulfillment:email:bcc';                     // [string]: add recipients in BC (comma separated) - default: cfg -> null
+};
+export type DefaultUrns = typeof DefaultUrns;
+
+export const DefaultSetting = {
+  shop_fulfillment_send_confirm_enabled: true,
+  shop_fulfillment_send_cancel_enabled: true,
+  shop_fulfillment_send_withdrawn_enabled: true,
+  shop_invoice_create_enabled: false,
+  shop_invoice_render_enabled: false,
+  shop_invoice_send_enabled: false,
+  shop_email_render_options: undefined as any,
+  shop_email_render_strategy: Payload_Strategy.INLINE,
+  shop_email_provider: undefined as string,
+  shop_email_cc: undefined as string[],
+  shop_email_bcc: undefined as string[],
+  shop_locales: ['en'] as string[],
+  customer_locales: ['en'] as string[],
+  customer_email_cc: undefined as string[],
+  customer_email_bcc: undefined as string[],
+};
+export type DefaultSetting = typeof DefaultSetting;
+export type SettingMap = Map<string, DefaultSetting>;
+
+export const merge = <T>(...lists: T[][]) => lists.filter(
+  list => list
+).flatMap(
+  list => list
+);
+
+export const unique = <T extends Record<string, any>>(objs: T[], by = 'id'): T[] => [
+  ...new Map<string, T>(
+  objs.map(
+    o => [o[by], o]
+  )).values()
+];
+
+const parseList = (value: string) => value?.match(/^\[.*\]$/) ? JSON.parse(value) : value?.split(/\s*,\s*/)
+const parseTrue = (value: string) => value?.toString().toLowerCase() === 'true';
+const SettingParser: { [key: string]: (value: string) => any } = {
+  shop_order_send_confirm_enabled: parseTrue,
+  shop_order_send_cancel_enabled: parseTrue,
+  shop_order_send_withdrawn_enabled: parseTrue,
+  shop_fulfillment_evaluate_enabled: parseTrue,
+  shop_fulfillment_create_enabled: parseTrue,
+  shop_invoice_create_enabled: parseTrue,
+  shop_invoice_render_enabled: parseTrue,
+  shop_invoice_send_enabled: parseTrue,
+  shop_order_error_cleanup: parseTrue,
+  shop_email_render_options: JSON.parse,
+  shop_locales: parseList,
+  shop_email_cc: parseList,
+  shop_email_bcc: parseList,
+  customer_locales: parseList,
+  customer_email_cc: parseList,
+  customer_email_bcc: parseList,
+};
+
+export const parseSetting = (key: string, value: string) => {
+  const parser = SettingParser[key];
+  if (parser) {
+    return parser(value);
+  }
+  else {
+    return value;
+  }
+};
 
 export const createStatusCode = (
   entity: string,
@@ -162,65 +293,339 @@ export const throwStatusCode = <T>(
 };
 
 export const createOperationStatusCode = (
-  entity: string,
-  status: OperationStatus,
-  details?: string,
+  status?: OperationStatus,
+  entity?: string,
+  id?: string,
 ): OperationStatus => ({
   code: status?.code ?? 500,
   message: status?.message?.replace(
-    '{entity}', entity
+    '{entity}', entity ?? 'undefined'
   ).replace(
-    '{details}', details
+    '{id}', id ?? 'undefined'
   ) ?? 'Unknown status',
 });
 
 export const throwOperationStatusCode = <T>(
-  entity: string,
   status: OperationStatus,
-  details?: string,
+  entity?: string,
+  id?: string,
 ): T => {
   throw createOperationStatusCode(
-    entity,
     status,
-    details,
+    entity,
+    id,
   );
 };
 
-export const extractCouriers = (fulfillments: FlatAggregatedFulfillment[]): CourierMap => {
-  return fulfillments.reduce(
-    (a, b) => {
-      a[b.courier?.id] = b.courier;
-      return a;
-    },
-    {} as CourierMap
+export const marshallProtobufAny = (
+  obj: any,
+  type_url?: string
+): Any => ({
+  type_url,
+  value: Buffer.from(
+    JSON.stringify(
+      obj
+    )
+  )
+});
+
+export const unmarshallProtobufAny = (payload: Any): any => JSON.parse(
+  payload.value!.toString()
+);
+
+export const filterTax = (
+  tax: Tax,
+  origin: Country,
+  destination: Country,
+  private_customer: boolean,
+) => (
+  private_customer &&
+  tax.country_id === origin.id &&
+  (
+    !destination.economic_areas ||
+    origin.economic_areas?.some(
+      e => destination.economic_areas.includes(e)
+    )
+  )
+);
+
+export const calcAmount = (
+  gross: BigNumber,
+  taxes: Tax[],
+  origin: Country,
+  destination: Country,
+  currency?: Currency,
+  private_customer = true,
+): Amount => {
+  taxes = taxes.filter(
+    tax => filterTax(
+      tax,
+      origin,
+      destination,
+      private_customer,
+    )
   );
+  const vats = taxes.map((tax): VAT => ({
+    tax_id: tax.id,
+    vat: gross.multipliedBy(tax.rate).decimalPlaces(2).toNumber(),
+  }));
+  const net = vats.reduce(
+    (a, b) => a.plus(b.vat),
+    gross
+  );
+  return {
+    currency_id: currency?.id,
+    gross: gross.decimalPlaces(currency?.precision ?? 2).toNumber(),
+    net: net.decimalPlaces(currency?.precision ?? 2).toNumber(),
+    vats,
+  };
 };
 
-export const flatMapAggregatedFulfillments = (fulfillments: AggregatedFulfillment[]): FlatAggregatedFulfillment[] => {
-  return fulfillments.flatMap((fulfillment) => {
-    const uuid = randomUUID();
-    return fulfillment.payload?.packaging?.parcels.map((parcel, i): FlatAggregatedFulfillment => {
-      const product = fulfillment.products?.[i]?.payload;
-      const courier = fulfillment.couriers?.[i]?.payload;
-      const credential = fulfillment.credentials?.[i]?.payload;
-      const label = fulfillment.payload?.labels?.[i];
-      const tracking = fulfillment.payload?.trackings?.[i];
+export const resolveShopAddress = (
+  shop_id: string,
+  aggregation: AggregationBaseTemplate,
+  contact_point_type_id: string,
+): ShippingAddress => {
+  const shop = aggregation.shops?.get(
+    shop_id
+  );
+  const contact_point = aggregation.contact_points?.getMany(
+    aggregation.organizations?.get(
+      shop.organization_id
+    ).contact_point_ids
+  )?.find(
+    cp => cp?.contact_point_type_ids?.includes(contact_point_type_id)
+  );
+  const address = aggregation.addresses?.get(
+    contact_point?.physical_address_id
+  );
+  return {
+    address,
+    contact: {
+      email: contact_point.email,
+      name: contact_point.name,
+      phone: contact_point.telephone,
+    }
+  };
+};
+
+export const resolveCustomerAddress = (
+  customer_id: string,
+  aggregation: AggregationBaseTemplate,
+  contact_point_type_id: string,
+): ShippingAddress => {
+  const customer = aggregation.customers?.get(
+    customer_id
+  );
+  const contact_point = aggregation.contact_points?.getMany(
+    customer?.private?.contact_point_ids ??
+    aggregation.organizations?.get(
+      customer?.commercial?.organization_id
+      ?? customer?.public_sector?.organization_id
+    )?.contact_point_ids
+  )?.find(
+    cp => cp?.contact_point_type_ids?.includes(contact_point_type_id)
+  );
+  const address = aggregation.addresses?.get(
+    contact_point?.physical_address_id
+  );
+  return {
+    address,
+    contact: {
+      email: contact_point.email,
+      name: contact_point.name,
+      phone: contact_point.telephone,
+    }
+  };
+};
+
+export const mergeFulfillmentProductVariant = (
+  product: FulfillmentProduct,
+  variant_id: string
+): Variant => {
+  const variant = product.variants.find(
+    v => v.id === variant_id
+  );
+  if (variant) {
+    variant.attributes = unique(
+      merge(
+        product.attributes,
+        variant.attributes,
+      )
+    );
+  }
+  return variant;
+}
+
+export const mergeFulfillmentProduct = (
+  product: FulfillmentProduct,
+  variant_id: string
+): FulfillmentProduct => {
+  const variant = mergeFulfillmentProductVariant(
+    product,
+    variant_id,
+  );
+  return {
+    ...product,
+    variants: [variant],
+  };
+};
+
+export const resolveFulfillment = (
+  aggregation: AggregatedFulfillmentListResponse,
+  fulfillment: Fulfillment,
+) => {
+  const country_resolver = Resolver('country_id', aggregation.countries);
+  const currency_resolver = Resolver(
+    'currency_id',
+    aggregation.currencies,
+    {
+      countries: ArrayResolver('country_ids', aggregation.countries),
+    }
+  );
+  const address_resolver = Resolver(
+    'address_id',
+    aggregation.addresses,
+    {
+      country: country_resolver,
+    }
+  );
+  const contact_points_resolver = ArrayResolver(
+    'contact_point_ids',
+    aggregation.contact_points,
+    {
+      physical_address: Resolver(
+        'physical_address_id',
+        aggregation.addresses,
+        {
+          country: country_resolver,
+        }
+      ),
+      locale: Resolver('locale_id', aggregation.locales),
+      timezone: Resolver('timezone_id', aggregation.timezones),
+    }
+  );
+  const organization_resolver = Resolver(
+    'organization_id',
+    aggregation.organizations,
+    {
+      contact_points: contact_points_resolver
+    }
+  );
+  const user_resolver = Resolver('user_id', aggregation.users, {
+    locale: Resolver('locale_id', aggregation.locales),
+    timezone: Resolver('timezone_id', aggregation.timezones),
+  });
+  const tax_resolver = Resolver('tax_id', aggregation.taxes, {
+    type: Resolver('type_id', aggregation.tax_types),
+    country: country_resolver,
+  });
+  const taxes_resolver = ArrayResolver('tax_ids', aggregation.taxes, {
+    type: Resolver('type_id', aggregation.tax_types),
+    country: country_resolver,
+  });
+  const amount_resolver = {
+    currency: currency_resolver,
+    vats: [{
+      tax: tax_resolver
+    }]
+  };
+  const fulfillment_courier_resolver = Resolver('courier_id', aggregation.fulfillment_couriers);
+  const fulfillment_product_resolver = Resolver('product_id', aggregation.fulfillment_products, {
+    courier: fulfillment_courier_resolver,
+    taxes: taxes_resolver,
+    price: {
+      currency: currency_resolver,
+    }
+  });
+  const parcel_resolver = [{
+    product: fulfillment_product_resolver,
+    amount: amount_resolver,
+    price: {
+      currency: currency_resolver,
+    }
+  }];
+  const fulfillment_resolver = {
+    customer: Resolver('customer_id', aggregation.customers, {
+      commercial: {
+        organization: organization_resolver,
+      },
+      public_sector: {
+        organization: organization_resolver,
+      },
+      private: {
+        contact_points: contact_points_resolver,
+        user: user_resolver,
+      },
+    }),
+    shop: Resolver('shop_id', aggregation.shops, {
+      organization: organization_resolver
+    }),
+    user: user_resolver,
+    packaging: {
+      parcels: parcel_resolver,
+      sender: {
+        address: address_resolver
+      },
+      recipient: {
+        address: address_resolver
+      },
+    }
+  };
+
+  const resolved = resolve(
+    fulfillment,
+    fulfillment_resolver,
+  );
+
+  resolved.packaging?.parcels?.forEach(
+    parcel => {
+      parcel.product = mergeFulfillmentProduct(
+        parcel.product,
+        parcel.variant_id,
+      );
+      parcel.price = parcel.product.variants?.[0]?.price;
+    }
+  );
+  return resolved;
+};
+
+export const packRenderData = (
+  aggregation: AggregatedFulfillmentListResponse,
+  fulfillment: Fulfillment,
+) => {
+  const resolved = {
+    fulfillment: resolveFulfillment(
+      aggregation,
+      fulfillment
+    ),
+  };
+  const buffer = marshallProtobufAny(resolved);
+  return buffer;
+};
+
+export const flatMapAggregatedFulfillmentListResponse = (aggregation: AggregatedFulfillmentListResponse): FlatAggregatedFulfillment[] => {
+  return aggregation.items.flatMap((item) => {
+    const payload = item.payload;
+    return payload?.packaging?.parcels.map((parcel): FlatAggregatedFulfillment => {
+      const product = aggregation.fulfillment_products.get(parcel.product_id);
+      const courier = aggregation.fulfillment_couriers.get(product.courier_id);
+      const credential = aggregation.fulfillment_couriers.get(courier.credential_id, null);
+      const label = payload.labels?.find(label => label.parcel_id === parcel.id);
+      const tracking = payload.trackings?.find(
+        tracking => label.shipment_number === tracking.shipment_number
+      );
       return {
-        uuid,
-        payload: {
-          ...fulfillment.payload,
-          fulfillment_state: label?.state ?? fulfillment.payload?.fulfillment_state,
-        },
-        sender_country: fulfillment.sender_country?.payload,
-        recipient_country: fulfillment.recipient_country?.payload,
+        payload,
+        sender_country: aggregation.countries.get(payload.packaging.sender.address?.country_id),
+        recipient_country: aggregation.countries.get(payload.packaging.recipient.address?.country_id),
         product,
         courier,
         credential,
         parcel,
         label,
         tracking,
-        options: fulfillment.options,
-        status: tracking?.status ?? label?.status ?? fulfillment.status,
+        status: item.status,
       };
     });
   });
@@ -230,12 +635,14 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
   const merged_fulfillments: { [uuid: string]: FulfillmentResponse } = {};
   fulfillments.forEach(a => {
     const b = a.payload;
-    const c = merged_fulfillments[a?.uuid];
+    const c = merged_fulfillments[a?.payload.id];
     if (b && c) {
       if (a.parcel) c.payload.packaging.parcels.push(a.parcel);
       if (a.label) c.payload.labels.push(a.label);
       if (a.tracking) c.payload.trackings.push(a.tracking);
-      c.payload.fulfillment_state = StateRank[b.fulfillment_state] < StateRank[c.payload.fulfillment_state] ? b.fulfillment_state : c.payload.fulfillment_state;
+      c.payload.fulfillment_state = StateRank[b.fulfillment_state] < StateRank[c.payload.fulfillment_state]
+        ? b.fulfillment_state
+        : c.payload.fulfillment_state;
       c.status = c.status.code > a.status.code ? c.status : a.status;
       c.payload.total_amounts = a.payload.total_amounts?.reduce(
         (a, b) => {
@@ -269,15 +676,8 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
       b.packaging.parcels = a.parcel ? [a.parcel] : [];
       b.labels = a.label ? [a.label] : [];
       b.trackings = a.tracking ? [a.tracking] : [];
-      merged_fulfillments[a.uuid] = a;
+      merged_fulfillments[a.payload.id] = a;
     }
   });
   return Object.values(merged_fulfillments);
 };
-
-export const unique = <T extends {[key: string]: any}>(objs: T[], by = 'id'): T[] => [
-  ...new Map<string, T>(
-  objs.map(
-    o => [o[by], o]
-  )).values()
-];
