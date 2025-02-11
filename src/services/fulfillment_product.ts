@@ -55,7 +55,20 @@ import {
 import {
   FulfillmentCourier,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
-import { FulfillmentCourierService } from './index.js';
+import { FulfillmentCourierService } from './fulfillment_courier.js';
+import { AccessControlledServiceBase } from '../experimental/AccessControlledServiceBase.js';
+import { ClientRegister } from '../experimental/ClientRegister.js';
+import { ResourceAggregator } from '../experimental/ResourceAggregator.js';
+import {
+  Product,
+  ProductServiceDefinition,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import {
+  Currency,
+  CurrencyServiceDefinition,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
+import { ResourceMap } from '../experimental/ResourceMap.js';
+import { Stub } from './../stub.js';
 import {
   AggregatedFulfillmentSolutionQueryList,
   FulfillmentSolutionQueryAggregationTemplate,
@@ -67,13 +80,6 @@ import {
   createStatusCode,
   calcAmount,
 } from './../utils.js';
-import { Stub } from './../stub.js';
-import { AccessControlledServiceBase } from '../experimental/AccessControlledServiceBase.js';
-import { ClientRegister } from '../experimental/ClientRegister.js';
-import { ResourceAggregator } from '../experimental/ResourceAggregator.js';
-import { Product, ProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
-import { ResourceMap } from '../experimental/ResourceMap.js';
-import { Currency, CurrencyServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
 
 
 interface PackageSolutionTotals extends FulfillmentSolutionQuery {
@@ -179,7 +185,7 @@ export class FulfillmentProductService
     topic: Topic,
     db: DatabaseProvider,
     protected readonly cfg: ServiceConfig,
-    logger: Logger,
+    logger?: Logger,
     client_register = new ClientRegister(cfg, logger),
     protected readonly aggregator = new ResourceAggregator(cfg, logger, client_register),
   ) {
@@ -446,7 +452,7 @@ export class FulfillmentProductService
       }
     );
 
-    this.logger.debug('Available Fulfillment Products:', response);
+    this.logger?.debug('Available Fulfillment Products:', response);
     return response;
   }
 
@@ -577,7 +583,7 @@ export class FulfillmentProductService
               )
             )
           );
-          this.logger.debug('Offer List:', offer_lists);
+          this.logger?.debug('Offer List:', offer_lists);
         
           const goods = query.items.map((good): IItem => ({
             sku: `${good.product_id}\t${good.variant_id}`,
@@ -610,7 +616,7 @@ export class FulfillmentProductService
             price: 0.0, // placeholder
             taxType: 'vat_standard' // placeholder
           }));
-          this.logger.debug('Goods:', goods);
+          this.logger?.debug('Goods:', goods);
 
           const packer = new Packer({
             source: JSON.stringify({ zones: [] }),

@@ -2,6 +2,8 @@ import * as soap from 'soap';
 import { xml2js, js2xml } from 'xml-js';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat.js';
+import { type Logger } from '@restorecommerce/logger';
+import { type ServiceConfig } from '@restorecommerce/service-config';
 import {
   Event,
   Label,
@@ -384,8 +386,8 @@ export class DHLSoap extends Stub {
     return this._stub_config;
   }
 
-  constructor(courier?: Courier, kwargs?: { [key: string]: any }) {
-    super(courier, kwargs?.cfg, kwargs?.logger);
+  constructor(courier?: Courier, cfg?: ServiceConfig, logger?: Logger) {
+    super(courier, cfg, logger);
     this.stub_defaults = this.cfg?.get(`stubs:${this.type}:${courier?.id}`) ?? this.cfg?.get(`stubs:${this.type}:defaults`);
     this.version = this.stub_defaults?.ordering?.version ?? [3, 4, 0];
 
@@ -598,7 +600,7 @@ export class DHLSoap extends Stub {
           fulfillment.payload.fulfillment_state = FulfillmentState.INVALID;
         }
 
-        this.logger.debug('DHLSoap Evaluation:', status);
+        this.logger?.debug('DHLSoap Evaluation:', status);
         fulfillment.status = status;
         return fulfillment;
       });
@@ -727,7 +729,7 @@ export class DHLSoap extends Stub {
         };
       })
     };
-    this.logger.debug('ShipmentOrderRequest', shipment_order_request);
+    this.logger?.debug('ShipmentOrderRequest', shipment_order_request);
     return shipment_order_request;
   }
 
@@ -763,7 +765,7 @@ export class DHLSoap extends Stub {
         }
       };
       
-      this.logger.debug('Create SOAP Client with:', config);
+      this.logger?.debug('Create SOAP Client with:', config);
       this._soap_client = await soap.createClientAsync(config.ordering.wsdl).then(
         client => {
           client.setEndpoint(config.ordering.endpoint);
@@ -890,14 +892,12 @@ export class DHLSoap extends Stub {
         );
       } catch (err) {
         this.logger?.error(`${this.type}: ${err}`);
-        return {
-          ...item,
-          status: {
-            id: item.payload.id,
-            code: 500,
-            message: JSON.stringify(err)
-          }
+        item.status = {
+          id: item.payload.id,
+          code: 500,
+          message: JSON.stringify(err)
         };
+        return item;
       }
     });
 

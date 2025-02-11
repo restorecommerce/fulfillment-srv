@@ -78,11 +78,11 @@
       "address": "localhost:50063"
     },
     "country": {
-      "fullName": "io.restorecommerce.contact_point.ContactPointService",
+      "fullName": "io.restorecommerce.country.CountryService",
       "address": "localhost:50063"
     },
     "tax": {
-      "fullName": "io.restorecommerce.customer.CustomerService",
+      "fullName": "io.restorecommerce.tax.TaxService",
       "address": "localhost:50063"
     },
     "credential": {
@@ -351,33 +351,17 @@
     "health": "grpc-health-v1"
   },
   "fieldHandlers": {
-    "fulfillment": {
-      "bufferFields": [
-        "options",
-        "trackings.[0].details",
-        "trackings.[0].events.[0].details"
-      ],
-      "timeStampFields": [
-        "meta.created",
-        "meta.modified",
-        "trackings.[0].events.[0].timestamp"
-      ]
-    },
-    "fulfillment_courier": {
-      "bufferFields": [
-        "configuration"
-      ],
-      "timeStampFields": [
-        "meta.created",
-        "meta.modified"
-      ]
-    },
-    "fulfillment_product": {
-      "timeStampFields": [
-        "meta.created",
-        "meta.modified"
-      ]
-    }
+    "timeStampFields": [
+      "meta.created",
+      "meta.modified",
+      "trackings.[0].events.[0].timestamp"
+    ],
+    "bufferFields": [
+      "options",
+      "trackings.[0].details",
+      "trackings.[0].events.[0].details",
+      "configuration"
+    ]
   },
   "tech_user": {
     "id": "root_tech_user",

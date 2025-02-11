@@ -43,6 +43,8 @@ import { FulfillmentProductService } from './services/fulfillment_product.js';
 import { FulfillmentCommandInterface } from './services/fulfillment_command_interface.js';
 import { Stub } from './stub.js';
 import { DHLSoap } from './stubs/index.js';
+import { ClientRegister } from './experimental/ClientRegister.js';
+import { ResourceAggregator } from './experimental/ResourceAggregator.js';
 
 registerProtoMeta(
   FulfillmentMeta,
@@ -212,6 +214,10 @@ export class Worker {
       this.topics.set(key, topic);
     }));
 
+    Stub.cfg = cfg;
+    Stub.logger = logger;
+    const client_register = new ClientRegister(cfg, logger);
+    const aggregator = new ResourceAggregator(cfg, logger, client_register);
     logger.verbose('Setting up command interface services');
     this.fulfillmentCommandInterface = new FulfillmentCommandInterface(
       this.server,
@@ -230,13 +236,18 @@ export class Worker {
       this.fulfillmentCourierService,
       this.topics.get('fulfillment_product.resource'),
       db, cfg, logger,
+      client_register,
+      aggregator,
     );
     logger.verbose('Setting up fulfillment services');
     this.fulfillmentService = new FulfillmentService(
       this.fulfillmentCourierService,
       this.fulfillmentProductService,
       this.topics.get('fulfillment.resource'),
+      this.topics.get('rendering'),
       db, cfg, logger,
+      client_register,
+      aggregator,
     );
 
     const serviceNamesCfg = cfg.get('serviceNames');

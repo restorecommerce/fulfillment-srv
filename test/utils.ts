@@ -42,7 +42,7 @@ export async function mockServices(configs: { [key: string]: any }) {
     }
 
     if (!rules[name]) {
-      throw `No mocking rules for ${name} in mocks.ts!`
+      throw new Error(`No mocking rules for ${name} in mocks.ts!`);
     }
 
     return await new GrpcMockServer(

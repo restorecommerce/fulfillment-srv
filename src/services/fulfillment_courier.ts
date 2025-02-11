@@ -28,7 +28,7 @@ export class FulfillmentCourierService
     Topic,
     db: DatabaseProvider,
     cfg: ServiceConfig,
-    logger: Logger
+    logger?: Logger
   ) {
     super(
       cfg.get('database:main:entities:1') ?? 'fulfillment_courier',
@@ -84,7 +84,7 @@ export class FulfillmentCourierService
         }
       }
     );
-    this.logger.debug('Available Couriers:', response);
+    this.logger?.debug('Available Couriers:', response);
     return response;
   }
 }

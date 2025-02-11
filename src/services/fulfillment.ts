@@ -20,6 +20,9 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
   Client,
+  createChannel,
+  createClient,
+  GrpcClientConfig,
 } from '@restorecommerce/grpc-client';
 import {
   FulfillmentState,
@@ -71,31 +74,33 @@ import {
 import { UserServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
 import { CurrencyServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
 import { Product, ProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import { AccessControlledServiceBase, ACSContextFactory } from '../experimental/AccessControlledServiceBase.js';
+import { ClientRegister } from '../experimental/ClientRegister.js';
+import { ResourceAggregator } from '../experimental/ResourceAggregator.js';
+import { ResourceAwaitQueue } from '../experimental/ResourceAwaitQueue.js';
+import { ResourceMap } from '../experimental/ResourceMap.js';
+import { Stub } from './../stub.js';
 import {
+  type AggregatedFulfillmentListResponse,
+  type SettingMap,
+  DefaultUrns,
+  FulfillmentAggregationTemplate,
   mergeFulfillments,
   flatMapAggregatedFulfillmentListResponse,
   StateRank,
   throwStatusCode,
   createStatusCode,
   createOperationStatusCode,
-  AggregatedFulfillmentListResponse,
-  FulfillmentAggregationTemplate,
-  DefaultUrns,
   DefaultSetting,
   resolveCustomerAddress as resolveRecipientAddress,
   resolveShopAddress as resolveSenderAddress,
   mergeFulfillmentProductVariant,
   calcAmount,
-  SettingMap,
   parseSetting,
   marshallProtobufAny,
+  calcTotalAmount,
+  packRenderData,
 } from './../utils.js';
-import { Stub } from './../stub.js';
-import { AccessControlledServiceBase, ACSContextFactory } from '../experimental/AccessControlledServiceBase.js';
-import { ClientRegister } from '../experimental/ClientRegister.js';
-import { ResourceAggregator } from '../experimental/ResourceAggregator.js';
-import { ResourceAwaitQueue } from '../experimental/ResourceAwaitQueue.js';
-import { ResourceMap } from '../experimental/ResourceMap.js';
 import { FulfillmentCourierService } from './fulfillment_courier.js';
 import { FulfillmentProductService } from './fulfillment_product.js';
 
@@ -180,16 +185,20 @@ export class FulfillmentService
       code: 500,
       message: 'No render templates defined!',
     },
+    INVALID: {
+      code: 400,
+      message: 'Invalid {entity} in query!',
+    },
   };
 
   protected readonly tech_user: Subject;
   protected readonly notification_service: Client<NotificationReqServiceDefinition>;
   protected readonly awaits_render_result = new ResourceAwaitQueue<string[]>;
-  protected readonly default_setting: DefaultSetting;
+  protected readonly default_setting: DefaultSetting = DefaultSetting;
   protected readonly default_templates: Template[] = [];
   protected readonly kafka_timeout = 5000;
   protected readonly emitters: Record<string, string>;
-  protected readonly urns = DefaultUrns;
+  protected readonly urns: DefaultUrns = DefaultUrns;
   protected readonly contact_point_type_ids = {
     legal: 'legal',
     shipping: 'shipping',
@@ -203,7 +212,7 @@ export class FulfillmentService
     protected readonly renderingTopic: Topic,
     db: DatabaseProvider,
     protected readonly cfg: ServiceConfig,
-    logger: Logger,
+    logger?: Logger,
     client_register = new ClientRegister(cfg, logger),
     protected readonly aggregator = new ResourceAggregator(cfg, logger, client_register),
   ) {
@@ -216,10 +225,24 @@ export class FulfillmentService
       cfg.get('events:enableEvents')?.toString() === 'true',
       cfg.get('database:main:collections:0') ?? 'fulfillments',
     );
-
-    Stub.cfg = cfg;
-    Stub.logger = logger;
     this.isEventsEnabled = cfg.get('events:enableEvents')?.toString() === 'true';
+    const notification_cfg = cfg.get('client:notification_req');
+    if (notification_cfg.disabled?.toString() === 'true') {
+      logger?.info('Notification-srv disabled!');
+    }
+    else if (notification_cfg) {
+      this.notification_service = createClient(
+        {
+          ...notification_cfg,
+          logger
+        } as GrpcClientConfig,
+        NotificationReqServiceDefinition,
+        createChannel(notification_cfg.address)
+      );
+    }
+    else {
+      logger?.warn('notification config is missing!');
+    }
 
     this.urns = {
       ...this.urns,
@@ -657,10 +680,15 @@ export class FulfillmentService
           }
         ));
 
-        return { 
-          ...item,
-          status: this.status_codes.OK,
-        };
+        item.payload.total_amounts = calcTotalAmount(
+          item.payload.packaging?.parcels?.map(
+            p => p.amount
+          ),
+          aggregation.currencies,
+        );
+
+        item.status = this.status_codes.OK;
+        return item;
       }
       catch (e: any) {
         return this.catchStatusError(e, item);
@@ -821,33 +849,23 @@ export class FulfillmentService
       );
       const flat = flatMapAggregatedFulfillmentListResponse(aggregation);
       const valid = flat.filter(
-        f => {
-          if (f.status?.code !== 200) {
-            return false;
-          }
-          else if (StateRank[f.payload?.fulfillment_state] >= StateRank[FulfillmentState.SUBMITTED]) {
-            f.status = createStatusCode(
-              this.name,
-              f.payload?.id,
-              this.status_codes.CONFLICT,
-            );
-            return false;
-          }
-          return true;
-        }
+        f => f.status?.code === 200
+          && StateRank[f?.fulfillment_state] < StateRank[FulfillmentState.SUBMITTED]
       );
-      const invalid = flat.filter(
+      const skipped = flat.filter(
         f => f.status?.code !== 200
+          || StateRank[f?.fulfillment_state] >= StateRank[FulfillmentState.SUBMITTED]
       );
-      this.logger.debug('Submitting:', valid);
+      if (flat.some(f => f.status?.code !== 200)) {
+        throw createOperationStatusCode(
+          this.operation_status_codes.INVALID,
+          'Fulfillment',
+        );
+      }
+      this.logger?.debug('Submitting:', valid);
       const submitted = await Stub.submit(valid);
-      const merged = mergeFulfillments([
-        ...submitted,
-        ...invalid,
-      ]);
-      const items = merged.filter(
-        item => item.payload?.labels?.length > 0
-      ).map(
+      const merged = mergeFulfillments([...submitted, ...skipped]);
+      const items = merged.map(
         item => item.payload
       );
 
@@ -914,12 +932,8 @@ export class FulfillmentService
           }
         ));
       }
-
-      upserted.items.push(
-        ...merged.filter(item => item.payload?.labels?.length === 0)
-      );
       upserted.total_count = upserted.items.length;
-      if (upserted.items.some(item => item.status.code !== 200)) {
+      if (upserted.items.some(item => item.status?.code !== 200)) {
         upserted.operation_status = this.operation_status_codes.PARTIAL;
       }
       return upserted;
@@ -994,7 +1008,7 @@ export class FulfillmentService
             if (f.status?.code !== 200) return false;
             const request = request_map[f.payload?.id];
             if (
-              !request.shipment_numbers?.includes(f.label.shipment_number)
+              request.shipment_numbers && !request.shipment_numbers.includes(f.label.shipment_number)
             ) {
               return false;
             }
@@ -1024,9 +1038,7 @@ export class FulfillmentService
           }
         )
       ).then(
-        flat_fulfillments => {
-          return Stub.track(flat_fulfillments);
-        }
+        flat_fulfillments => Stub.track(flat_fulfillments)
       ).then(
         tracked_fulfillments => mergeFulfillments(tracked_fulfillments)
       ).then(
@@ -1372,7 +1384,7 @@ export class FulfillmentService
     const payloads: Payload[] = templates.map(
       (template, i) => ({
         content_type: 'text/html',
-        data: marshallProtobufAny(item),
+        data: packRenderData(aggregation, item),
         templates: marshallProtobufAny({
           [i]: {
             body: bodies[i],

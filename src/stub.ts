@@ -12,20 +12,23 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { BigNumber } from 'bignumber.js';
 import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import { ServiceConfig } from '@restorecommerce/resource-base-interface/lib/core/WorkerBase.js';
+
+type StubType = (new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => Stub);
 
 export abstract class Stub
 {
-  protected static readonly STUB_TYPES: { [key: string]: (new (courier: Courier, kwargs?: { [key: string]: any }) => Stub) } = {};
-  protected static readonly REGISTER: { [key: string]: Stub } = {};
-  static cfg: any = null;
+  protected static readonly STUB_TYPES: Record<string, StubType> = {};
+  protected static readonly REGISTER: Record<string, Stub> = {};
+  static cfg: ServiceConfig = null;
   static logger: Logger = null;
 
   abstract get type(): string;
 
   constructor(
-    public courier: Courier,
-    public cfg?: any,
-    public logger?: Logger
+    protected courier: Courier,
+    protected cfg?: any,
+    protected logger?: Logger
   ) {}
 
   protected abstract evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
@@ -113,16 +116,16 @@ export abstract class Stub
 
   public static async evaluate(
     fulfillments: FlatAggregatedFulfillment[],
-    kwargs?: any
+    cfg?: ServiceConfig,
+    logger?: Logger,
+    kwargs?: any,
   ) {
     return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
       (courier) => Stub.getInstance(
         courier,
-        {
-          cfg: Stub.cfg,
-          logger: Stub.logger,
-          ...kwargs
-        }
+        cfg ?? Stub.cfg,
+        logger ?? Stub.logger,
+        kwargs,
       ).evaluate(
         fulfillments
       )
@@ -133,16 +136,16 @@ export abstract class Stub
 
   public static async submit(
     fulfillments: FlatAggregatedFulfillment[],
-    kwargs?: any
+    cfg?: ServiceConfig,
+    logger?: Logger,
+    kwargs?: any,
   ) {
     return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
       (courier) => Stub.getInstance(
         courier,
-        {
-          cfg: Stub.cfg,
-          logger: Stub.logger,
-          ...kwargs
-        }
+        cfg ?? Stub.cfg,
+        logger ?? Stub.logger,
+        kwargs,
       ).submit(
         fulfillments
       )
@@ -153,16 +156,16 @@ export abstract class Stub
 
   public static async track(
     fulfillments: FlatAggregatedFulfillment[],
-    kwargs?: any
+    cfg?: ServiceConfig,
+    logger?: Logger,
+    kwargs?: any,
   ) {
-    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
       (courier) => Stub.getInstance(
         courier,
-        {
-          cfg: Stub.cfg,
-          logger: Stub.logger,
-          ...kwargs
-        }
+        cfg ?? Stub.cfg,
+        logger ?? Stub.logger,
+        kwargs,
       ).track(
         fulfillments
       )
@@ -173,16 +176,16 @@ export abstract class Stub
 
   public static async cancel(
     fulfillments: FlatAggregatedFulfillment[],
-    kwargs?: any
+    cfg?: ServiceConfig,
+    logger?: Logger,
+    kwargs?: any,
   ) {
-    return await Promise.all(Object.values(extractCouriers(fulfillments)).map(
+    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
       (courier) => Stub.getInstance(
         courier,
-        {
-          cfg: Stub.cfg,
-          logger: Stub.logger,
-          ...kwargs
-        }
+        cfg ?? Stub.cfg,
+        logger ?? Stub.logger,
+        kwargs,
       ).cancel(
         fulfillments
       )
@@ -205,12 +208,21 @@ export abstract class Stub
     );
   }
 
-  public static getInstance(courier: Courier, kwargs?: { [key: string]: any }): Stub
-  {
+  public static getInstance(
+    courier: Courier,
+    cfg?: ServiceConfig,
+    logger?: Logger,
+    kwargs?: any,
+  ): Stub {
     let stub = Stub.REGISTER[courier.id];
     if (!stub && (courier.stub_type in Stub.STUB_TYPES))
     {
-      stub = new Stub.STUB_TYPES[courier.stub_type](courier, kwargs);
+      stub = new Stub.STUB_TYPES[courier.stub_type](
+        courier,
+        cfg ?? Stub.cfg,
+        logger ?? Stub.logger,
+        kwargs,
+      );
       Stub.REGISTER[courier.id] = stub;
     }
     return stub;

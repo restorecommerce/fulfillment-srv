@@ -100,37 +100,33 @@ import {
 import { Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import { Setting } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
 
-export declare const AggregationBaseTemplate: {
-  readonly shops?: ResourceMap<Shop>;
-  readonly customers?: ResourceMap<Customer>;
-  readonly organizations?: ResourceMap<Organization>;
-  readonly contact_points?: ResourceMap<ContactPoint>;
-  readonly addresses?: ResourceMap<Address>;
-  readonly countries?: ResourceMap<Country>;
-}
-export type AggregationBaseTemplate = typeof AggregationBaseTemplate;
-
-export declare const FulfillmentAggregationTemplate: AggregationBaseTemplate & {
-  readonly users?: ResourceMap<User>;
-  readonly products?: ResourceMap<Product>;
-  readonly taxes?: ResourceMap<Tax>;
-  readonly tax_types?: ResourceMap<TaxType>;
-  fulfillment_products?: ResourceMap<FulfillmentProduct>;
-  fulfillment_couriers?: ResourceMap<FulfillmentCourier>;
-  readonly locales?: ResourceMap<Locale>;
-  readonly timezones?: ResourceMap<Timezone>;
-  readonly currencies?: ResourceMap<Currency>;
-  readonly templates?: ResourceMap<Template>;
-  readonly settings?: ResourceMap<Setting>;
-  readonly credentials?: ResourceMap<Credential>;
+export type AggregationBaseTemplate = {
+  shops?: ResourceMap<Shop>,
+  customers?: ResourceMap<Customer>,
+  organizations?: ResourceMap<Organization>,
+  contact_points?: ResourceMap<ContactPoint>,
+  addresses?: ResourceMap<Address>,
+  countries?: ResourceMap<Country>,
 };
-export type FulfillmentAggregationTemplate = typeof FulfillmentAggregationTemplate;
-
-export declare const FulfillmentSolutionQueryAggregationTemplate: AggregationBaseTemplate & {
-  readonly products?: ResourceMap<Product>;
+export type FulfillmentAggregationTemplate = AggregationBaseTemplate & {
+  users?: ResourceMap<User>,
+  products?: ResourceMap<Product>,
+  taxes?: ResourceMap<Tax>,
+  tax_types?: ResourceMap<TaxType>,
+  fulfillment_products?: ResourceMap<FulfillmentProduct>,
+  fulfillment_couriers?: ResourceMap<FulfillmentCourier>,
+  locales?: ResourceMap<Locale>,
+  timezones?: ResourceMap<Timezone>,
+  currencies?: ResourceMap<Currency>,
+  templates?: ResourceMap<Template>,
+  settings?: ResourceMap<Setting>,
+  credentials?: ResourceMap<Credential>,
 };
-export type FulfillmentSolutionQueryAggregationTemplate = typeof FulfillmentSolutionQueryAggregationTemplate;
-
+export const FulfillmentAggregationTemplate = {} as FulfillmentAggregationTemplate;
+export type FulfillmentSolutionQueryAggregationTemplate = AggregationBaseTemplate & {
+  products?: ResourceMap<Product>,
+};
+export const FulfillmentSolutionQueryAggregationTemplate = {} as FulfillmentSolutionQueryAggregationTemplate;
 export type AggregatedFulfillmentListResponse = Aggregation<
   FulfillmentListResponse,
   FulfillmentAggregationTemplate
@@ -147,18 +143,6 @@ export const StateRank = Object.values(FulfillmentState).reduce((a, b, i) => {
   return a;
 }, {} as { [key: string]: number });
 
-/*
-export interface AggregatedFulfillment extends FulfillmentResponse
-{
-  products: FulfillmentProductResponse[];
-  couriers: CourierResponse[];
-  credentials: CredentialResponse[];
-  sender_country: CountryResponse;
-  recipient_country: CountryResponse;
-  options: any;
-}
-  */
-
 export interface FlatAggregatedFulfillment extends FulfillmentResponse
 {
   product?: FulfillmentProduct;
@@ -169,31 +153,32 @@ export interface FlatAggregatedFulfillment extends FulfillmentResponse
   parcel?: Parcel;
   label?: Label;
   tracking?: Tracking;
+  fulfillment_state?: FulfillmentState;
   options?: Any;
-}
+};
 
-export declare const DefaultUrns: {
-  readonly instanceType: 'urn:restorecommerce:acs:model:order:Order';
-  readonly ownerIndicatoryEntity: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity';
-  readonly ownerInstance: 'urn:restorecommerce:acs:names:ownerInstance';
-  readonly organization: 'urn:restorecommerce:acs:model:organization.Organization';
-  readonly user: 'urn:restorecommerce:acs:model:user.User';
+export const DefaultUrns = {
+  instanceType: 'urn:restorecommerce:acs:model:order:Order',
+  ownerIndicatoryEntity: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
+  ownerInstance: 'urn:restorecommerce:acs:names:ownerInstance',
+  organization: 'urn:restorecommerce:acs:model:organization.Organization',
+  user: 'urn:restorecommerce:acs:model:user.User',
 
-  readonly shop_fulfillment_send_confirm_enabled:  'urn:restorecommerce:shop:setting:fulfillment:submit:notification:enabled';       // Sends notification on order submit if enabled (default: true)
-  readonly shop_fulfillment_send_cancel_enabled:   'urn:restorecommerce:shop:setting:fulfillment:cancel:notification:enabled';       // Sends notification on order cancel if enabled (default: true)
-  readonly shop_fulfillment_send_withdrawn_enabled:'urn:restorecommerce:shop:setting:fulfillment:withdrawn:notification:enabled'; // Sends notification on order withdrawn if enabled (default: true)
+  shop_fulfillment_send_confirm_enabled:  'urn:restorecommerce:shop:setting:fulfillment:submit:notification:enabled',       // Sends notification on order submit if enabled (default: true)
+  shop_fulfillment_send_cancel_enabled:   'urn:restorecommerce:shop:setting:fulfillment:cancel:notification:enabled',       // Sends notification on order cancel if enabled (default: true)
+  shop_fulfillment_send_withdrawn_enabled:'urn:restorecommerce:shop:setting:fulfillment:withdrawn:notification:enabled', // Sends notification on order withdrawn if enabled (default: true)
 
-  readonly shop_invoice_create_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:create:enabled';     // Creates invoice on order submit if enabled (default: true)
-  readonly shop_invoice_render_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:render:enabled';     // Renders invoice on order submit if enabled, overrides create! (default: true)
-  readonly shop_invoice_send_enabled:        'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:send:enabled';       // Sends invoice on order submit if enabled, overrides render! (default: true)
-  readonly shop_email_render_options:        'urn:restorecommerce:shop:setting:fulfillment:email:render:options';              // [json]: override email rendering options - default: cfg -> null
-  readonly shop_email_render_strategy:       'urn:restorecommerce:shop:setting:fulfillment:email:render:strategy';             // [enum]: override email rendering strategy - default: cfg -> INLINE
-  readonly shop_email_provider:              'urn:restorecommerce:shop:setting:fulfillment:email:provider';                    // [string]: override to supported email provider - default: cfg -> null
-  readonly shop_email_cc:                    'urn:restorecommerce:shop:setting:fulfillment:email:cc';                          // [string]: add recipients in CC (comma separated) - default: cfg -> null
-  readonly shop_email_bcc:                   'urn:restorecommerce:shop:setting:fulfillment:email:bcc';                         // [string]: add recipients in BC (comma separated) - default: cfg -> null
-  readonly customer_locales:                 'urn:restorecommerce:customer:setting:locales';                             // [string]: list of locales in descending preference (comma separated) - default: cfg -> 'en'
-  readonly customer_email_cc:                'urn:restorecommerce:customer:setting:fulfillment:email:cc';                      // [string]: add recipients in CC (comma separated) - default: cfg -> null
-  readonly customer_email_bcc:               'urn:restorecommerce:customer:setting:fulfillment:email:bcc';                     // [string]: add recipients in BC (comma separated) - default: cfg -> null
+  shop_invoice_create_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:create:enabled',     // Creates invoice on order submit if enabled (default: true)
+  shop_invoice_render_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:render:enabled',     // Renders invoice on order submit if enabled, overrides create! (default: true)
+  shop_invoice_send_enabled:        'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:send:enabled',       // Sends invoice on order submit if enabled, overrides render! (default: true)
+  shop_email_render_options:        'urn:restorecommerce:shop:setting:fulfillment:email:render:options',              // [json]: override email rendering options - default: cfg -> null
+  shop_email_render_strategy:       'urn:restorecommerce:shop:setting:fulfillment:email:render:strategy',             // [enum]: override email rendering strategy - default: cfg -> INLINE
+  shop_email_provider:              'urn:restorecommerce:shop:setting:fulfillment:email:provider',                    // [string]: override to supported email provider - default: cfg -> null
+  shop_email_cc:                    'urn:restorecommerce:shop:setting:fulfillment:email:cc',                          // [string]: add recipients in CC (comma separated) - default: cfg -> null
+  shop_email_bcc:                   'urn:restorecommerce:shop:setting:fulfillment:email:bcc',                         // [string]: add recipients in BC (comma separated) - default: cfg -> null
+  customer_locales:                 'urn:restorecommerce:customer:setting:locales',                             // [string]: list of locales in descending preference (comma separated) - default: cfg -> 'en'
+  customer_email_cc:                'urn:restorecommerce:customer:setting:fulfillment:email:cc',                      // [string]: add recipients in CC (comma separated) - default: cfg -> null
+  customer_email_bcc:               'urn:restorecommerce:customer:setting:fulfillment:email:bcc',                     // [string]: add recipients in BC (comma separated) - default: cfg -> null
 };
 export type DefaultUrns = typeof DefaultUrns;
 
@@ -379,6 +364,61 @@ export const calcAmount = (
     net: net.decimalPlaces(currency?.precision ?? 2).toNumber(),
     vats,
   };
+};
+
+export const calcTotalAmount = (
+  amounts: Amount[],
+  currency_map?: ResourceMap<Currency>, 
+): Amount[] => {
+  const amount_map = amounts?.reduce(
+    (a, b) => {
+      const c = a[b.currency_id];
+      if (c) {
+        c.push(b);
+      }
+      else {
+        a[b.currency_id] = [b];
+      }
+      return a;
+    },
+    {} as Record<string, Amount[]>
+  ) ?? {};
+
+  const total_amounts = Object.entries(amount_map).map(
+    ([currency_id, amounts]) => {
+      const precision = currency_map.get(currency_id, null)?.precision ?? 2;
+      return {
+        currency_id,
+        gross: amounts.reduce(
+          (a, b) => a.plus(b.gross), new BigNumber(0)
+        ).decimalPlaces(precision).toNumber(),
+        net: amounts.reduce(
+          (a, b) => a.plus(b.net), new BigNumber(0)
+        ).decimalPlaces(precision).toNumber(),
+        vats: Object.entries(amounts.flatMap(
+          a => a.vats
+        ).reduce(
+          (a, b) => {
+            const c = a[b.tax_id];
+            if (c) {
+              c.push(b);
+            }
+            else {
+              a[b.tax_id] = [b];
+            }
+            return a;
+          },
+          {} as Record<string, VAT[]>
+        )).map(([tax_id, v]) => ({
+          tax_id,
+          vat: v.reduce(
+            (a, b) => a.plus(b.vat), new BigNumber(0)
+          ).decimalPlaces(precision).toNumber()
+        })),
+      } as Amount
+    }
+  );
+  return total_amounts;
 };
 
 export const resolveShopAddress = (
@@ -615,6 +655,7 @@ export const flatMapAggregatedFulfillmentListResponse = (aggregation: Aggregated
       const tracking = payload.trackings?.find(
         tracking => label.shipment_number === tracking.shipment_number
       );
+      const fulfillment_state = label?.state ?? payload?.fulfillment_state;
       return {
         payload,
         sender_country: aggregation.countries.get(payload.packaging.sender.address?.country_id),
@@ -625,6 +666,7 @@ export const flatMapAggregatedFulfillmentListResponse = (aggregation: Aggregated
         parcel,
         label,
         tracking,
+        fulfillment_state,
         status: item.status,
       };
     });
@@ -643,7 +685,7 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
       c.payload.fulfillment_state = StateRank[b.fulfillment_state] < StateRank[c.payload.fulfillment_state]
         ? b.fulfillment_state
         : c.payload.fulfillment_state;
-      c.status = c.status.code > a.status.code ? c.status : a.status;
+      c.status = c.status?.code > a.status?.code ? c.status : a.status;
       c.payload.total_amounts = a.payload.total_amounts?.reduce(
         (a, b) => {
           const c = a.find(c => c.currency_id === b.currency_id);

@@ -7,10 +7,12 @@ import {
   Effect
 } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/rule';
 import {
-  UserListResponse,
   UserResponse,
   UserType
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user';
+import {
+  UserListResponse,
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/user.js';
 import { 
   ProductListResponse,
   ProductResponse
@@ -70,10 +72,18 @@ import {
   HierarchicalScope
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth';
 import {
+  CurrencyListResponse
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/currency';
+import {
+  Subject
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/auth';
+import {
+  Status
+} from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/status';
+import {
   getRedisInstance,
   logger
 } from './utils';
-import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated/io/restorecommerce/auth';
 
 type Address = ShippingAddress & BillingAddress;
 
@@ -142,7 +152,27 @@ const subjects: { [key: string]: Subject } = {
 
 const operationStatus: OperationStatus = {
   code: 200,
-  message: 'OK',
+  message: 'MOCKED',
+};
+
+const status: Status = {
+  code: 200,
+  message: 'MOCKED',
+};
+
+const currencies: CurrencyListResponse = {
+  items: [{
+    payload: {
+      id: 'euro',
+      countryIds: ['germany'],
+      name: 'Euro',
+      precision: 2,
+      symbol: '€',
+      meta: mainMeta,
+    },
+    status,
+  }],
+  operationStatus,
 };
 
 const residentialAddresses: Address[] = [{
@@ -223,7 +253,7 @@ const products: ProductResponse[] = [
     payload: {
       id: 'physicalProduct_1',
       active: true,
-      shopId: 'shop_1',
+      shopIds: ['shop_1'],
       tags: [],
       associations: [],
       product: {
@@ -871,7 +901,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
         },
         labels: [
           {
-            parcelId: '1',
+            parcelId: '2',
             shipmentNumber: '00340434161094015902',
             state: FulfillmentState.SUBMITTED,
             status: {
@@ -881,8 +911,6 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
             }
           }
         ],
-        trackings: [],
-        totalAmounts: [],
         fulfillmentState: FulfillmentState.PENDING,
         meta: mainMeta,
       },
@@ -932,7 +960,27 @@ export const samples = {
   },
 };
 
-const users: { [key: string]: UserResponse } = {
+const users: Record<string, UserResponse> = {
+  root_tech_user: {
+    payload: {
+      id: 'root_tech_user',
+      role_associations: [
+        {
+          id: 'root_tech_user-1-super-administrator-r-id',
+          role: 'superadministrator-r-id',
+          attributes: [],
+        },
+      ],
+      active: true,
+      user_type: UserType.TECHNICAL_USER,
+      tokens: [
+        {
+          token: '1a4c6789-6435-487a-9308-64d06384acf9',
+        }
+      ],
+    },
+    status,
+  },
   superadmin: {
     payload: {
       id: 'superadmin',
@@ -960,11 +1008,7 @@ const users: { [key: string]: UserResponse } = {
       ],
       meta: mainMeta,
     },
-    status: {
-      id: 'superadmin',
-      code: 200,
-      message: 'OK',
-    }
+    status,
   },
   admin: {
     payload: {
@@ -1004,12 +1048,28 @@ const users: { [key: string]: UserResponse } = {
       ],
       meta: mainMeta,
     },
+    status,
+  },
+  user_1: {
+    payload: {
+      id: 'user_1'
+    },
     status: {
-      id: 'admin',
+      id: 'user_1',
       code: 200,
       message: 'OK',
     }
   },
+  user_2: {
+    payload: {
+      id: 'user_2'
+    },
+    status: {
+      id: 'user_2',
+      code: 200,
+      message: 'OK',
+    }
+  }
 };
 
 const hierarchicalScopes: { [key: string]: HierarchicalScope[] } = {
@@ -1116,7 +1176,11 @@ export const rules = {
     read: (
       call: any,
       callback: (error: any, response: UserListResponse) => void,
-    ) => callback(null, {}),
+    ) => callback(null, {
+      items: Object.values(users),
+      totalCount: Object.values(users).length,
+      operationStatus,
+    }),
     findByToken: (
       call: any,
       callback: (error: any, response: UserResponse) => void,
@@ -1273,5 +1337,11 @@ export const rules = {
       totalCount: 0,
       operationStatus
     }),
+  },
+  currency: {
+    read: (
+      call: any,
+      callback: (error: any, response: CurrencyListResponse) => void,
+    )=> callback(null, currencies),
   },
 };
