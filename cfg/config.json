@@ -100,7 +100,7 @@
     "notification_req": {
       "fullName": "io.restorecommerce.notification_req.NotificationReqService",
       "address": "localhost:50052",
-      "disabled": true
+      "disabled": false
     },
     "template": {
       "fullName": "io.restorecommerce.template.TemplateService",
@@ -210,9 +210,6 @@
       "resetResponse": {
         "messageObject": "io.restorecommerce.commandinterface.CommandResponse"
       },
-      "renderRequest": {
-        "messageObject": "io.restorecommerce.rendering.RenderRequest"
-      },
       "flushCacheCommand": {
         "messageObject": "io.restorecommerce.commandinterface.CommandRequest"
       },
@@ -228,6 +225,16 @@
       },
       "jobFailed": {
         "messageObject": "io.restorecommerce.job.JobFailed"
+      },
+
+      "renderRequest": {
+        "messageObject": "io.restorecommerce.rendering.RenderRequest"
+      },
+      "renderResponse": {
+        "messageObject": "io.restorecommerce.rendering.RenderResponse"
+      },
+      "sendEmail": {
+        "messageObject": "io.restorecommerce.notification_req.NotificationReq"
       },
 
       "topics": {
@@ -246,6 +253,12 @@
           "topic": "io.restorecommerce.jobs",
           "events": {
             "queuedJob": "jobService.handleQueuedJob"
+          }
+        },
+        "rendering": {
+          "topic": "io.restorecommerce.rendering",
+          "events": {
+            "renderResponse": "fulfillmentService.handleRenderResponse"
           }
         },
         "fulfillment_courier.resource": {
@@ -386,32 +399,86 @@
       "message": "Action not allowed on this resource"
     }
   },
-  "stubs": {
-    "DHLSoap": {
-      "defaults": {
-        "ordering": {
-          "wsdl": "wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
-          "version": [3, 4, 0],
-          "endpoint": "https://cig.dhl.de/services/sandbox/soap",
-          "username": null,
-          "password": null,
-          "access_token": null,
-          "wsdl_header": {
-            "Authentification": {
-              "user": "user-valid",
-              "signature": "SandboxPasswort2023!"
+  "defaults": {
+    "Setting": {
+      "shop_fulfillment_evaluate_enabled": true,
+      "shop_fulfillment_create_enabled": true,
+      "shop_invoice_create_enabled": true,
+      "shop_invoice_render_enabled": true,
+      "shop_invoice_send_enabled": false,
+      "shop_order_error_cleanup_enabled": true
+    },
+    "Couriers": {
+      "DHLSoap": {
+        "api": "DHLSoap",
+        "stub_type": "DHLSoap",
+        "configuration": {
+          "value": {
+            "ordering": {
+              "wsdl": "wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
+              "version": [3, 4, 0],
+              "endpoint": "https://cig.dhl.de/services/sandbox/soap",
+              "username": null,
+              "password": null,
+              "access_token": null,
+              "wsdl_header": {
+                "Authentification": {
+                  "user": "user-valid",
+                  "signature": "SandboxPasswort2023!"
+                }
+              }
+            },
+            "tracking": {
+              "version": [3, 4, 0],
+              "appname": "zt12345",
+              "endpoint": "https://cig.dhl.de/services/sandbox/rest/sendungsverfolgung",
+              "username": null,
+              "password": null,
+              "secret": "geheim"
             }
           }
-        },
-        "tracking": {
-          "version": [3, 4, 0],
-          "appname": "zt12345",
-          "endpoint": "https://cig.dhl.de/services/sandbox/rest/sendungsverfolgung",
-          "username": null,
-          "password": null,
-          "secret": "geheim"
         }
       }
-    }
+    },
+    "Templates": [
+      {
+        "body": {
+          "url": "file://./templates/fulfillment_confirmation_subject.hbs"
+        },
+        "layout": {
+          "url": "file://./templates/fulfillment_layout.hbs"
+        },
+        "localization": [
+          {
+            "local_codes": ["en"],
+            "l10n": {
+              "url": "file://./templates/l10n.csv",
+              "content_type": "text/csv"
+            }
+          }
+        ],
+        "ordinal": 0,
+        "use_case": "FULFILLMENT_CONFIRMATION_EMAIL"
+      },
+      {
+        "body": {
+          "url": "file://./templates/fulfillment_confirmation_body.hbs"
+        },
+        "layout": {
+          "url": "file://./templates/fulfillment_layout.hbs"
+        },
+        "localization": [
+          {
+            "local_codes": ["en"],
+            "l10n": {
+              "url": "file://./templates/l10n.csv",
+              "content_type": "text/csv"
+            }
+          }
+        ],
+        "ordinal": 1,
+        "use_case": "FULFILLMENT_CONFIRMATION_EMAIL"
+      }
+    ]
   }
 }

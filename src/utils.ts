@@ -315,7 +315,7 @@ export const marshallProtobufAny = (
 });
 
 export const unmarshallProtobufAny = (payload: Any): any => JSON.parse(
-  payload.value!.toString()
+  payload?.value?.toString() ?? null
 );
 
 export const filterTax = (

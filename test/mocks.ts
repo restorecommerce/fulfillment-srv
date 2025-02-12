@@ -87,9 +87,8 @@ import {
 
 type Address = ShippingAddress & BillingAddress;
 
-const mainMeta = {
+const meta = {
   modifiedBy: 'SYSTEM',
-  acls: [],
   created: new Date(),
   modified: new Date(),
   owners: [
@@ -100,39 +99,12 @@ const mainMeta = {
         {
           id: 'urn:restorecommerce:acs:names:ownerInstance',
           value: 'main',
-          attributes: []
         }
       ]
     },
     {
       id: 'urn:restorecommerce:acs:names:ownerInstance',
       value: 'main',
-      attributes: []
-    }
-  ]
-};
-
-const subMeta = {
-  modifiedBy: 'SYSTEM',
-  acls: [],
-  created: new Date(),
-  modified: new Date(),
-  owners: [
-    {
-      id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-      value: 'urn:restorecommerce:acs:model:organization.Organization',
-      attributes: [
-        {
-          id: 'urn:restorecommerce:acs:names:ownerInstance',
-          value: 'sub',
-          attributes: []
-        }
-      ]
-    },
-    {
-      id: 'urn:restorecommerce:acs:names:ownerInstance',
-      value: 'sub',
-      attributes: []
     }
   ]
 };
@@ -168,7 +140,7 @@ const currencies: CurrencyListResponse = {
       name: 'Euro',
       precision: 2,
       symbol: '€',
-      meta: mainMeta,
+      meta,
     },
     status,
   }],
@@ -421,27 +393,11 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
         logo: 'DHL.png',
         website: 'https://www.dhl.com/',
         stubType: 'DHLSoap',
+        api: 'DHLSoap',
         shopIds: [
           'shop_1'
         ],
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [
-            {
-              id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-              value: 'urn:restorecommerce:acs:model:user.User',
-              attributes: []
-            },
-            {
-              id: 'urn:restorecommerce:acs:names:ownerInstance',
-              value: 'UserID',
-              attributes: []
-            }
-          ]
-        }
+        meta,
       },
       {
         id: 'dhl_2',
@@ -453,24 +409,7 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
         shopIds: [
           'shop_1'
         ],
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [
-            {
-              id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-              value: 'urn:restorecommerce:acs:model:user.User',
-              attributes: []
-            },
-            {
-              id: 'urn:restorecommerce:acs:names:ownerInstance',
-              value: 'UserID',
-              attributes: []
-            }
-          ]
-        }
+        meta,
       }
     ],
     totalCount: 2,
@@ -531,22 +470,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
           },
           maxWeight: 2000,
         }],
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [{
-            id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-            value: 'urn:restorecommerce:acs:model:user.User',
-            attributes: [],
-          },
-          {
-            id: 'urn:restorecommerce:acs:names:ownerInstance',
-            value: 'UserID',
-            attributes: [],
-          }]
-        }
+        meta,
       },{
         id: 'dhl-1-europe',
         name: 'DHL Europe',
@@ -597,22 +521,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
           },
           maxWeight: 2000,
         }],
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [{
-            id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-            value: 'urn:restorecommerce:acs:model:user.User',
-            attributes: [],
-          },
-          {
-            id: 'urn:restorecommerce:acs:names:ownerInstance',
-            value: 'UserID',
-            attributes: [],
-          }]
-        }
+        meta,
       },{
         id: 'dhl-2-national',
         name: 'DHL National (Germany)',
@@ -663,22 +572,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
           },
           maxWeight: 2000,
         }],
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [{
-            id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-            value: 'urn:restorecommerce:acs:model:user.User',
-            attributes: [],
-          },
-          {
-            id: 'urn:restorecommerce:acs:names:ownerInstance',
-            value: 'UserID',
-            attributes: [],
-          }]
-        }
+        meta,
       },{
         id: 'dhl-2-europe',
         name: 'DHL Europe',
@@ -729,22 +623,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
           },
           maxWeight: 2000,
         }],
-        meta: {
-          created: new Date(),
-          modified: new Date(),
-          modifiedBy: 'SYSTEM',
-          acls: [],
-          owners: [{
-            id: 'urn:restorecommerce:acs:names:ownerIndicatoryEntity',
-            value: 'urn:restorecommerce:acs:model:user.User',
-            attributes: [],
-          },
-          {
-            id: 'urn:restorecommerce:acs:names:ownerInstance',
-            value: 'UserID',
-            attributes: [],
-          }]
-        }
+        meta,
       }
     ],
     totalCount: 4,
@@ -832,7 +711,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
         trackings: [],
         totalAmounts: [],
         fulfillmentState: FulfillmentState.PENDING,
-        meta: mainMeta,
+        meta,
       },
       {
         id: 'validFulfillment_2',
@@ -912,7 +791,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
           }
         ],
         fulfillmentState: FulfillmentState.PENDING,
-        meta: mainMeta,
+        meta,
       },
     ],
     totalCount: 2,
@@ -1006,7 +885,7 @@ const users: Record<string, UserResponse> = {
           token: 'superadmin',
         }
       ],
-      meta: mainMeta,
+      meta,
     },
     status,
   },
@@ -1046,7 +925,7 @@ const users: Record<string, UserResponse> = {
           token: 'admin',
         }
       ],
-      meta: mainMeta,
+      meta,
     },
     status,
   },

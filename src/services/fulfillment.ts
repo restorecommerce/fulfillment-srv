@@ -217,20 +217,23 @@ export class FulfillmentService
     protected readonly aggregator = new ResourceAggregator(cfg, logger, client_register),
   ) {
     super(
-      cfg.get('database:main:entities:0') ?? 'fulfillment',
+      cfg?.get('database:main:entities:0') ?? 'fulfillment',
       fulfillmentTopic,
       db,
       cfg,
       logger,
-      cfg.get('events:enableEvents')?.toString() === 'true',
-      cfg.get('database:main:collections:0') ?? 'fulfillments',
+      cfg?.get('events:enableEvents')?.toString() === 'true',
+      cfg?.get('database:main:collections:0') ?? 'fulfillments',
     );
-    this.isEventsEnabled = cfg.get('events:enableEvents')?.toString() === 'true';
-    const notification_cfg = cfg.get('client:notification_req');
+    this.isEventsEnabled = cfg?.get('events:enableEvents')?.toString() === 'true';
+    const notification_cfg = cfg?.get('client:notification_req');
     if (notification_cfg.disabled?.toString() === 'true') {
       logger?.info('Notification-srv disabled!');
     }
     else if (notification_cfg) {
+      if (!this.renderingTopic) {
+        logger.error('Rendering Topic not defined!');
+      } 
       this.notification_service = createClient(
         {
           ...notification_cfg,
@@ -246,34 +249,34 @@ export class FulfillmentService
 
     this.urns = {
       ...this.urns,
-      ...cfg.get('urns'),
-      ...cfg.get('authentication:urns'),
+      ...cfg?.get('urns'),
+      ...cfg?.get('authentication:urns'),
     };
     this.status_codes = {
       ...this.status_codes,
-      ...cfg.get('statusCodes'),
+      ...cfg?.get('statusCodes'),
     };
 
     this.operation_status_codes = {
       ...this.operation_status_codes,
-      ...cfg.get('operationStatusCodes'),
+      ...cfg?.get('operationStatusCodes'),
     };
 
-    this.emitters = cfg.get('events:emitters');
+    this.emitters = cfg?.get('events:emitters');
     this.contact_point_type_ids = {
       ...this.contact_point_type_ids,
-      ...cfg.get('contactPointTypeIds')
+      ...cfg?.get('contactPointTypeIds')
     };
     this.default_setting = {
       ...DefaultSetting,
-      ...cfg.get('default:Setting'),
+      ...cfg?.get('defaults:Setting'),
     };
 
     this.default_setting.customer_locales.filter(
       locale => locale === 'fr'
     )
 
-    this.tech_user = cfg.get('tech_user');
+    this.tech_user = cfg?.get('tech_user');
   }
 
   protected async aggregateProductBundles(
@@ -365,7 +368,7 @@ export class FulfillmentService
       return this.default_templates;
     }
 
-    this.default_templates.push(...(this.cfg.get('default:Templates') ?? []));
+    this.default_templates.push(...(this.cfg?.get('defaults:Templates') ?? []));
     const ids = this.default_templates.map(t => t.id);
     if (ids.length) {
       await this.aggregator.getByIds(
@@ -1414,7 +1417,7 @@ export class FulfillmentService
   ) {
     try {
       const [entity] = response.id.split('/');
-      if (entity !== 'order') return;
+      if (entity !== 'fulfillment') return;
       const content = response.responses.map(
         r => JSON.parse(r.value.toString())
       );

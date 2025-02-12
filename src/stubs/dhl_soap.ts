@@ -20,6 +20,7 @@ import {
   FlatAggregatedFulfillment,
   throwOperationStatusCode,
   unique,
+  unmarshallProtobufAny,
 } from '../utils.js';
 import { Stub } from '../stub.js';
 import {
@@ -309,7 +310,8 @@ const DHLShipmentCancelResponse2AggregatedFulfillment = (
 
 export class DHLSoap extends Stub {
   public readonly version: number[];
-  protected readonly stub_defaults: any;
+  protected readonly courier_defaults: Courier;
+  protected readonly configuration_defaults: any;
   protected readonly urns: KnownUrns;
   private _stub_config: Config;
   private _soap_client: soap.Client;
@@ -388,8 +390,16 @@ export class DHLSoap extends Stub {
 
   constructor(courier?: Courier, cfg?: ServiceConfig, logger?: Logger) {
     super(courier, cfg, logger);
-    this.stub_defaults = this.cfg?.get(`stubs:${this.type}:${courier?.id}`) ?? this.cfg?.get(`stubs:${this.type}:defaults`);
-    this.version = this.stub_defaults?.ordering?.version ?? [3, 4, 0];
+    this.courier_defaults = Object.values(this.cfg?.get('defaults:Couriers') as Courier[])?.find(
+      c => c.id === courier.id
+    ) ?? Object.values(this.cfg?.get('defaults:Couriers') as Courier[])?.find(
+      c => c.api === courier?.api
+        || c.stub_type === courier?.stub_type
+        || c.api === this.type
+        || c.stub_type === this.type
+    );
+    this.configuration_defaults = this.courier_defaults?.configuration?.value;
+    this.version = this.configuration_defaults?.ordering?.version ?? [3, 4, 0];
 
     this.status_codes = {
       ...this.status_codes,
@@ -753,15 +763,15 @@ export class DHLSoap extends Stub {
     try{
       const config = this._stub_config = {
         ordering: {
-          ...this.stub_defaults?.ordering,
-          ...JSON.parse(this.courier?.configuration?.value?.toString() ?? null)?.ordering,
+          ...this.configuration_defaults?.ordering,
+          ...unmarshallProtobufAny(this.courier?.configuration)?.ordering,
           ...credential
               ? {
                   username: credential?.user,
                   password: credential?.pass,
                 } 
               : {},
-          ...JSON.parse(credential?.credentials?.value?.toString() ?? null)?.ordering,
+          ...unmarshallProtobufAny(credential?.credentials)?.ordering,
         }
       };
       
@@ -791,7 +801,7 @@ export class DHLSoap extends Stub {
     }
     catch (err) {
       this.logger?.error(`${this.type}:\t Failed to create Client!`);
-      this.logger?.error(`${this.type}:\t ${JSON.stringify(err, null, 2)}`);
+      this.logger?.error(`${this.type}:\t`, err);
       throw err;
     }
     return this._soap_client;
@@ -845,18 +855,18 @@ export class DHLSoap extends Stub {
       try {
         const courier = item.courier;
         const credential = item.credential;
-        const options = JSON.parse(item?.options?.value?.toString() ?? null);
+        const options = unmarshallProtobufAny(item?.options);
         const config: Config = {
           tracking: {
-            ...this.stub_defaults?.tracking,
-            ...JSON.parse(courier?.configuration?.value?.toString() ?? null)?.tracking,
+            ...this.configuration_defaults?.tracking,
+            ...unmarshallProtobufAny(courier?.configuration)?.tracking,
             ...credential
               ? {
                   username: credential?.user,
                   password: credential?.pass,
                 } 
               : {},
-            ...JSON.parse(credential?.credentials?.value?.toString() ?? null)?.tracking,
+            ...unmarshallProtobufAny(credential?.credentials)?.tracking,
           }
         };
 
