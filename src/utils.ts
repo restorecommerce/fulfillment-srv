@@ -366,7 +366,7 @@ export const calcAmount = (
   };
 };
 
-export const calcTotalAmount = (
+export const calcTotalAmounts = (
   amounts: Amount[],
   currency_map?: ResourceMap<Currency>, 
 ): Amount[] => {
@@ -673,11 +673,14 @@ export const flatMapAggregatedFulfillmentListResponse = (aggregation: Aggregated
   });
 };
 
-export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): FulfillmentResponse[] => {
-  const merged_fulfillments: { [uuid: string]: FulfillmentResponse } = {};
+export const mergeFulfillments = (
+  fulfillments: FlatAggregatedFulfillment[],
+  currency_map: ResourceMap<Currency>,
+): FulfillmentResponse[] => {
+  const fulfillment_map: Record<string, FulfillmentResponse> = {};
   fulfillments.forEach(a => {
     const b = a.payload;
-    const c = merged_fulfillments[a?.payload.id];
+    const c = fulfillment_map[a?.payload.id];
     if (b && c) {
       if (a.parcel) c.payload.packaging.parcels.push(a.parcel);
       if (a.label) c.payload.labels.push(a.label);
@@ -686,40 +689,22 @@ export const mergeFulfillments = (fulfillments: FlatAggregatedFulfillment[]): Fu
         ? b.fulfillment_state
         : c.payload.fulfillment_state;
       c.status = c.status?.code > a.status?.code ? c.status : a.status;
-      c.payload.total_amounts = a.payload.total_amounts?.reduce(
-        (a, b) => {
-          const c = a.find(c => c.currency_id === b.currency_id);
-          if (c) {
-            c.gross += b.gross;
-            c.net += b.net;
-            c.vats = b.vats.reduce(
-              (a, b) => {
-                const c = a.find(c => c.tax_id === b.tax_id);
-                if (c) {
-                  c.vat += b.vat;
-                }
-                else {
-                  a.push({...b});
-                }
-                return a;
-              },
-              c.vats,
-            );
-          }
-          else {
-            a.push({...b});
-          }
-          return a;
-        },
-        c.payload.total_amounts ?? [],
-      ) ?? [];
+      c.payload.total_amounts.push(...(b.total_amounts ?? []));
     }
     else {
       b.packaging.parcels = a.parcel ? [a.parcel] : [];
       b.labels = a.label ? [a.label] : [];
       b.trackings = a.tracking ? [a.tracking] : [];
-      merged_fulfillments[a.payload.id] = a;
+      b.total_amounts ??= [];
+      fulfillment_map[b.id] = a;
     }
   });
-  return Object.values(merged_fulfillments);
+  const merged_fulfillments = Object.values(fulfillment_map);
+  merged_fulfillments.forEach(f => {
+    f.payload.total_amounts = calcTotalAmounts(
+      f.payload.total_amounts,
+      currency_map,
+    )
+  });
+  return merged_fulfillments;
 };

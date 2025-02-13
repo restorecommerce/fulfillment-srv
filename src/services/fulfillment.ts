@@ -98,7 +98,7 @@ import {
   calcAmount,
   parseSetting,
   marshallProtobufAny,
-  calcTotalAmount,
+  calcTotalAmounts,
   packRenderData,
 } from './../utils.js';
 import { FulfillmentCourierService } from './fulfillment_courier.js';
@@ -683,7 +683,7 @@ export class FulfillmentService
           }
         ));
 
-        item.payload.total_amounts = calcTotalAmount(
+        item.payload.total_amounts = calcTotalAmounts(
           item.payload.packaging?.parcels?.map(
             p => p.amount
           ),
@@ -764,10 +764,13 @@ export class FulfillmentService
       const flat_fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
       const invalid_fulfillments = flat_fulfillments.filter(f => f.status?.code !== 200);
       const evaluated_fulfillments = await Stub.evaluate(flat_fulfillments.filter(f => f.status?.code === 200));
-      const items = mergeFulfillments([
+      const items = mergeFulfillments(
+        [
         ...evaluated_fulfillments,
         ...invalid_fulfillments,
-      ]);
+        ],
+        aggregation.currencies
+      );
 
       return {
         items,
@@ -867,7 +870,10 @@ export class FulfillmentService
       }
       this.logger?.debug('Submitting:', valid);
       const submitted = await Stub.submit(valid);
-      const merged = mergeFulfillments([...submitted, ...skipped]);
+      const merged = mergeFulfillments(
+        [...submitted, ...skipped],
+        aggregation.currencies,
+      );
       const items = merged.map(
         item => item.payload
       );
@@ -962,15 +968,15 @@ export class FulfillmentService
     context?: CallContext
   ): Promise<FulfillmentListResponse> {
     try {
-      const request_map: { [id: string]: FulfillmentId } = request.items.reduce(
+      const request_map: Record<string, FulfillmentId>= request.items.reduce(
         (a, b) => {
           a[b.id] = b;
           return a;
         },
-        {} as { [id: string]: FulfillmentId },
+        {} as Record<string, FulfillmentId>,
       );
 
-      const response_map: { [id: string]: FulfillmentResponse } = request.items.reduce(
+      const response_map: Record<string, FulfillmentResponse> = request.items.reduce(
         (a, b) => {
           a[b.id] = {
             payload: null,
@@ -982,10 +988,10 @@ export class FulfillmentService
           };
           return a;
         },
-        {} as { [id: string]: FulfillmentResponse },
+        {} as Record<string, FulfillmentResponse>,
       );
 
-      await this.get(
+      const aggregation = await this.get(
         request.items.map(item => item.id),
         request.subject,
         context,
@@ -1002,48 +1008,50 @@ export class FulfillmentService
           request.subject,
           context,
         ),
-      ).then(
-        aggregated => flatMapAggregatedFulfillmentListResponse(
-          aggregated
-        ).filter(
-          f => {
-            response_map[f.payload?.id ?? f.status?.id] = f;
-            if (f.status?.code !== 200) return false;
-            const request = request_map[f.payload?.id];
-            if (
-              request.shipment_numbers && !request.shipment_numbers.includes(f.label.shipment_number)
-            ) {
-              return false;
-            }
+      );
+      
+      const flat_fulfillments = flatMapAggregatedFulfillmentListResponse(
+        aggregation
+      ).filter(
+        f => {
+          response_map[f.payload?.id ?? f.status?.id] = f;
+          if (f.status?.code !== 200) return false;
+          const request = request_map[f.payload?.id];
+          if (
+            request.shipment_numbers && !request.shipment_numbers.includes(f.label.shipment_number)
+          ) {
+            return false;
+          }
 
-            if (!f.label) {
-              f.status = createStatusCode(
+          if (!f.label) {
+            f.status = createStatusCode(
+              this.name,
+              f.payload?.id,
+              this.status_codes.NO_LABEL
+            );
+            return false;
+          }
+
+          switch (f.label.state) {
+            case FulfillmentState.SUBMITTED:
+            case FulfillmentState.IN_TRANSIT:
+              return true;
+            default:
+              f.label.status = createStatusCode(
                 this.name,
                 f.payload?.id,
-                this.status_codes.NO_LABEL
+                this.status_codes.NOT_SUBMITTED
               );
+              f.status = f.label.status;
               return false;
-            }
-
-            switch (f.label.state) {
-              case FulfillmentState.SUBMITTED:
-              case FulfillmentState.IN_TRANSIT:
-                return true;
-              default:
-                f.label.status = createStatusCode(
-                  this.name,
-                  f.payload?.id,
-                  this.status_codes.NOT_SUBMITTED
-                );
-                f.status = f.label.status;
-                return false;
-            }
           }
+        }
+      );
+      await Stub.track(flat_fulfillments).then(
+        tracked_fulfillments => mergeFulfillments(
+          tracked_fulfillments,
+          aggregation.currencies,
         )
-      ).then(
-        flat_fulfillments => Stub.track(flat_fulfillments)
-      ).then(
-        tracked_fulfillments => mergeFulfillments(tracked_fulfillments)
       ).then(
         merged_fulfillments => merged_fulfillments.filter(
           item => {
@@ -1082,7 +1090,6 @@ export class FulfillmentService
       );
 
       const items = Object.values(response_map);
-
       return {
         items,
         total_count: items.length,
@@ -1135,14 +1142,14 @@ export class FulfillmentService
         context
       );
 
-      const agg_fulfillments = await this.aggregate(
+      const aggregation = await this.aggregate(
         fulfillments,
         request.subject,
         context
       );
 
       const flat_fulfillments = flatMapAggregatedFulfillmentListResponse(
-        agg_fulfillments,
+        aggregation,
       ).map(
         f => {
           const id = f.status?.id;
@@ -1177,7 +1184,7 @@ export class FulfillmentService
         f => f.status?.code !== 200
       );
 
-      const response = await Stub.track(flat_fulfillments.filter(
+      const updates = await Stub.cancel(flat_fulfillments.filter(
         f => {
           const shipment_numbers = request_map[f.payload?.id];
           return f.status?.code === 200 &&
@@ -1186,25 +1193,26 @@ export class FulfillmentService
               s => s === f.payload?.labels[0]?.shipment_number
             );
         }
-      ));
-
-      const items = mergeFulfillments([
-        ...response,
-        ...invalid_fulfillments,
-      ]);
-
-      const update_results = await super.update({
-        items: items.filter(
-          f => f.status?.code === 200
-        ).map(
-          f => f.payload
-        ),
-        total_count: items.length,
-        subject: request.subject
-      }, context);
+      )).then(
+        response => mergeFulfillments(
+          [
+            ...response,
+            ...invalid_fulfillments,
+          ],
+          aggregation.currencies,
+        )
+      ).then(
+        merged => super.update({
+          items: merged.map(
+            f => f.payload
+          ),
+          total_count: merged.length,
+          subject: request.subject
+        }, context)
+      );
 
       if (this.isEventsEnabled) {
-        update_results.items.forEach(item => {
+        updates.items.forEach(item => {
           if (this.emitters && item.payload.fulfillment_state in this.emitters) {
             switch (item.payload.fulfillment_state) {
               case FulfillmentState.INVALID:
@@ -1218,12 +1226,7 @@ export class FulfillmentService
           }
         });
       }
-
-      update_results.items.push(
-        ...items.filter(i => i.status?.code !== 200)
-      );
-      update_results.total_count = update_results.items.length;
-      return update_results;
+      return updates;
     }
     catch (e: any) {
       return this.catchOperationError<FulfillmentListResponse>(e);
