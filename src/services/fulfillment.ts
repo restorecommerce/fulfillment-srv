@@ -657,6 +657,7 @@ export class FulfillmentService
           );
         }
 
+        const shop = aggregation.shops.get(item.payload.shop_id);
         const customer = aggregation.customers.get(item.payload.customer_id);
         const origin = aggregation.countries.get(item.payload.packaging.sender.address.country_id);
         const destination = aggregation.countries.get(item.payload.packaging.recipient.address.country_id);
@@ -693,6 +694,66 @@ export class FulfillmentService
           ),
           aggregation.currencies,
         );
+
+        const has_shop_as_owner = item.payload.meta?.owners?.filter(
+          owner => owner.id === this.urns.ownerIndicatoryEntity
+            && owner.value === this.urns.organization
+        ).some(
+          owner => owner.attributes?.some(
+            a => a.id === this.urns.ownerInstance
+              && a.value === shop.organization_id
+          )
+        );
+
+        const customer_entity = (
+          customer?.private
+            ? this.urns.user
+            : this.urns.organization
+        );
+        const customer_instance = (
+          customer?.private?.user_id
+            ?? customer?.commercial?.organization_id
+            ?? customer?.public_sector?.organization_id
+        );
+        const has_customer_as_owner = item.payload.meta?.owners?.filter(
+          owner => owner.id === this.urns.ownerIndicatoryEntity
+            && owner.value === customer_entity
+        ).some(
+          owner => owner.attributes?.some(
+            a => a.id === this.urns.ownerInstance
+              && a.value === customer_instance
+          )
+        );
+
+        if (!has_shop_as_owner ) {
+          item.payload.meta.owners.push(
+            {
+              id: this.urns.ownerIndicatoryEntity,
+              value: this.urns.organization,
+              attributes: [
+                {
+                  id: this.urns.ownerInstance,
+                  value: shop.organization_id
+                }
+              ]
+            }
+          );
+        }
+
+        if (!has_customer_as_owner ) {
+          item.payload.meta.owners.push(
+            {
+              id: this.urns.ownerIndicatoryEntity,
+              value: customer_entity,
+              attributes: [
+                {
+                  id: this.urns.ownerInstance,
+                  value: customer_instance
+                }
+              ]
+            }
+          );
+        };
 
         item.status = this.status_codes.OK;
         return item;
