@@ -156,7 +156,7 @@ export class AccessControlledServiceBase<O extends ResourceListResponse, I exten
   protected catchOperationError<T extends ResourceListResponse>(e?: any, response?: T): T {
     response ??= {} as T;
     response.operation_status = {
-      code: e?.code ?? 500,
+      code: Number.isInteger(e?.code) ? e?.code : 500,
       message: e?.message ?? e?.details ?? (e ? JSON.stringify(e) : 'Unknown Error!'),
     };
     this.logger?.error(e?.stack, response);

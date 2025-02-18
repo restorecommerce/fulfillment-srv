@@ -456,15 +456,6 @@ export class FulfillmentProductService
     return response;
   }
 
-  /*
-  public superRead(
-    request: ReadRequest,
-    context?: any,
-  ) {
-    return super.superRead(request, context);
-  }
-    */
-
   async find(
     request: FulfillmentSolutionQueryList,
     context?: CallContext

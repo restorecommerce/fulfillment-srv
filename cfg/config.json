@@ -344,6 +344,10 @@
       "db-index": 5,
       "ttl": 3600,
       "prefix": "acs:"
+    },
+    "techUser": {
+      "id": "root_tech_user",
+      "token": "1a4c6789-6435-487a-9308-64d06384acf9"
     }
   },
   "server": {
@@ -375,10 +379,6 @@
       "trackings.[0].events.[0].details",
       "configuration"
     ]
-  },
-  "tech_user": {
-    "id": "root_tech_user",
-    "token": "1a4c6789-6435-487a-9308-64d06384acf9" 
   },
   "contact_point_type_ids": {
     "legal": "legal",

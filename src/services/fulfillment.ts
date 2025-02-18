@@ -276,7 +276,7 @@ export class FulfillmentService
       locale => locale === 'fr'
     )
 
-    this.tech_user = cfg?.get('tech_user');
+    this.tech_user = cfg?.get('authorization:techUser');
   }
 
   protected async aggregateProductBundles(
@@ -362,7 +362,7 @@ export class FulfillmentService
 
   protected async loadDefaultTemplates(
     subject?: Subject,
-    context?: any
+    context?: CallContext,
   ) {
     if(this.default_templates.length) {
       return this.default_templates;
@@ -518,6 +518,7 @@ export class FulfillmentService
           {
             service: UserServiceDefinition,
             map_by_ids: (aggregation) => [].concat(
+              subject?.id,
               aggregation.items?.map(item => item.payload.user_id),
               aggregation.customers?.all.map(customer => customer.private?.user_id)
             ),
@@ -542,7 +543,7 @@ export class FulfillmentService
           },
         ],
         FulfillmentAggregationTemplate,
-        this.tech_user ?? subject,
+        subject,
         context,
       )
     ).then(
@@ -564,7 +565,7 @@ export class FulfillmentService
           },
         ],
         FulfillmentAggregationTemplate,
-        this.tech_user ?? subject,
+        subject,
         context,
       )
     ).then(
@@ -589,7 +590,7 @@ export class FulfillmentService
           },
         ],
         FulfillmentAggregationTemplate,
-        this.tech_user ?? subject,
+        subject,
         context,
       )
     ).then(
@@ -614,7 +615,7 @@ export class FulfillmentService
           },
         ],
         FulfillmentAggregationTemplate,
-        this.tech_user ?? subject,
+        subject,
         context,
       )
     );
@@ -623,7 +624,8 @@ export class FulfillmentService
   }
 
   protected async validateFulfillmentListResponse(
-    aggregation: AggregatedFulfillmentListResponse
+    aggregation: AggregatedFulfillmentListResponse,
+    subject?: Subject,
   ): Promise<AggregatedFulfillmentListResponse> {
     const promises = aggregation.items.map(async (item): Promise<FulfillmentResponse> => {
       try {
@@ -654,12 +656,14 @@ export class FulfillmentService
             this.status_codes.NO_SHIPPING_ADDRESS,
           );
         }
+
+        const customer = aggregation.customers.get(item.payload.customer_id);
+        const origin = aggregation.countries.get(item.payload.packaging.sender.address.country_id);
+        const destination = aggregation.countries.get(item.payload.packaging.recipient.address.country_id);
+        item.payload.user_id ??= customer?.private?.user_id ?? subject.id;
         
         await Promise.all(item.payload.packaging?.parcels?.map(
           async p => {
-            const customer = aggregation.customers.get(item.payload.customer_id);
-            const origin = aggregation.countries.get(item.payload.packaging.sender.address.country_id);
-            const destination = aggregation.countries.get(item.payload.packaging.recipient.address.country_id);
             const product = aggregation.fulfillment_products.get(p.product_id);
             const courier = aggregation.fulfillment_couriers.get(product.courier_id);
             const variant = mergeFulfillmentProductVariant(product, p.variant_id);
@@ -759,7 +763,7 @@ export class FulfillmentService
 
     try {
       const aggregation = await this.aggregate(response, request.subject, context).then(
-        aggregation => this.validateFulfillmentListResponse(aggregation)
+        aggregation => this.validateFulfillmentListResponse(aggregation, request.subject)
       );
       const flat_fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
       const invalid_fulfillments = flat_fulfillments.filter(f => f.status?.code !== 200);
@@ -848,7 +852,7 @@ export class FulfillmentService
         }
       );
       const aggregation = await this.aggregate(response, request.subject, context).then(
-        aggregation => this.validateFulfillmentListResponse(aggregation)
+        aggregation => this.validateFulfillmentListResponse(aggregation, request.subject)
       );
       const settings = await this.aggregateSettings(
         aggregation
@@ -1416,7 +1420,7 @@ export class FulfillmentService
 
   public async handleRenderResponse(
     response: RenderResponse,
-    context?: any,
+    context?: CallContext,
   ) {
     try {
       const [entity] = response.id.split('/');
@@ -1456,7 +1460,7 @@ export class FulfillmentService
     setting: DefaultSetting,
     title?: string,
     state?: FulfillmentState, 
-    context?: any,
+    context?: CallContext,
   ) {
     const status = await this.notification_service.send(
       {

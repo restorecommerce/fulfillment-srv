@@ -201,6 +201,9 @@ export const DefaultSetting = {
 };
 export type DefaultSetting = typeof DefaultSetting;
 export type SettingMap = Map<string, DefaultSetting>;
+export type RatioedTax = Tax & {
+  tax_ratio?: number;
+};
 
 export const merge = <T>(...lists: T[][]) => lists.filter(
   list => list
@@ -335,8 +338,8 @@ export const filterTax = (
 );
 
 export const calcAmount = (
-  gross: BigNumber,
-  taxes: Tax[],
+  gross: number | BigNumber,
+  taxes: RatioedTax[],
   origin: Country,
   destination: Country,
   currency?: Currency,
@@ -350,9 +353,17 @@ export const calcAmount = (
       private_customer,
     )
   );
+  gross = new BigNumber(gross);
+  const precision = currency?.precision ?? 2;
   const vats = taxes.map((tax): VAT => ({
     tax_id: tax.id,
-    vat: gross.multipliedBy(tax.rate).decimalPlaces(2).toNumber(),
+    vat: gross.multipliedBy(
+      tax.rate
+    ).multipliedBy(
+      tax.tax_ratio ?? 1.0
+    ).decimalPlaces(
+      precision
+    ).toNumber(),
   }));
   const net = vats.reduce(
     (a, b) => a.plus(b.vat),
@@ -360,8 +371,8 @@ export const calcAmount = (
   );
   return {
     currency_id: currency?.id,
-    gross: gross.decimalPlaces(currency?.precision ?? 2).toNumber(),
-    net: net.decimalPlaces(currency?.precision ?? 2).toNumber(),
+    gross: gross.decimalPlaces(precision).toNumber(),
+    net: net.decimalPlaces(precision).toNumber(),
     vats,
   };
 };
