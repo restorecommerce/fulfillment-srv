@@ -277,6 +277,7 @@ export class FulfillmentService
     )
 
     this.tech_user = cfg?.get('authorization:techUser');
+    this.kafka_timeout = cfg.get('events:kafka:timeout') ?? 5000;
   }
 
   protected async aggregateProductBundles(

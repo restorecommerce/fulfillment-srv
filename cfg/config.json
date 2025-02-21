@@ -131,6 +131,7 @@
       "provider": "kafka",
       "groupId": "restore-fulfillment-srv",
       "latestOffset": false,
+      "timeout": 15000,
       "kafka": {
         "clientId": "restore-fulfillment-srv",
         "brokers": [
