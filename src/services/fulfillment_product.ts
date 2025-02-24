@@ -359,11 +359,11 @@ export class FulfillmentProductService
               ),
               aggregation.items.map(
                 item => item?.sender?.address?.id
-              ).filter(a => a),
+              ),
               aggregation.items.map(
                 item => item?.recipient?.address?.id
-              ).filter(a => a),
-            ),
+              ),
+            ).filter(a => a),
             container: 'addresses',
             entity: 'Address',
           },
@@ -382,6 +382,12 @@ export class FulfillmentProductService
               aggregation.addresses.all.map(
                 a => a.country_id
               ),
+              aggregation.items.map(
+                item => item?.sender?.address?.country_id
+              ),
+              aggregation.items.map(
+                item => item?.recipient?.address?.country_id
+              )
             ),
             container: 'countries',
             entity: 'Country',
