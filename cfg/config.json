@@ -21,8 +21,8 @@
       ],
       "entities": [
         "fulfillment",
-        "fulfillmentCourier",
-        "fulfillmentProduct"
+        "fulfillment_courier",
+        "fulfillment_product"
       ],
       "customQueries": [
         {
@@ -337,7 +337,10 @@
       "aclIndicatoryEntity": "urn:restorecommerce:acs:names:aclIndicatoryEntity",
       "aclInstance": "urn:restorecommerce:acs:names:aclInstance",
       "skipACL": "urn:restorecommerce:acs:names:skipACL",
-      "maskedProperty": "urn:restorecommerce:acs:names:obligation:maskedProperty"
+      "maskedProperty": "urn:restorecommerce:acs:names:obligation:maskedProperty",
+      "fulfillment": "urn:restorecommerce:acs:model:fulfillment.Fulfillment",
+      "fulfillmentCourier": "urn:restorecommerce:acs:model:fulfillment_courier.FulfillmentCourier",
+      "fulfillmentProduct": "urn:restorecommerce:acs:model:fulfillment_product.FulfillmentProduct"
     },
     "cache": {
       "host": "localhost",
@@ -347,7 +350,7 @@
       "prefix": "acs:"
     },
     "techUser": {
-      "id": "root_tech_user",
+      "id": "root-tech-user",
       "token": "1a4c6789-6435-487a-9308-64d06384acf9"
     }
   },

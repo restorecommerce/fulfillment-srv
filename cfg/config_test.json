@@ -9,7 +9,20 @@
   },
   "database": {
     "main": {
-      "database": "fulfillment-srv-test"
+      "database": "fulfillment-srv-test",
+      "entities": [
+        "fulfillment",
+        "fulfillmentCourier",
+        "fulfillmentProduct"
+      ]
+    }
+  },
+  "events": {
+    "kafka": {
+      "groupId": "restore-fulfillment-srv-test",
+      "kafka": {
+        "clientId": "restore-fulfillment-srv-test"
+      }
     }
   },
   "server": {
