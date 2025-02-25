@@ -283,7 +283,7 @@ export class AccessControlledServiceBase<O extends ResourceListResponse, I exten
   @resolves_subject()
   @injects_meta_data()
   @access_controlled_function({
-    action: AuthZAction.CREATE,
+    action: AuthZAction.MODIFY,
     operation: Operation.isAllowed,
     context: ACSContextFactory<O, I>,
     resource: DefaultResourceFactory(),
