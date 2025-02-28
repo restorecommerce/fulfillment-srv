@@ -148,15 +148,19 @@ export class FulfillmentService
     },
     CONTENT_NOT_SUPPORTED: {
       code: 400,
-      message: '{entity} {id}: Content type {error} is not supported!',
+      message: '{entity} {id}: Content type {details} is not supported!',
+    },
+    REQUIRED_FIELD_MISSING: {
+      code: 400,
+      message: '{entity} {id}: Is missing required field {details}!',
     },
     PROTOCOL_NOT_SUPPORTED: {
       code: 400,
-      message: '{entity} {id}: Protocol of {error} is not supported!',
+      message: '{entity} {id}: Protocol of {details} is not supported!',
     },
     FETCH_FAILED: {
       code: 500,
-      message: '{entity} {id}: {error}!',
+      message: '{entity} {id}: {details}!',
     },
   };
 
@@ -402,7 +406,7 @@ export class FulfillmentService
       [
         {
           service: ShopServiceDefinition,
-          map_by_ids: (fulfillments) => fulfillments.items?.map(
+          map_by_ids: (fulfillments) => fulfillments.items.map(
             i => i.payload.shop_id
           ),
           container: 'shops',
@@ -410,7 +414,7 @@ export class FulfillmentService
         },
         {
           service: CustomerServiceDefinition,
-          map_by_ids: (fulfillments) => fulfillments.items?.map(
+          map_by_ids: (fulfillments) => fulfillments.items.map(
             i => i.payload.customer_id
           ),
           container: 'customers',
@@ -418,7 +422,7 @@ export class FulfillmentService
         },
         {
           service: ProductServiceDefinition,
-          map_by_ids: (fulfillments) => fulfillments.items?.flatMap(
+          map_by_ids: (fulfillments) => fulfillments.items.flatMap(
             item => item.payload.packaging?.parcels
           )?.flatMap(
             parcel => parcel?.items
@@ -443,10 +447,15 @@ export class FulfillmentService
           subject,
           context,
         ).then(
-          response => new ResourceMap(
-            response.items.map(item => item.payload),
-            'FulfillmentProduct'
-          )
+          response => {
+            if (response.operation_status?.code !== 200) {
+              throw response.operation_status;
+            }
+            return new ResourceMap(
+              response.items?.map(item => item.payload),
+              'FulfillmentProduct'
+            );
+          }
         );
 
         aggregation.fulfillment_couriers= await this.fulfillmentCourierSrv.get(
@@ -456,10 +465,15 @@ export class FulfillmentService
           subject,
           context,
         ).then(
-          response => new ResourceMap(
-            response.items.map(item => item.payload),
-            'FulfillmentCourier'
-          )
+          response => {
+            if (response.operation_status?.code !== 200) {
+              throw response.operation_status;
+            }
+            return new ResourceMap(
+              response.items?.map(item => item.payload),
+              'FulfillmentCourier'
+            );
+          }
         );
 
         await this.aggregateProductBundles(
@@ -491,9 +505,14 @@ export class FulfillmentService
           },
           {
             service: SettingServiceDefinition,
-            map_by_ids: (aggregation) => aggregation.shops?.all.map(
-              shop => shop?.setting_id
-            ),
+            map_by_ids: (aggregation) => [
+              aggregation.shops?.all.map(
+                shop => shop?.setting_id
+              ),
+              aggregation.customers?.all.map(
+                customer => customer?.setting_id
+              )
+            ].flatMap(ids => ids),
             container: 'settings',
             entity: 'Setting',
           },
@@ -630,6 +649,14 @@ export class FulfillmentService
   ): Promise<AggregatedFulfillmentListResponse> {
     const promises = aggregation.items.map(async (item): Promise<FulfillmentResponse> => {
       try {
+        if (!item.payload.packaging) {
+          throwStatusCode(
+            'Fulfillment',
+            item.payload.id,
+            this.status_codes.REQUIRED_FIELD_MISSING,
+            'packaging'
+          );
+        }
         item.payload.packaging.sender ??= resolveSenderAddress(
           item.payload.shop_id,
           aggregation,
@@ -872,7 +899,7 @@ export class FulfillmentService
       return {
         operation_status: createOperationStatusCode(
           this.operation_status_codes.NO_ITEM,
-          'fulfillment',
+          'Fulfillment',
         )
       };
     }
@@ -886,8 +913,8 @@ export class FulfillmentService
 
     try {
       const response_map = new Map<string, FulfillmentResponse>(
-        request.items.map(
-          payload => [payload.id, {payload}]
+        response.items.map(
+          item => [item.payload.id, item]
         )
       );
       await this.get(
@@ -905,7 +932,8 @@ export class FulfillmentService
                 const entry = response_map.get(item.payload?.id);
                 entry.payload = {
                   ...item.payload,
-                  ...entry.payload
+                  ...entry.payload,
+                  meta: item.payload.meta,
                 };
                 entry.status = item.status;
               }
@@ -913,6 +941,7 @@ export class FulfillmentService
           }
         }
       );
+      this.logger.info(response);
       const aggregation = await this.aggregate(response, request.subject, context).then(
         aggregation => this.validateFulfillmentListResponse(aggregation, request.subject)
       );
