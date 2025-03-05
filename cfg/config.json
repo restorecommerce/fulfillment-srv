@@ -375,7 +375,11 @@
     "timeStampFields": [
       "meta.created",
       "meta.modified",
-      "trackings.[0].events.[0].timestamp"
+      "trackings.[0].events.[0].timestamp",
+      "sender.address.meta.created",
+      "sender.address.meta.modified",
+      "recipient.address.meta.created",
+      "recipient.address.meta.modified"
     ],
     "bufferFields": [
       "options",

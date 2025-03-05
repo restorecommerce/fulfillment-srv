@@ -450,6 +450,7 @@ export const resolveShopAddress = (
   const address = aggregation.addresses?.get(
     contact_point?.physical_address_id
   );
+  delete address.meta;
   return {
     address,
     contact: {
@@ -480,6 +481,7 @@ export const resolveCustomerAddress = (
   const address = aggregation.addresses?.get(
     contact_point?.physical_address_id
   );
+  delete address.meta;
   return {
     address,
     contact: {
