@@ -643,7 +643,7 @@ export class DHLSoap extends Stub {
     const shipment_order_request = {
       Version: {
         majorRelease: this.version[0],
-        minorRelease: this.version[1]
+        minorRelease: this.version[1],
       },
       ShipmentOrder: requests.map((request, i): ShipmentOrder => {
         const packaging = request.payload.packaging;

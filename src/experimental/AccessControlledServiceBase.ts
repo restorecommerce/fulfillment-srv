@@ -238,6 +238,7 @@ export class AccessControlledServiceBase<O extends ResourceListResponse, I exten
           type: Filter_ValueType.ARRAY
         }]
       }],
+      limit: ids.length,
       subject
     });
     if (bypassACS) {

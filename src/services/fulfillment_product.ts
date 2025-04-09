@@ -92,6 +92,7 @@ interface PackageSolutionTotals extends FulfillmentSolutionQuery {
 
 const calcPackageTotals = (queries: FulfillmentSolutionQuery[]): PackageSolutionTotals[] => queries.map(
   (item: FulfillmentSolutionQuery): PackageSolutionTotals => item.items.reduce((a: PackageSolutionTotals, b) => {
+    if (!b.package) throw new Error(`Package info missing in product: ${b?.product_id}, variant: ${b?.variant_id}`);
     a.volume += b.package.size_in_cm.width * b.package.size_in_cm.height * b.package.size_in_cm.length * b.quantity;
     a.total_weight += b.package.weight_in_kg * b.quantity;
     a.max_width = Math.max(a.max_width, b.package.size_in_cm.width);
@@ -592,19 +593,19 @@ export class FulfillmentProductService
               this.status_codes.MISSING_PACKAGING_INFO,
               'Weight'
             ),
-            width: good.package?.size_in_cm.width ?? throwStatusCode(
+            width: good.package?.size_in_cm?.width ?? throwStatusCode(
               'Product',
               good.product_id,
               this.status_codes.MISSING_PACKAGING_INFO,
               'Width',
             ),
-            height: good.package?.size_in_cm.height ?? throwStatusCode(
+            height: good.package?.size_in_cm?.height ?? throwStatusCode(
               'Product',
               good.product_id,
               this.status_codes.MISSING_PACKAGING_INFO,
               'Height'
             ),
-            depth: good.package?.size_in_cm.length ?? throwStatusCode(
+            depth: good.package?.size_in_cm?.length ?? throwStatusCode(
               'Product',
               good.product_id,
               this.status_codes.MISSING_PACKAGING_INFO,

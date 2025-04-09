@@ -75,6 +75,6 @@ export class ResourceMap<T extends Resource = any> extends Map<string, T> {
     ids: string[],
     onMissing: OnMissingCallback = DEFAULT_STRICT_CALLBACK
   ): T[] {
-    return ids.map(id => this.get(id, onMissing));
+    return ids?.map(id => this.get(id, onMissing));
   }
 }

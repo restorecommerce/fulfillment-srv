@@ -7,7 +7,6 @@ import {
   Tracking,
   FulfillmentListResponse,
   Fulfillment,
-  FulfillmentList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import {
   FulfillmentCourier,
@@ -15,28 +14,22 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
 import {
   FulfillmentProduct,
-  FulfillmentProductResponse,
   FulfillmentSolutionQueryList,
   Variant,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import {
   Credential,
-  CredentialResponse,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
 import {
   Tax,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax.js';
 import {
   Country,
-  CountryResponse,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/country.js';
 import {
   OperationStatus,
   Status
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
-import {
-  Position,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/invoice.js';
 import {
   Amount,
   VAT
@@ -64,15 +57,6 @@ import {
   User,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
 import {
-  Manufacturer,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/manufacturer.js';
-import {
-  ProductCategory,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product_category.js';
-import {
-  ProductPrototype,
-} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product_prototype.js';
-import {
   TaxType,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/tax_type.js';
 import {
@@ -85,7 +69,7 @@ import {
   Template,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/template.js';
 import {
-  Payload_Strategy
+  RenderRequest_Strategy
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/rendering.js';
 import {
   Any
@@ -190,7 +174,7 @@ export const DefaultSetting = {
   shop_invoice_render_enabled: false,
   shop_invoice_send_enabled: false,
   shop_email_render_options: undefined as any,
-  shop_email_render_strategy: Payload_Strategy.INLINE,
+  shop_email_render_strategy: RenderRequest_Strategy.INLINE,
   shop_email_provider: undefined as string,
   shop_email_cc: undefined as string[],
   shop_email_bcc: undefined as string[],

@@ -67,9 +67,9 @@ import {
   TemplateUseCase
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/template.js';
 import {
-  Payload,
-  RenderRequest,
-  RenderResponse,
+  RenderRequest_Template,
+  RenderRequestList,
+  RenderResponseList,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/rendering.js';
 import { UserServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
 import { CurrencyServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
@@ -134,6 +134,10 @@ export class FulfillmentService
       code: 404,
       message: '{entity} {id} has no label!',
     },
+    NO_PACKAGE_INFO: {
+      code: 500,
+      message: '{entity} {id} has no package information!',
+    },
     NOT_SUBMITTED: {
       code: 400,
       message: '{entity} {id} is not submitted!',
@@ -161,6 +165,10 @@ export class FulfillmentService
     FETCH_FAILED: {
       code: 500,
       message: '{entity} {id}: {details}!',
+    },
+    NO_TEMPLATE_BODY: {
+      code: 500,
+      message: 'No body defined in template {id}!',
     },
   };
 
@@ -693,6 +701,13 @@ export class FulfillmentService
         
         await Promise.all(item.payload.packaging?.parcels?.map(
           async p => {
+            if (!p.package) {
+              throw createStatusCode(
+                'FulfillmentProduct',
+                p.product_id,
+                this.status_codes.NO_PACKAGE_INFO,
+              );
+            }
             const product = aggregation.fulfillment_products.get(p.product_id);
             const courier = aggregation.fulfillment_couriers.get(product.courier_id);
             const variant = mergeFulfillmentProductVariant(product, p.variant_id);
@@ -997,11 +1012,7 @@ export class FulfillmentService
 
       if (this.notification_service) {
         this.logger?.debug('Send notifications on submit...');
-        const default_templates = await this.loadDefaultTemplates().then(
-          df => df.filter(
-            template => template.use_case?.toString() === 'FULFILLMENT_CONFIRMATION_EMAIL' // TemplateUseCase.FULFILLMENT_CONFIRMATION_EMAIL
-          )
-        );
+        const default_templates = await this.loadDefaultTemplates();
         await Promise.all(upserted.items.filter(
           item => item.status?.code === 200
             && settings.get(item.payload.id)?.shop_fulfillment_send_confirm_enabled
@@ -1012,7 +1023,11 @@ export class FulfillmentService
               item.payload,
               aggregation,
               render_id,
-              'FULFILLMENT_CONFIRMATION_EMAIL', // TemplateUseCase.ORDER_CONFIRMATION,
+              [
+                TemplateUseCase.FULFILLMENT_SUBMITTED_EMAIL,
+                'FULFILLMENT_SUBMITTED_EMAIL_BODY',
+                'FULFILLMENT_SUBMITTED_EMAIL_SUBJECT',
+              ],
               default_templates,
               request.subject,
             ).then(
@@ -1351,9 +1366,9 @@ export class FulfillmentService
     return null;
   }
 
-  protected async fetchFile(url: string, subject?: Subject): Promise<string> {
+  protected async fetchFile(url: string, subject?: Subject): Promise<Buffer> {
     if (url?.startsWith('file://')) {
-      return fs.readFileSync(url.slice(7)).toString();
+      return fs.readFileSync(url.slice(7));
     }
     else if (url?.startsWith('http')) {
       return fetch(
@@ -1363,7 +1378,11 @@ export class FulfillmentService
             Authorization: `Bearer ${subject.token}`
           }
         } : undefined
-      ).then(resp => resp.text())
+      ).then(
+        resp => resp.arrayBuffer()
+      ).then(
+        ab => Buffer.from(ab)
+      )
     }
     else {
       throw createStatusCode(
@@ -1381,18 +1400,18 @@ export class FulfillmentService
     subject?: Subject,
   ) {
     const locale = locales?.find(
-      a => template.localization?.some(
-        b => b.local_codes?.includes(a)
+      a => template.localizations?.some(
+        b => b.locales?.includes(a)
       )
     ) ?? 'en';
-    const L = template.localization?.find(
-      a => a.local_codes?.includes(locale)
+    const L = template.localizations?.find(
+      a => a.locales?.includes(locale)
     );
     const url = L?.l10n?.url;
     const l10n = url ? await this.fetchFile(url, subject).then(
       text => {
         if (L.l10n.content_type === 'application/json') {
-          return JSON.parse(text);
+          return JSON.parse(text.toString());
         }
         else if (L.l10n.content_type === 'text/csv') {
           return CSV(text, {
@@ -1425,7 +1444,7 @@ export class FulfillmentService
     item: Fulfillment,
     aggregation: AggregatedFulfillmentListResponse,
     render_id: string,
-    use_case: TemplateUseCase | string,
+    use_cases: (TemplateUseCase | string)[],
     default_templates?: Template[],
     subject?: Subject,
   ) {
@@ -1443,15 +1462,20 @@ export class FulfillmentService
       ...(setting?.customer_locales ?? []),
       ...(setting?.shop_locales ?? []),
     ];
-    const templates = shop.template_ids?.map(
-      id => aggregation.templates?.get(id)
-    ).filter(
-      template => template.use_case === use_case
+    const templates = aggregation.templates?.getMany(
+      shop.template_ids
+    )?.filter(
+      template => use_cases?.includes(template.use_case)
     ).sort(
       (a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0)
     ) ?? [];
+    default_templates = default_templates?.filter(
+      template => use_cases?.includes(template.use_case)
+    ).sort(
+      (a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0)
+    ) ?? []
 
-    if (templates.length === 0 && default_templates.length > 0) {
+    if (templates.length === 0 && default_templates?.length > 0) {
       templates.push(...default_templates);
     }
     else {
@@ -1459,19 +1483,25 @@ export class FulfillmentService
         this.operation_status_codes.NO_TEMPLATES
       );
     }
-
-    const bodies = await Promise.all(
+    
+    const bodies: RenderRequest_Template[][]  = await Promise.all(
       templates.map(
-        template => template.body?.url ? this.fetchFile(
-          template.body.url, subject
-        ) : undefined
-      )
-    );
-    const layouts = await Promise.all(
-      templates.map(
-        template => template.layout?.url ? this.fetchFile(
-          template.layout.url, subject
-        ) : undefined
+        async template => await Promise.all(template.bodies?.map(
+          async (body, i) => ({
+            id: crypto.randomUUID() as string,
+            body: body?.url ? await this.fetchFile(
+              body.url, subject
+            ) : undefined,
+            layout: template.layouts?.[i]?.url ? await this.fetchFile(
+              template.layouts?.[i]?.url, subject
+            ) : undefined
+          })
+        ) ?? throwStatusCode<RenderRequest_Template[]>(
+          item.id,
+          "Template",
+          this.status_codes.NO_TEMPLATE_BODY,
+          template.id,
+        ))
       )
     );
     const l10n = await Promise.all(
@@ -1482,61 +1512,51 @@ export class FulfillmentService
       )
     );
 
-    const payloads: Payload[] = templates.map(
-      (template, i) => ({
-        content_type: 'text/html',
-        data: packRenderData(aggregation, item),
-        templates: marshallProtobufAny({
-          [i]: {
-            body: bodies[i],
-            layout: layouts[i],
-          },
-        }),
-        style_url: template.styles?.find(s => s.url).url,
-        options: l10n[i] ? marshallProtobufAny({
-          locale: l10n[i]._locale,
-          texts: l10n[i]
-        }) : undefined
-      })
-    );
+    const render_request: RenderRequestList = {
+      id: render_id,
+      items: templates.map(
+        (template, i) => ({
+          content_type: 'text/html',
+          data: packRenderData(aggregation, item),
+          templates: bodies[i],
+          style_url: template.styles?.find(s => s.url).url,
+          options: l10n[i] ? marshallProtobufAny({
+            locale: l10n[i]._locale,
+            texts: l10n[i]
+          }) : undefined
+        })
+      ),
+    }
 
     return this.renderingTopic.emit(
       'renderRequest',
-      {
-        id: render_id,
-        payloads,
-      } as RenderRequest
+      render_request,
     );
   }
 
   public async handleRenderResponse(
-    response: RenderResponse,
-    context?: CallContext,
+    response: RenderResponseList
   ) {
     try {
       const [entity] = response.id.split('/');
       if (entity !== 'fulfillment') return;
-      const content = response.responses.map(
-        r => JSON.parse(r.value.toString())
-      );
-      const errors = content.filter(
-        c => c.error
-      ).map(
-        c => c.error
-      );
 
-      if (errors?.length) {
-        const status: Status = {
-          code: 500,
-          message: errors.join('\n'),
-        };
+      if (response.operation_status?.code !== 200) {
+        this.awaits_render_result.reject(response.id, response.operation_status);
+      }
 
-        this.awaits_render_result.reject(response.id, status);
+      const error = response.items.find(
+        item => item.status?.code !== 200
+      );
+      if (error) {
+        this.awaits_render_result.reject(response.id, error);
       }
       else {
-        const bodies = content.map(
-          (c, i) => c[i]
-        ) as string[];
+        const bodies = response.items.flatMap(
+          item => item.payload.bodies.map(
+            item => item.body.toString(item.charset as BufferEncoding)
+          )
+        );
         this.awaits_render_result.resolve(response.id, bodies);
       }
     }

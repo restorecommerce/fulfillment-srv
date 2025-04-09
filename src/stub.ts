@@ -14,11 +14,11 @@ import { BigNumber } from 'bignumber.js';
 import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import { ServiceConfig } from '@restorecommerce/resource-base-interface/lib/core/WorkerBase.js';
 
-type StubType = (new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => Stub);
+type StubType<T extends Stub> = new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => T;
 
 export abstract class Stub
 {
-  protected static readonly STUB_TYPES: Record<string, StubType> = {};
+  protected static readonly STUB_TYPES: Record<string, StubType<any>> = {};
   protected static readonly REGISTER: Record<string, Stub> = {};
   static cfg: ServiceConfig = null;
   static logger: Logger = null;
@@ -196,7 +196,7 @@ export abstract class Stub
 
   public static register<T extends Stub>(
     type_name: string,
-    type: (new (courier: Courier, kwargs?: { [key: string]: any }) => T)
+    type: StubType<T>
   ) {
     Stub.STUB_TYPES[type_name] = type;
     Stub.logger?.info(

@@ -229,10 +229,10 @@
       },
 
       "renderRequest": {
-        "messageObject": "io.restorecommerce.rendering.RenderRequest"
+        "messageObject": "io.restorecommerce.rendering.RenderRequestList"
       },
       "renderResponse": {
-        "messageObject": "io.restorecommerce.rendering.RenderResponse"
+        "messageObject": "io.restorecommerce.rendering.RenderResponseList"
       },
       "sendEmail": {
         "messageObject": "io.restorecommerce.notification_req.NotificationReq"
@@ -450,15 +450,15 @@
     },
     "Templates": [
       {
-        "body": {
+        "bodies": [{
           "url": "file://./templates/fulfillment_confirmation_subject.hbs"
-        },
-        "layout": {
+        }],
+        "layouts": [{
           "url": "file://./templates/fulfillment_layout.hbs"
-        },
-        "localization": [
+        }],
+        "localizations": [
           {
-            "local_codes": ["en"],
+            "locale": ["en"],
             "l10n": {
               "url": "file://./templates/l10n.csv",
               "content_type": "text/csv"
@@ -466,18 +466,18 @@
           }
         ],
         "ordinal": 0,
-        "use_case": "FULFILLMENT_CONFIRMATION_EMAIL"
+        "use_case": "FULFILLMENT_SUBMITTED_EMAIL"
       },
       {
-        "body": {
+        "bodies": [{
           "url": "file://./templates/fulfillment_confirmation_body.hbs"
-        },
-        "layout": {
+        }],
+        "layouts": [{
           "url": "file://./templates/fulfillment_layout.hbs"
-        },
-        "localization": [
+        }],
+        "localizations": [
           {
-            "local_codes": ["en"],
+            "locale": ["en"],
             "l10n": {
               "url": "file://./templates/l10n.csv",
               "content_type": "text/csv"
@@ -485,7 +485,7 @@
           }
         ],
         "ordinal": 1,
-        "use_case": "FULFILLMENT_CONFIRMATION_EMAIL"
+        "use_case": "FULFILLMENT_SUBMITTED_EMAIL"
       }
     ]
   }
