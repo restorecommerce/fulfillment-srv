@@ -10,7 +10,9 @@ import {
 import {
   ReadRequest
 } from '@restorecommerce/rc-grpc-clients';
-import { AccessControlledServiceBase } from '../experimental/AccessControlledServiceBase.js';
+import {
+  AccessControlledServiceBase,
+} from '@restorecommerce/resource-base-interface/lib/experimental/AccessControlledServiceBase.js';
 import { FulfillmentSolutionQuery } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
 import {
@@ -32,7 +34,7 @@ export class FulfillmentCourierService
   ) {
     super(
       cfg.get('database:main:entities:1') ?? 'fulfillment_courier',
-      topic,
+      topic as any,
       db,
       cfg,
       logger,

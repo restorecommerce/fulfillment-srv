@@ -15,7 +15,6 @@ import { type ServiceConfig } from '@restorecommerce/service-config';
 import { type DatabaseProvider } from '@restorecommerce/chassis-srv';
 import { Topic } from '@restorecommerce/kafka-client';
 import {
-  Status,
   StatusListResponse,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
@@ -74,11 +73,16 @@ import {
 import { UserServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/user.js';
 import { CurrencyServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
 import { Product, ProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
-import { AccessControlledServiceBase, ACSContextFactory } from '../experimental/AccessControlledServiceBase.js';
-import { ClientRegister } from '../experimental/ClientRegister.js';
-import { ResourceAggregator } from '../experimental/ResourceAggregator.js';
-import { ResourceAwaitQueue } from '../experimental/ResourceAwaitQueue.js';
-import { ResourceMap } from '../experimental/ResourceMap.js';
+import {
+  AccessControlledServiceBase,
+  ACSContextFactory
+} from '@restorecommerce/resource-base-interface/lib/experimental/AccessControlledServiceBase.js';
+import {
+  ClientRegister,
+  ResourceAggregator,
+  ResourceAwaitQueue,
+  ResourceMap
+} from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
 import { Stub } from './../stub.js';
 import {
   type AggregatedFulfillmentListResponse,
@@ -230,7 +234,7 @@ export class FulfillmentService
   ) {
     super(
       cfg?.get('database:main:entities:0') ?? 'fulfillment',
-      fulfillmentTopic,
+      (fulfillmentTopic as any),
       db,
       cfg,
       logger,
@@ -966,11 +970,11 @@ export class FulfillmentService
       const flat = flatMapAggregatedFulfillmentListResponse(aggregation);
       const valid = flat.filter(
         f => f.status?.code === 200
-          && StateRank[f?.fulfillment_state] < StateRank[FulfillmentState.SUBMITTED]
+          && StateRank[f?.payload.fulfillment_state] < StateRank[FulfillmentState.SUBMITTED]
       );
       const skipped = flat.filter(
         f => f.status?.code !== 200
-          || StateRank[f?.fulfillment_state] >= StateRank[FulfillmentState.SUBMITTED]
+          || StateRank[f?.payload.fulfillment_state] >= StateRank[FulfillmentState.SUBMITTED]
       );
       if (flat.some(f => f.status?.code !== 200)) {
         throw createOperationStatusCode(
@@ -1128,12 +1132,12 @@ export class FulfillmentService
           if (f.status?.code !== 200) return false;
           const request = request_map[f.payload?.id];
           if (
-            request.shipment_numbers && !request.shipment_numbers.includes(f.label.shipment_number)
+            request.shipment_numbers && !request.shipment_numbers.includes(f.labels[0].shipment_number)
           ) {
             return false;
           }
 
-          if (!f.label) {
+          if (!f.labels) {
             f.status = createStatusCode(
               this.name,
               f.payload?.id,
@@ -1142,17 +1146,17 @@ export class FulfillmentService
             return false;
           }
 
-          switch (f.label.state) {
+          switch (f.labels[0].state) {
             case FulfillmentState.SUBMITTED:
             case FulfillmentState.IN_TRANSIT:
               return true;
             default:
-              f.label.status = createStatusCode(
+              f.labels[0].status = createStatusCode(
                 this.name,
                 f.payload?.id,
                 this.status_codes.NOT_SUBMITTED
               );
-              f.status = f.label.status;
+              f.status = f.labels[0].status;
               return false;
           }
         }

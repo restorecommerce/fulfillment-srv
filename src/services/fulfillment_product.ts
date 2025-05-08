@@ -55,10 +55,10 @@ import {
 import {
   FulfillmentCourier,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
+import {
+  AccessControlledServiceBase,
+} from '@restorecommerce/resource-base-interface/lib/experimental/AccessControlledServiceBase.js';
 import { FulfillmentCourierService } from './fulfillment_courier.js';
-import { AccessControlledServiceBase } from '../experimental/AccessControlledServiceBase.js';
-import { ClientRegister } from '../experimental/ClientRegister.js';
-import { ResourceAggregator } from '../experimental/ResourceAggregator.js';
 import {
   Product,
   ProductServiceDefinition,
@@ -67,7 +67,11 @@ import {
   Currency,
   CurrencyServiceDefinition,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/currency.js';
-import { ResourceMap } from '../experimental/ResourceMap.js';
+import {
+  ClientRegister,
+  ResourceAggregator,
+  ResourceMap,
+} from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
 import { Stub } from './../stub.js';
 import {
   AggregatedFulfillmentSolutionQueryList,

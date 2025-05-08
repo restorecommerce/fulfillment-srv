@@ -1,4 +1,6 @@
-import { Logger } from 'winston';
+import { BigNumber } from 'bignumber.js';
+import { Logger } from '@restorecommerce/logger';
+import { ServiceConfig } from '@restorecommerce/service-config';
 import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
   Courier,
@@ -10,9 +12,7 @@ import {
   FulfillmentSolutionQuery,
   Variant
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
-import { BigNumber } from 'bignumber.js';
 import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
-import { ServiceConfig } from '@restorecommerce/resource-base-interface/lib/core/WorkerBase.js';
 
 type StubType<T extends Stub> = new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => T;
 

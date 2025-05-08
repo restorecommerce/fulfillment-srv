@@ -7,6 +7,12 @@
       "prettyPrint": true
     },
     "fieldOptions": {
+      "maskFields": [
+        "password",
+        "request.password",
+        "request.token",
+        "items.[0].password"
+      ],
       "omitFields": [
         "request.context.subject.value.data",
         "request.context.security.value.data",
@@ -176,22 +182,31 @@
       "fulfillmentDeleted": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
-      "fulfillment_courierCreated": {
-        "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
-      },
-      "fulfillment_courierModified": {
-        "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
-      },
-      "fulfillment_courierDeleted": {
+      "fulfillmentDeletedAll": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
-      "fulfillment_productCreated": {
+      "fulfillmentCourierCreated": {
+        "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
+      },
+      "fulfillmentCourierModified": {
+        "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
+      },
+      "fulfillmentCourierDeleted": {
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
+      },
+      "fulfillmentCourierDeletedAll": {
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
+      },
+      "fulfillmentProductCreated": {
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
       },
-      "fulfillment_productModified": {
+      "fulfillmentProductModified": {
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
       },
-      "fulfillment_productDeleted": {
+      "fulfillmentProductDeleted": {
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
+      },
+      "fulfillmentProductDeletedAll": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
       
@@ -431,7 +446,7 @@
         "configuration": {
           "value": {
             "ordering": {
-              "wsdl": "wsdl/dhl/geschaeftskundenversand-api-3.4.0.wsdl",
+              "wsdl": "./api/dhl/soap/geschaeftskundenversand-api-3.4.0.wsdl",
               "version": [3, 4, 0],
               "endpoint": "https://cig.dhl.de/services/sandbox/soap",
               "username": null,

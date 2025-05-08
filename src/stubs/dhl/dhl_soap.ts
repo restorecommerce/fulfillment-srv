@@ -21,8 +21,8 @@ import {
   throwOperationStatusCode,
   unique,
   unmarshallProtobufAny,
-} from '../utils.js';
-import { Stub } from '../stub.js';
+} from '../../utils.js';
+import { Stub } from '../../stub.js';
 import {
   FulfillmentProduct,
   FulfillmentSolutionQuery,
@@ -164,18 +164,6 @@ interface Config
   },
 }
 
-const DefaultUrns = {
-  dhl_service: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
-  dhl_productName: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
-  dhl_accountNumber: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
-  dhl_roundWeightUp: 'urn:restorecommerce:fulfillment:product:attribute:dhl:roundWeightUp',
-  dhl_stepPrice: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepPrice',
-  dhl_stepWeight: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepWeightInKg',
-  dhl_premium: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
-};
-
-type KnownUrns = typeof DefaultUrns;
-
 const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
   timestamp: dayjs(attributes['event-timestamp'], 'DD.MM.YYYY HH:mm').toDate(),
   location: attributes['event-location'],
@@ -198,8 +186,8 @@ const DHLTracking2FulfillmentTracking = async (
   error?: any
 ): Promise<FlatAggregatedFulfillment> => {
   if (error) {
-    fulfillment.tracking = {
-      shipment_number: fulfillment.label.shipment_number,
+    fulfillment.trackings = [{
+      shipment_number: fulfillment.labels[0].shipment_number,
       events: null,
       details: null,
       status: {
@@ -207,11 +195,11 @@ const DHLTracking2FulfillmentTracking = async (
         code: error?.code ?? 500,
         message: error?.message ?? error.details ?? error?.msg ?? JSON.stringify(error, null, 2)
       }
-    };
+    }];
   }
   else if (response?.status !== 200) {
-    fulfillment.tracking = {
-      shipment_number: fulfillment.label.shipment_number,
+    fulfillment.trackings = [{
+      shipment_number: fulfillment.labels[0].shipment_number,
       events: null,
       details: null,
       status: {
@@ -219,10 +207,10 @@ const DHLTracking2FulfillmentTracking = async (
         code: response?.status ?? 500,
         message: await response.text().catch(() => response?.statusText) ?? 'Unknown Error!',
       }
-    };
+    }];
   }
   else {
-    fulfillment.tracking = await response.text().then(
+    fulfillment.trackings = [await response.text().then(
       (text: string): Tracking => {
         const response = xml2js(text);
         if (response?.elements?.[0]?.attributes?.code === '0') {
@@ -231,11 +219,11 @@ const DHLTracking2FulfillmentTracking = async (
             code: 200,
             message: response.elements[0].attributes.error ?? response.elements[0].elements[0].attributes.status
           };
-          fulfillment.label.state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? FulfillmentState.COMPLETED : FulfillmentState.IN_TRANSIT;
-          fulfillment.label.status = status;
-          fulfillment.payload.fulfillment_state = fulfillment.label.state;
+          fulfillment.labels[0].state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? FulfillmentState.COMPLETED : FulfillmentState.IN_TRANSIT;
+          fulfillment.labels[0].status = status;
+          fulfillment.payload.fulfillment_state = fulfillment.labels[0].state;
           return {
-            shipment_number: fulfillment.label.shipment_number,
+            shipment_number: fulfillment.labels[0].shipment_number,
             events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
             details: {
               type_url: null,
@@ -246,7 +234,7 @@ const DHLTracking2FulfillmentTracking = async (
         }
         else {
           return {
-            shipment_number: fulfillment.label.shipment_number,
+            shipment_number: fulfillment.labels[0].shipment_number,
             events: null,
             details: null,
             status: {
@@ -259,7 +247,7 @@ const DHLTracking2FulfillmentTracking = async (
       },
       (err: any): Tracking => {
         return {
-          shipment_number: fulfillment.label.shipment_number,
+          shipment_number: fulfillment.labels[0].shipment_number,
           events: null,
           details: null,
           status: {
@@ -269,10 +257,10 @@ const DHLTracking2FulfillmentTracking = async (
           }
         };
       }
-    );
+    )];
   }
 
-  fulfillment.status = fulfillment.tracking.status;
+  fulfillment.status = fulfillment.trackings[0].status;
   return fulfillment;
 };
 
@@ -288,7 +276,7 @@ const DHLShipmentCancelResponse2AggregatedFulfillment = (
         code: err.code ?? err.statusCode ?? 500,
         message: err.message ?? err.statusText ?? JSON.stringify(err)
       };
-      fulfillment.label.status = status;
+      fulfillment.labels[0].status = status;
       fulfillment.status = status;
       return fulfillment;
     });
@@ -296,13 +284,13 @@ const DHLShipmentCancelResponse2AggregatedFulfillment = (
 
   return response.DeletionFulfillmentState.map((state: any) => {
     const fulfillment = fulfillment_map[state.shipmentNumber];
-    fulfillment.label.state = state.Status.statusCode == 0 ? FulfillmentState.CANCELLED : fulfillment.label.state;
+    fulfillment.labels[0].state = state.Status.statusCode == 0 ? FulfillmentState.CANCELLED : fulfillment.labels[0].state;
     const status = {
       id: fulfillment.payload.id,
       code: state.Status.statusCode,
       message: state.Status.statusText
     };
-    fulfillment.label.status = status;
+    fulfillment.labels[0].status = status;
     fulfillment.status = status;
     return fulfillment;
   });
@@ -312,9 +300,17 @@ export class DHLSoap extends Stub {
   public readonly version: number[];
   protected readonly courier_defaults: Courier;
   protected readonly configuration_defaults: any;
-  protected readonly urns: KnownUrns;
   private _stub_config: Config;
   private _soap_client: soap.Client;
+
+  protected readonly urns: {
+    dhl_product_service: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
+    dhl_product_productName: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
+    dhl_product_accountNumber: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
+    dhl_product_roundWeightUp: 'urn:restorecommerce:fulfillment:product:attribute:dhl:roundWeightUp',
+    dhl_product_stepPrice: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepPrice',
+    dhl_product_stepWeight: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepWeightInKg',
+  };
 
   protected readonly status_codes = {
     OK: {
@@ -412,7 +408,7 @@ export class DHLSoap extends Stub {
     };
 
     this.urns = {
-      ...DefaultUrns,
+      ...this.urns,
       ...this.cfg?.get('urns'),
       ...this.cfg?.get('urns:authentication'),
     };
@@ -424,13 +420,13 @@ export class DHLSoap extends Stub {
   ): Promise<BigNumber> {
     try{
       const step_weight = Number.parseFloat(
-        product.attributes.find(attr => attr.id === this.urns.dhl_stepWeight)?.value ?? '1'
+        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepWeight)?.value ?? '1'
       );
       const step_price = Number.parseFloat(
-        product.attributes.find(attr => attr.id === this.urns.dhl_stepPrice)?.value ?? '1'
+        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '1'
       );
       const precision = Number.parseInt(
-        product.attributes.find(attr => attr.id === this.urns.dhl_stepPrice)?.value ?? '3'
+        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '3'
       );
       const price = new BigNumber(
         pack.weight_in_kg / step_weight * step_price
@@ -456,7 +452,7 @@ export class DHLSoap extends Stub {
 
   protected parseService (attributes: Attribute[]) {
     return attributes?.filter((att: Attribute) =>
-      att.id?.startsWith(this.urns.dhl_service)
+      att.id?.startsWith(this.urns.dhl_product_service)
     ).map(att=> ({
       [att.value]: {
         attributes: Object.assign(
@@ -590,7 +586,7 @@ export class DHLSoap extends Stub {
         };
 
         fulfillment.payload.fulfillment_state = state;
-        fulfillment.label = label;
+        fulfillment.labels = [label];
         fulfillment.status = status;
         return fulfillment;
       });
@@ -722,10 +718,10 @@ export class DHLSoap extends Stub {
               costCenter: '',
               customerReference: request.payload.id,
               product: variant.attributes.find(
-                att => att.id === this.urns.dhl_productName
+                att => att.id === this.urns.dhl_product_productName
               )?.value,
               accountNumber: variant.attributes.find(
-                att => att.id === this.urns.dhl_accountNumber
+                att => att.id === this.urns.dhl_product_accountNumber
               )?.value ?? this.stub_config?.ordering?.account_number,
               Service: this.parseService(variant.attributes),
               ShipmentItem: {
@@ -751,7 +747,7 @@ export class DHLSoap extends Stub {
         majorRelease: this.version[0],
         minorRelease: this.version[1]
       },
-      shipmentNumber: requests.map(request => request.label.shipment_number)
+      shipmentNumber: requests.map(request => request.labels[0].shipment_number)
     };
   }
 
@@ -874,7 +870,7 @@ export class DHLSoap extends Stub {
         const attributes = {
           appname: config.tracking.appname,
           password: config.tracking.secret,
-          'piece-code': item.label.shipment_number,
+          'piece-code': item.labels[0].shipment_number,
           'language-code': options?.['language-code'] ?? 'de',
           request: options?.request ?? 'd-get-piece-detail'
         };

@@ -15,7 +15,7 @@ export class FulfillmentCommandInterface extends CommandInterface {
     events: Events,
     redisClient: RedisClient,
   ) {
-    super(server, cfg, logger, events, redisClient);
+    super(server, cfg, logger, events as any, redisClient);
     this.logger = logger;
   }
 }

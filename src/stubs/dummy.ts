@@ -1,14 +1,8 @@
 import { FlatAggregatedFulfillment } from '../utils.js';
 import { Stub } from '../stub.js';
+import { FulfillmentProduct, FulfillmentSolutionQuery } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 
-class Dummy extends Stub {
-
-  override async getTariffCode(
-    fulfillment: FlatAggregatedFulfillment
-  ): Promise<string> {
-    return fulfillment.recipient_country.country_code;
-  }
-
+export class Dummy extends Stub {
   protected override async evaluateImpl(
     fulfillments: FlatAggregatedFulfillment[]
   ): Promise<FlatAggregatedFulfillment[]> {
@@ -32,6 +26,12 @@ class Dummy extends Stub {
   ): Promise<FlatAggregatedFulfillment[]> {
     return fulfillments;
   }
-}
 
-Stub.register(Dummy.name, Dummy);
+  async matchesZone(
+    product: FulfillmentProduct,
+    query: FulfillmentSolutionQuery,
+    helper: any,
+  ): Promise<boolean> {
+    return false;
+  }
+}

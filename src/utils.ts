@@ -80,9 +80,21 @@ import {
   Resolver,
   ArrayResolver,
   ResourceMap,
-} from './experimental/index.js';
+} from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
 import { Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import { Setting } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
+
+export class OperationStatusError
+  extends Error
+  implements OperationStatus
+{
+  constructor(
+    public readonly code: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
 
 export type AggregationBaseTemplate = {
   shops?: ResourceMap<Shop>,
@@ -135,9 +147,8 @@ export interface FlatAggregatedFulfillment extends FulfillmentResponse
   sender_country?: Country;
   recipient_country?: Country;
   parcel?: Parcel;
-  label?: Label;
-  tracking?: Tracking;
-  fulfillment_state?: FulfillmentState;
+  labels?: Label[];
+  trackings?: Tracking[];
   options?: Any;
 };
 
@@ -268,14 +279,14 @@ export const createOperationStatusCode = (
   status?: OperationStatus,
   entity?: string,
   id?: string,
-): OperationStatus => ({
-  code: status?.code ?? 500,
-  message: status?.message?.replace(
+): OperationStatus => new OperationStatusError(
+  status?.code ?? 500,
+  status?.message?.replace(
     '{entity}', entity ?? 'undefined'
   ).replace(
     '{id}', id ?? 'undefined'
   ) ?? 'Unknown status',
-});
+);
 
 export const throwOperationStatusCode = <T>(
   status: OperationStatus,
@@ -301,8 +312,12 @@ export const marshallProtobufAny = (
   )
 });
 
-export const unmarshallProtobufAny = (payload: Any): any => JSON.parse(
-  payload?.value?.toString() ?? null
+export const unmarshallProtobufAny = (payload: Any): any => (
+  payload?.value
+  ? JSON.parse(
+    payload.value.toString()
+  )
+  : undefined
 );
 
 export const filterTax = (
@@ -648,11 +663,10 @@ export const flatMapAggregatedFulfillmentListResponse = (aggregation: Aggregated
       const product = aggregation.fulfillment_products.get(parcel.product_id);
       const courier = aggregation.fulfillment_couriers.get(product.courier_id);
       const credential = aggregation.fulfillment_couriers.get(courier.credential_id, null);
-      const label = payload.labels?.find(label => label.parcel_id === parcel.id);
-      const tracking = payload.trackings?.find(
-        tracking => label.shipment_number === tracking.shipment_number
+      const labels = payload.labels?.filter(label => label.parcel_id === parcel.id);
+      const trackings = payload.trackings?.filter(
+        tracking => labels.some(label => label.shipment_number === tracking.shipment_number)
       );
-      const fulfillment_state = label?.state ?? payload?.fulfillment_state;
       return {
         payload,
         sender_country: aggregation.countries.get(payload.packaging.sender.address?.country_id),
@@ -661,9 +675,8 @@ export const flatMapAggregatedFulfillmentListResponse = (aggregation: Aggregated
         courier,
         credential,
         parcel,
-        label,
-        tracking,
-        fulfillment_state,
+        labels,
+        trackings,
         status: item.status,
       };
     });
@@ -680,18 +693,19 @@ export const mergeFulfillments = (
     const c = fulfillment_map[a?.payload.id];
     if (b && c) {
       if (a.parcel) c.payload.packaging.parcels.push(a.parcel);
-      if (a.label) c.payload.labels.push(a.label);
-      if (a.tracking) c.payload.trackings.push(a.tracking);
-      c.payload.fulfillment_state = StateRank[b.fulfillment_state] < StateRank[c.payload.fulfillment_state]
-        ? b.fulfillment_state
-        : c.payload.fulfillment_state;
+      if (a.labels) c.payload.labels.push(...a.labels);
+      if (a.trackings) c.payload.trackings.push(...a.trackings);
+      c.payload.fulfillment_state = c.payload.labels.reduce(
+        (x, y) => StateRank[x?.state] < StateRank[y?.state] ? x : y,
+        undefined
+      )?.state;
       c.status = c.status?.code > a.status?.code ? c.status : a.status;
       c.payload.total_amounts.push(...(b.total_amounts ?? []));
     }
     else {
       b.packaging.parcels = a.parcel ? [a.parcel] : [];
-      b.labels = a.label ? [a.label] : [];
-      b.trackings = a.tracking ? [a.tracking] : [];
+      b.labels = a.labels ? [...a.labels] : [];
+      b.trackings = a.trackings ? [...a.trackings] : [];
       b.total_amounts ??= [];
       fulfillment_map[b.id] = a;
     }

@@ -45,9 +45,15 @@ import { FulfillmentCourierService } from './services/fulfillment_courier.js';
 import { FulfillmentProductService } from './services/fulfillment_product.js';
 import { FulfillmentCommandInterface } from './services/fulfillment_command_interface.js';
 import { Stub } from './stub.js';
-import { DHLSoap } from './stubs/index.js';
-import { ClientRegister } from './experimental/ClientRegister.js';
-import { ResourceAggregator } from './experimental/ResourceAggregator.js';
+import { 
+  Dummy, 
+  DHLSoap,
+  DHLRest,
+} from './stubs/index.js';
+import {
+  ClientRegister,
+  ResourceAggregator
+} from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
 
 registerProtoMeta(
   FulfillmentMeta,
@@ -183,7 +189,9 @@ export class Worker {
 
     // register api stubs
     Stub.logger = this.logger;
+    Stub.register('Dummy', Dummy);
     Stub.register('DHLSoap', DHLSoap);
+    Stub.register('DHLRest', DHLRest);
 
     // get database connection
     const db = await database.get(cfg.get('database:main'), logger);
@@ -192,7 +200,7 @@ export class Worker {
     const kafkaCfg = cfg.get('events:kafka');
     this.events = new Events(kafkaCfg, logger);
     await this.events.start();
-    this.offsetStore = new OffsetStore(this.events, cfg, logger);
+    this.offsetStore = new OffsetStore(this.events as any, cfg, logger);
 
     const redisConfig = cfg.get('redis');
     redisConfig.db = this.cfg.get('redis:db-indexes:db-subject');
