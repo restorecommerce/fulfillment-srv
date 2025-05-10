@@ -303,7 +303,7 @@ export class DHLSoap extends Stub {
   private _stub_config: Config;
   private _soap_client: soap.Client;
 
-  protected readonly urns: {
+  protected readonly urns = {
     dhl_product_service: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
     dhl_product_productName: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
     dhl_product_accountNumber: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
@@ -386,7 +386,7 @@ export class DHLSoap extends Stub {
 
   constructor(courier?: Courier, cfg?: ServiceConfig, logger?: Logger) {
     super(courier, cfg, logger);
-    this.courier_defaults = Object.values(this.cfg?.get('defaults:Couriers') as Courier[])?.find(
+    this.courier_defaults = Object.values(cfg?.get('defaults:Couriers') as Courier[])?.find(
       c => c.id === courier.id
     ) ?? Object.values(this.cfg?.get('defaults:Couriers') as Courier[])?.find(
       c => c.api === courier?.api
@@ -399,18 +399,18 @@ export class DHLSoap extends Stub {
 
     this.status_codes = {
       ...this.status_codes,
-      ...this.cfg?.get('statusCodes'),
+      ...cfg?.get('statusCodes'),
     };
 
     this.operation_status_codes = {
       ...this.operation_status_codes,
-      ...this.cfg?.get('operationStatusCodes'),
+      ...cfg?.get('operationStatusCodes'),
     };
 
     this.urns = {
       ...this.urns,
-      ...this.cfg?.get('urns'),
-      ...this.cfg?.get('urns:authentication'),
+      ...cfg?.get('urns'),
+      ...cfg?.get('urns:authentication'),
     };
   }
 
@@ -650,12 +650,10 @@ export class DHLSoap extends Stub {
             )
           ) ?? {})
         }
-        variant.attributes = unique(
-          [
-            ...(request.product.attributes ?? []),
-            ...(variant.attributes ?? []),
-          ]
-        );
+        variant.attributes = unique([
+          ...(request.product.attributes ?? []),
+          ...(variant.attributes ?? []),
+        ]);
         return {
           sequenceNumber: i + 1,
           Shipment: {
@@ -918,5 +916,3 @@ export class DHLSoap extends Stub {
     return false;
   }
 };
-
-Stub.register('DHLSoap', DHLSoap);

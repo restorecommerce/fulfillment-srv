@@ -323,9 +323,7 @@
     "ownerEntity": "urn:restorecommerce:acs:names:ownerIndicatoryEntity",
     "ownerInstance": "urn:restorecommerce:acs:names:ownerInstance",
     "organization": "urn:restorecommerce:acs:model:organization.Organization",
-    "user": "urn:restorecommerce:acs:model:user.User",
-    "productName": "urn:restorecommerce:fulfillment:product:attribute:dhl:productName",
-    "accountNumber": "urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber"
+    "user": "urn:restorecommerce:acs:model:user.User"
   },
   "authorization": {
     "service": "acs-srv",
@@ -468,6 +466,16 @@
               "secret": "geheim"
             }
           }
+        }
+      },
+      "DHLRest": {
+        "api": "DHLRest",
+        "stub_type": "DHLRest",
+        "configuration": {
+          "username": null,
+          "password": null,
+          "client_id": null,
+          "client_secret": null
         }
       }
     },

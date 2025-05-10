@@ -960,7 +960,7 @@ export class FulfillmentService
           }
         }
       );
-      this.logger.info(response);
+
       const aggregation = await this.aggregate(response, request.subject, context).then(
         aggregation => this.validateFulfillmentListResponse(aggregation, request.subject)
       );
@@ -992,14 +992,16 @@ export class FulfillmentService
         item => item.payload
       );
 
-      const upserted = await super.upsert({
-        items,
-        total_count: items.length,
-        subject: request.subject
-      }, context);
+      const upserted = await super.upsert(
+        {
+          items,
+          total_count: items.length,
+          subject: request.subject
+        }, context
+      );
 
       if (this.isEventsEnabled) {
-        upserted.items.forEach(item => {
+        upserted.items?.forEach(item => {
           if (this.emitters && item.payload.fulfillment_state in this.emitters) {
             switch (item.payload.fulfillment_state) {
               case FulfillmentState.INVALID:
@@ -1055,11 +1057,15 @@ export class FulfillmentService
           }
         ));
       }
-      upserted.total_count = upserted.items.length;
-      if (upserted.items.some(item => item.status?.code !== 200)) {
-        upserted.operation_status = this.operation_status_codes.PARTIAL;
-      }
-      return upserted;
+
+      const operation_status = merged.some(item => item.status?.code !== 200)
+        ? this.operation_status_codes.PARTIAL
+        : upserted.operation_status;
+      return {
+        items: merged,
+        total_count: merged.length,
+        operation_status,
+      };
     }
     catch (e: any) {
       return this.catchOperationError<FulfillmentListResponse>(

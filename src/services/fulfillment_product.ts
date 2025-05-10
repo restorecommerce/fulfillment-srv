@@ -196,7 +196,7 @@ export class FulfillmentProductService
   ) {
     super(
       cfg.get('database:main:entities:2') ?? 'fulfillment_product',
-      topic,
+      topic as any,
       db,
       cfg,
       logger,

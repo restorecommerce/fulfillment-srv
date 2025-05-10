@@ -215,9 +215,9 @@ export abstract class Stub
     kwargs?: any,
   ): Stub {
     let stub = Stub.REGISTER[courier.id];
-    if (!stub && (courier.stub_type in Stub.STUB_TYPES))
+    if (!stub && (courier.api in Stub.STUB_TYPES))
     {
-      stub = new Stub.STUB_TYPES[courier.stub_type](
+      stub = new Stub.STUB_TYPES[courier.api](
         courier,
         cfg ?? Stub.cfg,
         logger ?? Stub.logger,

@@ -191,7 +191,7 @@ const businessAddresses: Address[] = [{
 const countries: CountryResponse[] = [{
   payload: {
     id: 'germany',
-    countryCode: 'DE',
+    countryCode: 'DEU',
     name: 'Deutschland',
     geographicalName: 'Germany',
     economicAreas: [],
@@ -384,15 +384,14 @@ const customers: CustomerResponse[] = [
 ]
 
 const validCouriers: { [key: string]: FulfillmentCourierList } = {
-  dhl_1: {
+  dhl: {
     items: [
       {
-        id: 'dhl_1',
+        id: 'dhl_soap',
         name: 'DHL',
         description: '',
         logo: 'DHL.png',
         website: 'https://www.dhl.com/',
-        stubType: 'DHLSoap',
         api: 'DHLSoap',
         shopIds: [
           'shop_1'
@@ -400,12 +399,12 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
         meta,
       },
       {
-        id: 'dhl_2',
+        id: 'dhl_rest',
         name: 'DHL',
         description: '',
         logo: 'DHL.png',
         website: 'https://www.dhl.com/',
-        stubType: 'DHLSoap',
+        api: 'DHLRest',
         shopIds: [
           'shop_1'
         ],
@@ -418,24 +417,22 @@ const validCouriers: { [key: string]: FulfillmentCourierList } = {
 };
 
 const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
-  dhl_1: {
+  dhl: {
     items: [
       {
         id: 'dhl-1-national',
         name: 'DHL National (Germany)',
         description: 'Versendungen innerhalb Deutschland',
-        courierId: validCouriers.dhl_1.items?.[0].id,
+        courierId: 'dhl_rest',
         startZones: ['DE'],
         destinationZones: ['DE'],
         taxIds: [taxes[0].payload?.id as string],
         attributes: [{
           id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
           value: 'V01PAK',
-          attributes: [],
         },{
-          id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
+          id: 'urn:restorecommerce:fulfillment:attribute:dhl:accountNumber',
           value: '33333333330102',
-          attributes: [],
         }],
         variants: [{
           id: 'dhl-1-national-s',
@@ -475,18 +472,16 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         id: 'dhl-1-europe',
         name: 'DHL Europe',
         description: 'Versendungen innerhalb Europas',
-        courierId: validCouriers.dhl_1.items?.[0].id,
+        courierId: 'dhl_rest',
         taxIds: [taxes[0].payload?.id as string],
         startZones: ['DE'],
         destinationZones: ['DE'],
         attributes: [{
           id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
           value: 'V01PAK',
-          attributes: [],
         },{
-          id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
+          id: 'urn:restorecommerce:fulfillment:attribute:dhl:accountNumber',
           value: '33333333330102',
-          attributes: [],
         }],
         variants: [{
           id: 'dhl-1-europe-s',
@@ -526,18 +521,16 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         id: 'dhl-2-national',
         name: 'DHL National (Germany)',
         description: 'Versendungen innerhalb Deutschland',
-        courierId: validCouriers.dhl_1.items?.[1].id,
+        courierId: 'dhl_rest',
         startZones: ['DE'],
         destinationZones: ['DE'],
         taxIds: [taxes[0].payload?.id as string],
         attributes: [{
           id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
           value: 'V01PAK',
-          attributes: [],
         },{
-          id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
+          id: 'urn:restorecommerce:fulfillment:attribute:dhl:accountNumber',
           value: '33333333330102',
-          attributes: [],
         }],
         variants: [{
           id: 'dhl-2-national-s',
@@ -577,18 +570,16 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         id: 'dhl-2-europe',
         name: 'DHL Europe',
         description: 'Versendungen innerhalb Europas',
-        courierId: validCouriers.dhl_1.items?.[1].id,
+        courierId: 'dhl_rest',
         startZones: ['DE', 'FR', 'IT', 'ES'],
         destinationZones: ['DE', 'FR', 'IT', 'ES'],
         taxIds: [taxes[0].payload?.id as string],
         attributes: [{
           id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
           value: 'V01PAK',
-          attributes: [],
         },{
-          id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:accountNumber',
+          id: 'urn:restorecommerce:fulfillment:attribute:dhl:accountNumber',
           value: '33333333330102',
-          attributes: [],
         }],
         variants: [{
           id: 'dhl-2-europe-s',
@@ -632,7 +623,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
 }; 
 
 const validFulfillmentSolutionQueries: { [key: string]: FulfillmentSolutionQueryList } = {
-  dhl_1: {
+  dhl: {
     items: [
       {
         customerId: customers[0].payload?.id,
@@ -663,7 +654,7 @@ const validFulfillmentSolutionQueries: { [key: string]: FulfillmentSolutionQuery
 };
 
 const validFulfillments: { [key: string]: FulfillmentList } = {
-  dhl_1: {
+  dhl: {
     items: [
       {
         id: 'validFulfillment_1',
@@ -680,8 +671,8 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
           parcels: [
             {
               id: '1',
-              productId: validFulfillmentProducts.dhl_1.items?.[0].id,
-              variantId: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].id,
+              productId: validFulfillmentProducts.dhl.items?.[0].id,
+              variantId: validFulfillmentProducts.dhl.items?.[0].variants?.[0].id,
               items: [
                 {
                   productId: products[0].payload?.id,
@@ -690,7 +681,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
                   quantity: 5,
                 }
               ],
-              price: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].price,
+              price: validFulfillmentProducts.dhl.items?.[0].variants?.[0].price,
               amount: undefined,
               package: {
                 sizeInCm: {
@@ -728,8 +719,8 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
           parcels: [
             {
               id: '1',
-              productId: validFulfillmentProducts.dhl_1.items?.[0].id,
-              variantId: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].id,
+              productId: validFulfillmentProducts.dhl.items?.[0].id,
+              variantId: validFulfillmentProducts.dhl.items?.[0].variants?.[0].id,
               items: [
                 {
                   productId: products[0].payload?.id,
@@ -738,7 +729,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
                   quantity: 5,
                 }
               ],
-              price: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].price,
+              price: validFulfillmentProducts.dhl.items?.[0].variants?.[0].price,
               amount: undefined,
               package: {
                 sizeInCm: {
@@ -751,8 +742,8 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
             },
             {
               id: '2',
-              productId: validFulfillmentProducts.dhl_1.items?.[0].id,
-              variantId: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].id,
+              productId: validFulfillmentProducts.dhl.items?.[0].id,
+              variantId: validFulfillmentProducts.dhl.items?.[0].variants?.[0].id,
               items: [
                 {
                   productId: products[0].payload?.id,
@@ -761,7 +752,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
                   quantity: 5,
                 }
               ],
-              price: validFulfillmentProducts.dhl_1.items?.[0].variants?.[0].price,
+              price: validFulfillmentProducts.dhl.items?.[0].variants?.[0].price,
               amount: undefined,
               package: {
                 sizeInCm: {
@@ -800,10 +791,10 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
 };
 
 const validTrackingRequests: { [key: string]: FulfillmentIdList } = {
-  dhl_1: {
+  dhl: {
     items: [
       {
-        id: validFulfillments.dhl_1.items?.[1].id,
+        id: validFulfillments.dhl.items?.[1].id,
         shipmentNumbers: [
           '00340434161094015902'
         ],
@@ -847,7 +838,6 @@ const users: Record<string, UserResponse> = {
         {
           id: 'root_tech_user-1-super-administrator-r-id',
           role: 'superadministrator-r-id',
-          attributes: [],
         },
       ],
       active: true,
@@ -873,7 +863,6 @@ const users: Record<string, UserResponse> = {
         {
           id: 'superadmin-1-administrator-r-id',
           role: 'superadministrator-r-id',
-          attributes: [],
         },
       ],
       locale_id: 'de-de',

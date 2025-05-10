@@ -83,6 +83,7 @@ import {
 } from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
 import { Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import { Setting } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
+import { Attribute } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js';
 
 export class OperationStatusError
   extends Error
@@ -137,7 +138,7 @@ export type CourierResponse = FulfillmentCourierResponse;
 export const StateRank = Object.values(FulfillmentState).reduce((a, b, i) => {
   a[b] = i;
   return a;
-}, {} as { [key: string]: number });
+}, {} as Record<FulfillmentState, number>);
 
 export interface FlatAggregatedFulfillment extends FulfillmentResponse
 {
@@ -213,25 +214,32 @@ export const unique = <T extends Record<string, any>>(objs: T[], by = 'id'): T[]
   )).values()
 ];
 
-const parseList = (value: string) => value?.match(/^\[.*\]$/) ? JSON.parse(value) : value?.split(/\s*,\s*/)
-const parseTrue = (value: string) => value?.toString().toLowerCase() === 'true';
+export const parse = {
+  List: (value: string) => value?.match(/^\[.*\]$/) ? JSON.parse(value) : value?.split(/\s*,\s*/),
+  True: (value: string) => value?.toString().toLowerCase() === 'true', // must be truly true
+  Flag: (value: string) => value?.toString().toLowerCase() !== 'false', // everything is considered as true except false
+  Json: JSON.parse,
+  Int: Number.parseInt,
+  Float: Number.parseFloat,
+};
+
 const SettingParser: { [key: string]: (value: string) => any } = {
-  shop_order_send_confirm_enabled: parseTrue,
-  shop_order_send_cancel_enabled: parseTrue,
-  shop_order_send_withdrawn_enabled: parseTrue,
-  shop_fulfillment_evaluate_enabled: parseTrue,
-  shop_fulfillment_create_enabled: parseTrue,
-  shop_invoice_create_enabled: parseTrue,
-  shop_invoice_render_enabled: parseTrue,
-  shop_invoice_send_enabled: parseTrue,
-  shop_order_error_cleanup: parseTrue,
-  shop_email_render_options: JSON.parse,
-  shop_locales: parseList,
-  shop_email_cc: parseList,
-  shop_email_bcc: parseList,
-  customer_locales: parseList,
-  customer_email_cc: parseList,
-  customer_email_bcc: parseList,
+  shop_order_send_confirm_enabled: parse.True,
+  shop_order_send_cancel_enabled: parse.True,
+  shop_order_send_withdrawn_enabled: parse.True,
+  shop_fulfillment_evaluate_enabled: parse.True,
+  shop_fulfillment_create_enabled: parse.True,
+  shop_invoice_create_enabled: parse.True,
+  shop_invoice_render_enabled: parse.True,
+  shop_invoice_send_enabled: parse.True,
+  shop_order_error_cleanup: parse.True,
+  shop_email_render_options: parse.Json,
+  shop_locales: parse.List,
+  shop_email_cc: parse.List,
+  shop_email_bcc: parse.List,
+  customer_locales: parse.List,
+  customer_email_cc: parse.List,
+  customer_email_bcc: parse.List,
 };
 
 export const parseSetting = (key: string, value: string) => {
@@ -243,6 +251,22 @@ export const parseSetting = (key: string, value: string) => {
     return value;
   }
 };
+
+export const parseAttributes = <U, P extends { [K in keyof U]?: (str: string) => any }> (
+  urns: U,
+  parser: P,
+  ...attributes: Attribute[]
+): { [K in keyof U]: { value: U[K], parse: P[K] } } => 
+  Object.assign(
+  {},
+  ...Object.entries(urns).map(
+    ([key, urn]) => {
+      const value = attributes.find(a => a.id === urn)?.value;
+      const parse = parser[key as Extract<keyof U, string>];
+      return { [key]: value && parse ? parse(value) : value };
+    }
+  ),
+);
 
 export const createStatusCode = (
   entity: string,
@@ -520,6 +544,7 @@ export const mergeFulfillmentProduct = (
   return {
     ...product,
     variants: [variant],
+    attributes: variant.attributes,
   };
 };
 
@@ -667,11 +692,12 @@ export const flatMapAggregatedFulfillmentListResponse = (aggregation: Aggregated
       const trackings = payload.trackings?.filter(
         tracking => labels.some(label => label.shipment_number === tracking.shipment_number)
       );
+
       return {
         payload,
         sender_country: aggregation.countries.get(payload.packaging.sender.address?.country_id),
         recipient_country: aggregation.countries.get(payload.packaging.recipient.address?.country_id),
-        product,
+        product: mergeFulfillmentProduct(product, parcel.variant_id),
         courier,
         credential,
         parcel,
@@ -699,13 +725,13 @@ export const mergeFulfillments = (
         (x, y) => StateRank[x?.state] < StateRank[y?.state] ? x : y,
         undefined
       )?.state;
-      c.status = c.status?.code > a.status?.code ? c.status : a.status;
+      c.status = c.status?.code > a.status?.code ? c.status : a.status ?? c.status;
       c.payload.total_amounts.push(...(b.total_amounts ?? []));
     }
     else {
       b.packaging.parcels = a.parcel ? [a.parcel] : [];
-      b.labels = a.labels ? [...a.labels] : [];
-      b.trackings = a.trackings ? [...a.trackings] : [];
+      b.labels = a.labels ? a.labels : [];
+      b.trackings = a.trackings ? a.trackings : [];
       b.total_amounts ??= [];
       fulfillment_map[b.id] = a;
     }

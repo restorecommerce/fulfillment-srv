@@ -324,11 +324,13 @@ describe('Testing Fulfillment Service Cluster:', () => {
           response?.items?.length ?? 0 > 0,
           'response.items.length expected to be greater 0',
         );
-        should.ok(
-          !response?.items?.some(
-            item => item.status?.code !== 200
-          ),
+        response.items!.should.matchEvery(
+          item => item.status?.code === 200,
           'response.items[*].status.code expected all to be 200',
+        );
+        response.items!.should.matchEvery(
+          item => item.payload?.labels?.length > 0,
+          'response.items[*].labels.length expected all to be greater 0',
         );
       });
 
