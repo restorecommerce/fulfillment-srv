@@ -17,6 +17,7 @@ import {
   Credential
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
 import {
+  AggregatedFulfillmentListResponse,
   FlatAggregatedFulfillment,
   throwOperationStatusCode,
   unique,
@@ -180,7 +181,7 @@ const DHLEvent2FulfillmentEvent = (attributes: any): Event => ({
   }
 });
 
-const DHLTracking2FulfillmentTracking = async (
+export const DHLTracking2FulfillmentTracking = async (
   fulfillment: FlatAggregatedFulfillment,
   response: Response,
   error?: any
@@ -219,7 +220,7 @@ const DHLTracking2FulfillmentTracking = async (
             code: 200,
             message: response.elements[0].attributes.error ?? response.elements[0].elements[0].attributes.status
           };
-          fulfillment.labels[0].state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? FulfillmentState.COMPLETED : FulfillmentState.IN_TRANSIT;
+          fulfillment.labels[0].state = response.elements[0].elements[0].attributes['delivery-event-flag'] ? FulfillmentState.COMPLETE : FulfillmentState.IN_TRANSIT;
           fulfillment.labels[0].status = status;
           fulfillment.payload.fulfillment_state = fulfillment.labels[0].state;
           return {
@@ -390,9 +391,7 @@ export class DHLSoap extends Stub {
       c => c.id === courier.id
     ) ?? Object.values(this.cfg?.get('defaults:Couriers') as Courier[])?.find(
       c => c.api === courier?.api
-        || c.stub_type === courier?.stub_type
         || c.api === this.type
-        || c.stub_type === this.type
     );
     this.configuration_defaults = this.courier_defaults?.configuration?.value;
     this.version = this.configuration_defaults?.ordering?.version ?? [3, 4, 0];
@@ -416,7 +415,8 @@ export class DHLSoap extends Stub {
 
   public async calcGross(
     product: Variant,
-    pack: Package
+    pack: Package,
+    precision = 2,
   ): Promise<BigNumber> {
     try{
       const step_weight = Number.parseFloat(
@@ -424,9 +424,6 @@ export class DHLSoap extends Stub {
       );
       const step_price = Number.parseFloat(
         product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '1'
-      );
-      const precision = Number.parseInt(
-        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '3'
       );
       const price = new BigNumber(
         pack.weight_in_kg / step_weight * step_price
@@ -580,7 +577,10 @@ export class DHLSoap extends Stub {
         const label: Label = {
           parcel_id: fulfillment.parcel.id,
           shipment_number: dhl_state?.shipmentNumber,
-          url: dhl_state?.LabelData.labelUrl,
+          file: {
+            url: dhl_state?.LabelData.labelUrl,
+            content_type: 'application/pdf',
+          },
           state,
           status,
         };
@@ -635,6 +635,7 @@ export class DHLSoap extends Stub {
 
   protected AggregatedFulfillmentRequests2DHLShipmentOrderRequest(
     requests: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
   ): ShipmentOrderRequest {
     const shipment_order_request = {
       Version: {
@@ -642,12 +643,12 @@ export class DHLSoap extends Stub {
         minorRelease: this.version[1],
       },
       ShipmentOrder: requests.map((request, i): ShipmentOrder => {
+        const sender_country = aggregation.countries.get(request.payload.packaging.sender.address.country_id);
+        const recipient_country = aggregation.countries.get(request.payload.packaging.recipient.address.country_id);
         const packaging = request.payload.packaging;
         const variant = {
           ...(request.product.variants?.find(
-            v => packaging.parcels.map(
-              p => p.variant_id.includes(v.id)
-            )
+            v => request.parcel.variant_id.includes(v.id)
           ) ?? {})
         }
         variant.attributes = unique([
@@ -675,8 +676,8 @@ export class DHLSoap extends Stub {
                 'cis:zip': packaging.sender.address?.postcode,
                 'cis:city': packaging.sender.address?.region,
                 'cis:Origin': {
-                  'cis:country': request.sender_country?.name,
-                  'cis:countryISOCode': request.sender_country?.country_code
+                  'cis:country': sender_country?.name,
+                  'cis:countryISOCode': sender_country?.country_code
                 }
               },
               Communication: {
@@ -701,8 +702,8 @@ export class DHLSoap extends Stub {
                 'cis:zip': packaging.recipient.address?.postcode,
                 'cis:city': packaging.recipient.address?.region,
                 'cis:Origin': {
-                  'cis:country': request.recipient_country?.name,
-                  'cis:countryISOCode': request.recipient_country?.country_code
+                  'cis:country': recipient_country?.name,
+                  'cis:countryISOCode': recipient_country?.country_code
                 },
               },
               Communication: {
@@ -803,20 +804,22 @@ export class DHLSoap extends Stub {
 
   protected async soapCall(
     funcName: string,
-    fulfillments: FlatAggregatedFulfillment[]
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
   ): Promise<FlatAggregatedFulfillment[]> {
-    fulfillments = fulfillments.filter(
-      fulfillment => fulfillment.courier.id === this.courier.id
-    );
     if (fulfillments.length === 0) {
       return []
     };
-    return await this.getSoapClient(fulfillments[0].credential).then(
+    const credential = aggregation.credentials.get(this.courier.credential_id);
+    return await this.getSoapClient(credential).then(
       client => new Promise<FlatAggregatedFulfillment[]>(
         (resolve, reject): void => {
           const timer = setTimeout(reject, 30000, this.operation_status_codes.TIMEOUT);
           client.GVAPI_2_0_de.GKVAPISOAP11port0[funcName](
-            this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(fulfillments),
+            this.AggregatedFulfillmentRequests2DHLShipmentOrderRequest(
+              fulfillments,
+              aggregation,
+            ),
             (error: any, result: any): any => {
               try {
                 clearTimeout(timer);
@@ -832,23 +835,35 @@ export class DHLSoap extends Stub {
     );
   }
 
-  protected override async evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-    return await this.soapCall('validateShipment', fulfillments);
+  protected override async evaluateImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]> {
+    return await this.soapCall('validateShipment', fulfillments, aggregation);
   }
 
-  protected override async submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-    return await this.soapCall('createShipmentOrder', fulfillments);
+  protected override async submitImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]> {
+    return await this.soapCall('createShipmentOrder', fulfillments, aggregation);
   }
 
-  protected override async cancelImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
-    return await this.soapCall('deleteShipmentOrder', fulfillments);
+  protected override async cancelImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]> {
+    return await this.soapCall('deleteShipmentOrder', fulfillments, aggregation);
   };
 
-  protected override async trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]> {
+  protected override async trackImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]> {
+    const credential = aggregation.credentials.get(this.courier.credential_id);
     const promises = fulfillments.map(async item => {
       try {
-        const courier = item.courier;
-        const credential = item.credential;
+        const courier = this.courier;
         const options = unmarshallProtobufAny(item?.options);
         const config: Config = {
           tracking: {

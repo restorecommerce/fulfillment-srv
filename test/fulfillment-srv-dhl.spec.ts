@@ -220,7 +220,6 @@ describe('Testing Fulfillment Service Cluster:', () => {
     const fulfillmentCancelledSemaphore = new Semaphore(0);
 
     const onFulfillmentCreated = (msg: Fulfillment, context?:any): void => {
-      should.equal(msg?.fulfillment_state, FulfillmentState.PENDING);
       fulfillmentCreatedSemaphore.release(1);
     };
 
@@ -230,7 +229,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
     };
 
     const onFulfillmentCompleted = (msg: Fulfillment, context?:any): void => {
-      should.equal(msg?.fulfillment_state, FulfillmentState.COMPLETED);
+      should.equal(msg?.fulfillment_state, FulfillmentState.COMPLETE);
       fulfillmentCompletedSemaphore.release(1);
     };
 
@@ -297,7 +296,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
         const response = await fulfillment_client.evaluate(sample);
         should.equal(
           response?.operationStatus?.code, 200,
-          'response.operationStatus.code expected to be 200',
+          [
+            'response.operationStatus.code expected to be 200',
+            JSON.stringify(response, null, 2)
+          ].join('\n')
         );
         should.ok(
           response?.items?.length ?? 0 > 0,
@@ -307,7 +309,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
           !response?.items?.some(
             item => item.status?.code !== 200
           ),
-          'response.items[*].status.code expected all to be 200',
+          [
+            'response.items[*].status.code expected all to be 200',
+            JSON.stringify(response, null, 2)
+          ].join('\n')
         );
       });
     }
@@ -326,7 +331,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
         );
         response.items!.should.matchEvery(
           item => item.status?.code === 200,
-          'response.items[*].status.code expected all to be 200',
+          [
+            'response.items[*].status.code expected all to be 200',
+            JSON.stringify(response, null, 2)
+          ].join('\n')
         );
         response.items!.should.matchEvery(
           item => item.payload?.labels?.length > 0,

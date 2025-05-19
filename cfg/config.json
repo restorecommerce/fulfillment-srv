@@ -472,10 +472,23 @@
         "api": "DHLRest",
         "stub_type": "DHLRest",
         "configuration": {
-          "username": null,
-          "password": null,
-          "client_id": null,
-          "client_secret": null
+          "value": {
+            "ordering": {
+              "baseUrl": "https://api-sandbox.dhl.com/parcel/de/shipping/v2",
+              "tokenUrl": "https://api-sandbox.dhl.com/parcel/de/account/auth/ropc/v1/token",
+              "username": null,
+              "password": null,
+              "client_id": null,
+              "client_secret": null
+            },
+            "tracking": {
+              "appname": "zt12345",
+              "endpoint": "https://api-sandbox.dhl.com/parcel/de/tracking/v0/shipments",
+              "username": null,
+              "password": null,
+              "secret": "geheim"
+            }
+          }
         }
       }
     },

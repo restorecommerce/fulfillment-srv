@@ -3,8 +3,11 @@ import { Logger } from '@restorecommerce/logger';
 import { ServiceConfig } from '@restorecommerce/service-config';
 import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
 import {
+  AggregatedFulfillmentListResponse,
   Courier,
   FlatAggregatedFulfillment,
+  flatMapAggregatedFulfillmentListResponse,
+  mergeFulfillments,
   unique,
 } from './utils.js';
 import {
@@ -13,6 +16,7 @@ import {
   Variant
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
 import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import { FulfillmentState } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 
 type StubType<T extends Stub> = new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => T;
 
@@ -31,12 +35,32 @@ export abstract class Stub
     protected logger?: Logger
   ) {}
 
-  protected abstract evaluateImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  protected abstract submitImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  protected abstract trackImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  protected abstract cancelImpl (fulfillments: FlatAggregatedFulfillment[]): Promise<FlatAggregatedFulfillment[]>;
-  public abstract matchesZone<T>(product: FulfillmentProduct, query: FulfillmentSolutionQuery, helper?: T): Promise<boolean>;
-  public abstract calcGross(product: Variant, pack: Package): Promise<BigNumber>;
+  protected abstract evaluateImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]>;
+  protected abstract submitImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]>;
+  protected abstract trackImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]>;
+  protected abstract cancelImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): Promise<FlatAggregatedFulfillment[]>;
+  public abstract matchesZone<T>(
+    product: FulfillmentProduct,
+    query: FulfillmentSolutionQuery,
+    helper?: T
+  ): Promise<boolean>;
+  public abstract calcGross(
+    product: Variant,
+    pack: Package,
+    precision: number,
+  ): Promise<BigNumber>;
 
   protected createStatusCode(
     entity: string,
@@ -77,7 +101,7 @@ export abstract class Stub
       status: {
         id,
         code: error?.code ?? 500,
-        message: error?.message ?? error?.details ?? error?.toString(),
+        message: error?.details ?? error?.message ?? error?.toString(),
       }
     } as T;
   }
@@ -89,109 +113,188 @@ export abstract class Stub
       total_count: items?.length ?? 0,
       operation_status: {
         code: error?.code ?? 500,
-        message: error?.message ?? error?.details ?? error?.toString(),
+        message: error?.details ?? error?.message ?? error?.toString(),
       }
     } as T;
   }
 
-  public readonly evaluate = (fulfillments: FlatAggregatedFulfillment[]) => this.evaluateImpl(
-    fulfillments.filter(f => f.courier?.id === this.courier.id)
-  );
+  public async evaluate(
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse
+  ): Promise<FlatAggregatedFulfillment[]> {
+    fulfillments = fulfillments?.filter(f => f.product.courier_id === this.courier.id);
+    if (fulfillments?.length > 0) {
+      return await this.evaluateImpl(
+        fulfillments,
+        aggregation,
+      );
+    }
+    else {
+      return [];
+    }
+  }
 
-  public readonly submit = (fulfillments: FlatAggregatedFulfillment[]) => this.submitImpl(
-    fulfillments.filter(f => f.courier?.id === this.courier.id)
-  );
+  public async submit(
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse
+  ): Promise<FlatAggregatedFulfillment[]> {
+    fulfillments = fulfillments?.filter(
+      f => f.product.courier_id === this.courier.id
+        && (
+          f.fulfillment_state === undefined
+          || f.fulfillment_state === FulfillmentState.PENDING
+        )
+    );
+    if (fulfillments?.length > 0) {
+      return await this.submitImpl(
+        fulfillments,
+        aggregation,
+      );
+    }
+    else {
+      return [];
+    }
+  }
 
-  public readonly track = (fulfillments: FlatAggregatedFulfillment[]) => this.trackImpl(
-    fulfillments.filter(f => f.courier?.id === this.courier.id)
-  );
+  public async track(
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse
+  ): Promise<FlatAggregatedFulfillment[]> {
+    fulfillments = fulfillments?.filter(
+      f => f.product.courier_id === this.courier.id
+      && (
+        f.fulfillment_state === FulfillmentState.SUBMITTED
+        || f.fulfillment_state === FulfillmentState.IN_TRANSIT
+        || f.fulfillment_state === FulfillmentState.RETOURE
+      )
+    );
+    if (fulfillments?.length > 0) {
+      return await this.trackImpl(
+        fulfillments,
+        aggregation,
+      );
+    }
+    else {
+      return [];
+    }
+  }
 
-  public readonly cancel = (fulfillments: FlatAggregatedFulfillment[]) => this.cancelImpl(
-    fulfillments.filter(f => f.courier?.id === this.courier.id)
-  );
+  public async cancel(
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse
+  ): Promise<FlatAggregatedFulfillment[]> {
+    fulfillments = fulfillments?.filter(
+      f => f.product.courier_id === this.courier.id
+      && (
+        f.fulfillment_state === FulfillmentState.SUBMITTED
+        || f.fulfillment_state === FulfillmentState.IN_TRANSIT
+      )
+    );
+    if (fulfillments?.length > 0) {
+      return await this.cancelImpl(
+        fulfillments,
+        aggregation,
+      );
+    }
+    else {
+      return [];
+    }
+  }
 
   public static all() {
     return Object.values(Stub.REGISTER);
   }
 
   public static async evaluate(
-    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
     cfg?: ServiceConfig,
     logger?: Logger,
     kwargs?: any,
   ) {
-    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
+    const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
+    const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
       (courier) => Stub.getInstance(
         courier,
         cfg ?? Stub.cfg,
         logger ?? Stub.logger,
         kwargs,
       ).evaluate(
-        fulfillments
+        fulfillments,
+        aggregation,
       )
     )).then(
-      response => response.flatMap(r => r)
+      response => response.flat()
     );
+    return mergeFulfillments(results, aggregation);
   }
 
   public static async submit(
-    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
     cfg?: ServiceConfig,
     logger?: Logger,
     kwargs?: any,
   ) {
-    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
+    const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
+    const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
       (courier) => Stub.getInstance(
         courier,
         cfg ?? Stub.cfg,
         logger ?? Stub.logger,
         kwargs,
       ).submit(
-        fulfillments
+        fulfillments,
+        aggregation,
       )
     )).then(
-      response => response.flatMap(r => r)
+      response => response.flat()
     );
+    return mergeFulfillments(results, aggregation);
   }
 
   public static async track(
-    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
     cfg?: ServiceConfig,
     logger?: Logger,
     kwargs?: any,
   ) {
-    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
+    const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
+    const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
       (courier) => Stub.getInstance(
         courier,
         cfg ?? Stub.cfg,
         logger ?? Stub.logger,
         kwargs,
       ).track(
-        fulfillments
+        fulfillments,
+        aggregation,
       )
     )).then(
-      response => response.flatMap(r => r)
+      response => response.flat()
     );
+    return mergeFulfillments(results, aggregation);
   }
 
   public static async cancel(
-    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
     cfg?: ServiceConfig,
     logger?: Logger,
     kwargs?: any,
   ) {
-    return await Promise.all(unique(fulfillments.map(f => f.courier)).map(
+    const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
+    const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
       (courier) => Stub.getInstance(
         courier,
         cfg ?? Stub.cfg,
         logger ?? Stub.logger,
         kwargs,
       ).cancel(
-        fulfillments
+        fulfillments,
+        aggregation,
       )
     )).then(
-      response => response.flatMap(r => r)
+      response => response.flat()
     );
+    return mergeFulfillments(results, aggregation);
   }
 
   public static register<T extends Stub>(

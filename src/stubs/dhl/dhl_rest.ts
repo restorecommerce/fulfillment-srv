@@ -1,11 +1,11 @@
 import { BigNumber } from "bignumber.js";
+import { js2xml } from 'xml-js';
 import createClient, { 
   FetchResponse,
   type Client,
   ClientOptions,
 } from "openapi-fetch";
 import { type Logger } from "@restorecommerce/logger";
-import { Provider } from 'nconf';
 import { ServiceConfig } from "@restorecommerce/service-config";
 import {
   FulfillmentProduct,
@@ -14,40 +14,60 @@ import {
 } from "@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js";
 import { 
   FulfillmentState,
-  Label
+  Label,
 } from "@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js";
 import { Package } from "@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js";
 import { paths, components, operations } from "./rest/schema.js"
 import { Credential } from "@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js";
 import { Attribute } from "@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js";
-import { Courier, FlatAggregatedFulfillment, OperationStatusError, unmarshallProtobufAny } from "../../utils.js";
+import {
+  AggregatedFulfillmentListResponse,
+  Courier,
+  FlatAggregatedFulfillment,
+  OperationStatusError,
+  parseAttributes,
+  ParsedAttributes,
+  unmarshallProtobufAny,
+} from "../../utils.js";
 import { Stub } from "../../stub.js";
 import { Status } from "@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js";
+import { DHLTracking2FulfillmentTracking } from "./dhl_soap.js";
 
 type ShipmentOrderRequest = components['schemas']['ShipmentOrderRequest'];
 type ShipmentOrderResponse = components['schemas']['LabelDataResponse'];
-type ShipmentOrderFetchResponse = FetchResponse<operations['createOrders'], ShipmentOrderResponse, 'application/problem+json'>;
+type ShipmentOrderFetchResponse = FetchResponse<operations['createOrders'], unknown, 'application/problem+json'>;
 type ShipmentOrderStatus = components['schemas']['LabelDataResponse']['status']
 type ShippingConditions = components['schemas']['Shipment']['customs']['shippingConditions'];
 type ShipmentOrderQuery = operations['createOrders']['parameters']['query'];
+type CustomsDeclaration = components['schemas']['CustomsDetails'];
 type CountryCode = components['schemas']['Country'];
 type ExportType = components['schemas']['Shipment']['customs']['exportType'];
 type VAS = components['schemas']['VAS'];
 
-type DHLRestConfig = {
-  tokenUrl?: string,
-  client_id?: string,
-  client_secret?: string,
-  username?: string,
-  password?: string,
-  profile?: string,
-  costCenter?: string,
-  billingNumber?: string,
-  accountNumber?: string,
-  productName?: string,
-  [key: string]: any
-} & ClientOptions 
-  & ShipmentOrderQuery;
+type Config = {
+  ordering?: {
+    tokenUrl?: string,
+    client_id?: string,
+    client_secret?: string,
+    username?: string,
+    password?: string,
+    profile?: string,
+    costCenter?: string,
+    billingNumber?: string,
+    accountNumber?: string,
+    productName?: string,
+    grant_type?: string,
+    language?: string,
+  } & ClientOptions 
+    & ShipmentOrderQuery,
+  tracking?: {
+    appname?: string,
+    endpoint?: string,
+    username?: string,
+    password?: string,
+    secret?: string,
+  }
+};
 
 type AccessToken = {
   access_token?: string,
@@ -62,8 +82,30 @@ const isShipmentOrderStatus = (
   && Number.isInteger(status?.statusCode)
 );
 
-const parseFlag = (att: Attribute) => att.id && att?.value?.toString() !== 'false';
-const VASParser: any = {
+const KnownUrns = {
+  dhl_accountNumber: 'urn:restorecommerce:fulfillment:attribute:dhl:accountNumber',
+  dhl_billingNumber: 'urn:restorecommerce:fulfillment:attribute:dhl:billingNumber',
+  dhl_costCenter: 'urn:restorecommerce:fulfillment:attribute:dhl:costCenter',
+
+  dhl_courier_profile: 'urn:restorecommerce:fulfillment:courier:attribute:dhl:profile',
+  dhl_courier_language: 'urn:restorecommerce:fulfillment:courier:attribute:dhl:language',
+  dhl_courier_label_combined: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:combined', // flag
+  dhl_courier_label_encoding_required: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:encoding:required', // flag
+  dhl_courier_label_print_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:print:format', // e.g. A4
+  dhl_courier_label_source_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:source:format', // e.g. URL / Blob
+  dhl_courier_label_file_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:file:format', // e.g. PDF /
+  dhl_courier_label_retoure_print_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:retoure:print:format', // e.g. A4
+
+  dhl_product_service: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
+  dhl_product_productName: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
+  dhl_product_roundWeightUp: 'urn:restorecommerce:fulfillment:product:attribute:dhl:roundWeightUp',
+  dhl_product_stepPrice: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepPrice',
+  dhl_product_stepWeight: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepWeightInKg',
+};
+type KnownDHLUrns = typeof KnownUrns;
+
+const parseFlag = (str: string) => str?.toString() !== 'false';
+const VASParser = {
   additionalInsurance: {
     value: Number.parseFloat,
   },
@@ -81,32 +123,28 @@ const VASParser: any = {
   signedForByRecipient: parseFlag,
 };
 
+const DHLAttributeParser = {
+  dhl_courier_label_combined: parseFlag,
+  dhl_product_roundWeightUp: Number.parseFloat,
+  dhl_product_stepPrice: Number.parseFloat,
+  dhl_product_stepWeight: Number.parseFloat,
+};
+type DHLAttributeParser = typeof DHLAttributeParser;
+type ParsedDHLAttributes = ParsedAttributes<KnownDHLUrns, DHLAttributeParser>;
+
 const join = (...args: string[]) => args.join(':');
 
 export class DHLRest extends Stub {
   protected readonly client: Client<paths>;
+  protected readonly urns = KnownUrns;
+  protected readonly attributes: ParsedDHLAttributes;
   protected access_token: AccessToken;
-
-  protected readonly urns = {
-    dhl_accountNumber: 'urn:restorecommerce:fulfillment:attribute:dhl:accountNumber',
-    dhl_billingNumber: 'urn:restorecommerce:fulfillment:attribute:dhl:billingNumber',
-    dhl_costCenter: 'urn:restorecommerce:fulfillment:attribute:dhl:costCenter',
   
-    dhl_courier_profile: 'urn:restorecommerce:fulfillment:courier:attribute:dhl:profile',
-    dhl_courier_language: 'urn:restorecommerce:fulfillment:courier:attribute:dhl:language',
-  
-    dhl_product_service: 'urn:restorecommerce:fulfillment:product:attribute:dhl:service',
-    dhl_product_productName: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
-    dhl_product_roundWeightUp: 'urn:restorecommerce:fulfillment:product:attribute:dhl:roundWeightUp',
-    dhl_product_stepPrice: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepPrice',
-    dhl_product_stepWeight: 'urn:restorecommerce:fulfillment:product:attribute:dhl:stepWeightInKg',
-  };
-  
-  protected readonly config: DHLRestConfig = {
-    baseUrl: 'https://api-sandbox.dhl.com/parcel/de/shipping/v2',
-    tokenUrl: 'https://api-sandbox.dhl.com/parcel/de/account/auth/ropc/v1/token',
-    grant_type: 'password',
-    profile: 'STANDARD_GRUPPENPROFIL',
+  protected readonly config: Config = {
+    ordering: {
+      grant_type: 'password',
+      profile: 'STANDARD_GRUPPENPROFIL',
+    },
   };
 
   protected readonly status_codes = {
@@ -179,19 +217,24 @@ export class DHLRest extends Stub {
 
   constructor(courier?: Courier, cfg?: ServiceConfig, logger?: Logger, credential?: Credential) {
     super(courier, cfg, logger);
-    const courier_defaults = Object.values(this.cfg?.get('defaults:Couriers') as Courier[])?.find(
+    const courier_defaults = Object.values(cfg?.get<Courier[]>('defaults:Couriers'))?.find(
       c => c.id === courier.id
-    ) ?? Object.values(this.cfg?.get('defaults:Couriers') as Courier[])?.find(
+    ) ?? Object.values(cfg?.get<Courier[]>('defaults:Couriers'))?.find(
       c => c.api === courier?.api
-        || c.stub_type === courier?.stub_type
         || c.api === this.type
-        || c.stub_type === this.type
-    );
+    ) as any;
 
     this.config = {
-      ...this.config,
-      ...courier_defaults?.configuration?.value,
-      ...unmarshallProtobufAny(courier?.configuration),
+      ordering: {
+        ...this.config?.ordering,
+        ...courier_defaults?.configuration?.value?.ordering,
+        ...unmarshallProtobufAny(courier?.configuration)?.ordering,
+      },
+      tracking: {
+        ...this.config?.tracking,
+        ...courier_defaults?.configuration?.value?.tracking,
+        ...unmarshallProtobufAny(courier?.configuration)?.tracking,
+      },
     };
 
     this.status_codes = {
@@ -210,7 +253,13 @@ export class DHLRest extends Stub {
       ...this.cfg?.get('urns:authentication'),
     };
 
-    this.client = createClient(this.config);
+    this.attributes = parseAttributes(
+      this.urns,
+      DHLAttributeParser,
+      this.courier.attributes ?? []
+    );
+
+    this.client = createClient(this.config.ordering);
   }
 
   protected async getAccessToken(credential?: Credential): Promise<AccessToken> {
@@ -219,9 +268,9 @@ export class DHLRest extends Stub {
     }
     else {
       const config = {
-        ...this.config,
-        username: credential?.user ?? this.config.username,
-        password: credential?.pass ?? this.config.password,
+        ...this.config.ordering,
+        username: credential?.user ?? this.config.ordering?.username,
+        password: credential?.pass ?? this.config.ordering?.password,
         ...unmarshallProtobufAny(credential?.credentials)
       };
       const formData = new URLSearchParams();
@@ -257,27 +306,35 @@ export class DHLRest extends Stub {
 
   public async calcGross(
     product: Variant,
-    pack: Package
+    pack: Package,
+    precision = 2,
   ): Promise<BigNumber> {
+    const attributes = {
+      ...this.attributes,
+      ...parseAttributes(
+        this.urns,
+        DHLAttributeParser,
+        product.attributes ?? []
+      )
+    };
     try{
-      const step_weight = Number.parseFloat(
-        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepWeight)?.value ?? '1'
-      );
-      const step_price = Number.parseFloat(
-        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '1'
-      );
-      const precision = Number.parseInt(
-        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '3'
-      );
-      const price = new BigNumber(
-        pack.weight_in_kg / step_weight * step_price
+      const roundWeightUp = attributes.dhl_product_roundWeightUp;
+      const step_weight = attributes.dhl_product_stepWeight || 1;
+      const step_price = attributes.dhl_product_stepPrice || 1;
+      const weight = Number.isNaN(roundWeightUp)
+        ? new BigNumber(pack.weight_in_kg)
+        : new BigNumber(pack.weight_in_kg).decimalPlaces(roundWeightUp, BigNumber.ROUND_UP) 
+      const price = weight.dividedBy(
+        step_weight
+      ).multipliedBy(
+        step_price
       ).plus(
         product.price.sale ? product.price.sale_price : product.price.regular_price
       ).decimalPlaces(
         precision, BigNumber.ROUND_UP
       );
       if (price.isNaN()) {
-        throw 'NaN detected!'
+        throw new Error('NaN detected!');
       }
       return price;
     }
@@ -293,13 +350,13 @@ export class DHLRest extends Stub {
 
   protected getServices(attributes: Attribute[]): VAS {
     attributes = attributes?.filter(
-      (att: Attribute) => att.id?.startsWith(this.urns.dhl_product_service)
+      (att) => att.id?.startsWith(this.urns.dhl_product_service)
     )
     if (!attributes?.length) {
       return undefined;
     }
 
-    const sc = new ServiceConfig() as Provider & ServiceConfig;
+    const sc = new ServiceConfig();
     const recuSet = (atts: Attribute[], ...keys: string[]) => {
       atts.forEach(att => {
         const key = join(...keys, att.id);
@@ -328,48 +385,58 @@ export class DHLRest extends Stub {
 
   protected getBillingNumber(
     credential: Credential,
-    product: FulfillmentProduct,
+    attributes: ParsedAttributes<KnownDHLUrns, DHLAttributeParser>,
   ): string {
     const payload = unmarshallProtobufAny(credential?.credentials);
+    const config = this.config.ordering;
 
     return (
       payload?.billingNumber
       ?? payload?.accountNumber
-      ?? product?.attributes?.find(
-        a => [
-          this.urns.dhl_billingNumber,
-          this.urns.dhl_accountNumber,
-        ].includes(a.id)
-      )?.value
-      ?? this.config.billingNumber
-      ?? this.config.accountNumber
+      ?? attributes.dhl_billingNumber
+      ?? attributes.dhl_accountNumber
+      ?? config.billingNumber
+      ?? config.accountNumber
     );
-  } 
-
-  protected getCostCenter(product: FulfillmentProduct): string {
-    return product?.attributes?.find(
-      a => a.id === this.urns.dhl_costCenter
-    )?.value ?? this.config.costCenter;
   }
 
-  protected getProductName(product: FulfillmentProduct): string {
-    return product.attributes?.find(
-      a => a.id === this.urns.dhl_product_productName
-    )?.value ?? this.config.productName;
-  } 
-
-  protected fulfillment2ShipmentOrder(fulfillments: FlatAggregatedFulfillment[]): ShipmentOrderRequest {
+  protected fulfillment2ShipmentOrder(
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
+  ): ShipmentOrderRequest {
+    const config = this.config?.ordering;
     return {
-      profile: this.config.profile ?? 'STANDARD_GRUPPENPROFIL',
+      profile: config?.profile ?? 'STANDARD_GRUPPENPROFIL',
       shipments: fulfillments.map(
         f => {
-          const options = unmarshallProtobufAny(f.options);
           const sender = f.payload.packaging.sender;
           const recipient = f.payload.packaging.recipient;
+          const customs = f.payload.packaging.customs_declaration;
+          const credential = (
+            this.courier.credential_id
+            ? aggregation.credentials.get(
+              this.courier.credential_id,
+            )
+            : undefined
+          );
+          const sender_country = aggregation.countries.get(
+            f.payload.packaging.sender.address.country_id
+          );
+          const recipient_country = aggregation.countries.get(
+            f.payload.packaging.recipient.address.country_id
+          );
+          const attributes = {
+            ...this.attributes,
+            ...parseAttributes(
+              this.urns,
+              DHLAttributeParser,
+              f.product.attributes ?? [],
+            )
+          };
           
           return {
-            billingNumber: this.getBillingNumber(f.credential, f.product),
-            costCenter: this.getCostCenter(f.product),
+            billingNumber: this.getBillingNumber(credential, attributes),
+            costCenter: attributes?.dhl_costCenter ?? config?.costCenter,
             refNo: f.payload.id,
             shipper: {
               name1: [
@@ -387,7 +454,7 @@ export class DHLRest extends Stub {
               ].join(' '),
               postalCode: sender.address.postcode,
               city: sender.address.region,
-              country: f.sender_country.country_code as CountryCode,
+              country: (sender_country.country_code_alpha_3 ?? sender_country.country_code) as CountryCode,
               email: sender.contact.email,
             },
             consignee: {
@@ -408,10 +475,10 @@ export class DHLRest extends Stub {
               ].join(' '),
               postalCode: recipient.address.postcode,
               city: recipient.address.region,
-              country: f.recipient_country.country_code as CountryCode,
+              country: (recipient_country.country_code_alpha_3 ?? recipient_country.country_code) as CountryCode,
               email: recipient.contact.email,
             },
-            product: this.getProductName(f.product),
+            product: attributes.dhl_product_productName ?? config?.productName,
             shipDate: new Date().toISOString(),
             details: {
               weight: {
@@ -419,35 +486,45 @@ export class DHLRest extends Stub {
                 value: f.parcel.package.weight_in_kg
               }
             },
-            services: this.getServices(f.product.attributes),
-            customs: options?.customs ? {
-              exportType: (f.payload.packaging.export_type ?? 'COMMERCIAL_GOODS') as ExportType,
-              exportDescription: options.customs.exportDescription ?? f.payload.packaging.export_description,
-              items: f.parcel.items.map(item => ({
-                itemDescription: item.product_id,
-                itemValue: {
-                  currency: 'EUR',
-                  value: 0.0,
-                },
-                itemWeight: {
-                  uom: 'kg',
-                  value: item.package.weight_in_kg
-                },
-                packagedQuantity: item.quantity,
-                countryOfOrigin: f.sender_country.country_code as CountryCode,
-                hsCode: '',
-              })),
-              postalCharges: options.customs.postalCharges,
-              consigneeCustomsRef: options.customs.consigneeCustomsRef ?? f.payload.customer_id,
-              shipperCustomsRef: options.customs.shipperCustomsRef ?? f.payload.shop_id,
-              hasElectronicExportNotification: options.customs.hasElectronicExportNotification,
-              MRN: options.customs.MRN,
-              officeOfOrigin: f.sender_country.country_code as CountryCode,
-              permitNo: options.customs.permitNo,
-              attestationNo: options.customs.attestationNo,
-              invoiceNo: options.customs.invoiceNo,
-              shippingConditions: options.customs.shippingConditions as ShippingConditions,
-            } : undefined,
+            services: this.getServices([
+              f.product.attributes ?? [],
+              this.courier.attributes ?? []
+            ].flat()),
+            customs: (customs ? {
+              exportType: (customs.export_type ?? 'COMMERCIAL_GOODS') as ExportType,
+              exportDescription: customs.export_description,
+              items: f.parcel.items.map(item => {
+                const country = aggregation.countries.get(item.origin_country_id);
+                return {
+                  itemDescription: `${item.name}: ${item.description}`,
+                  itemValue: {
+                    currency: aggregation.currencies.get(
+                      item.value.currency_id
+                    )?.symbol,
+                    value: item.value?.gross ?? item.value?.net,
+                  },
+                  itemWeight: {
+                    uom: 'kg',
+                    value: item.package.weight_in_kg
+                  },
+                  packagedQuantity: item.quantity,
+                  countryOfOrigin: (country?.country_code_alpha_3 ?? country?.country_code) as CountryCode,
+                  hsCode: item.hs_code,
+                };
+              }),
+              postalCharges: {
+                value: customs.charges?.reduce((a, b) => (b.charge?.net ?? 0) + a, 0) ?? 0
+              },
+              consigneeCustomsRef: customs.consignee_ref ?? f.payload.customer_id,
+              shipperCustomsRef: customs.shipper_ref ?? f.payload.shop_id,
+              hasElectronicExportNotification: customs.notify,
+              MRN: customs.MRN,
+              officeOfOrigin: (sender_country.country_code_alpha_3 ?? sender_country.country_code) as CountryCode,
+              permitNo: customs.permit_number,
+              attestationNo: customs.attestation,
+              invoiceNo: customs.invoice_number,
+              shippingConditions: customs.shipping_condition as ShippingConditions,
+            } : undefined) as CustomsDeclaration,
           };
         }
       )
@@ -460,13 +537,17 @@ export class DHLRest extends Stub {
   ): Promise<FlatAggregatedFulfillment[]> {
     const status = response.error?.status ?? response.response?.status;
     if (isShipmentOrderStatus(status)) {
+      const vms = (response.error as ShipmentOrderResponse)?.items?.flatMap(
+        item => item.validationMessages?.map(vm => vm.validationMessage)
+      ) ?? [];
       throw new OperationStatusError(
         status.statusCode,
         [
           status.title,
           status.instance,
           status.detail,
-        ].filter(s => s).join(),
+          ...vms,
+        ].filter(s => s).join('\n'),
       ); 
     }
     else if (Number.isInteger(status) && status >= 300) {
@@ -487,6 +568,7 @@ export class DHLRest extends Stub {
       );
       fulfillments.forEach((fulfillment, i) => {
         const item = response_map.get(fulfillment.payload.id) ?? response_map.get(i);
+        const vms = item.validationMessages?.map(vm => vm.validationMessage) ?? [];
         const status: Status = {
           id: fulfillment.payload.id,
           code: item.sstatus?.statusCode,
@@ -494,7 +576,8 @@ export class DHLRest extends Stub {
             item.sstatus?.title,
             item.sstatus?.instance,
             item.sstatus?.detail,
-          ].join(),
+            vms,
+          ].filter(s => s).join('\n'),
         };
         if (status.code < 300) {
           fulfillment.labels ??= [];
@@ -514,7 +597,6 @@ export class DHLRest extends Stub {
       });
     }
     else {
-      // Ops, how did we get here???
       throw new OperationStatusError(
         500,
         'Unknown Error!',
@@ -523,34 +605,58 @@ export class DHLRest extends Stub {
     return fulfillments;
   }
 
-  protected async getHeaders(fulfillments: FlatAggregatedFulfillment[]) {
-    const { access_token, token_type } = await this.getAccessToken(
-      fulfillments[0]?.credential
+  protected async getHeaders(
+    attributes: ParsedDHLAttributes,
+    aggregation: AggregatedFulfillmentListResponse,
+  ) {
+    const credential = (
+      this.courier.credential_id
+      ? aggregation.credentials.get(
+        this.courier.credential_id,
+      )
+      : undefined
     );
+    const { access_token, token_type } = await this.getAccessToken(
+      credential
+    );
+    const config = this.config?.ordering;
     return {
       Authorization: `${token_type} ${access_token}`,
-      'Accept-Language': 'DE',
+      'Accept-Language': attributes.dhl_courier_language ?? config?.language ?? 'DE',
     };
   }
 
-  protected async getQuery(fulfillments: FlatAggregatedFulfillment[], kwargs?: any) {
+  protected async getQuery(
+    attributes?: ParsedDHLAttributes,
+    kwargs?: any
+  ): Promise<ShipmentOrderQuery> {
+    const config = this.config?.ordering;
     return {
-      combine: false,
-      docFormat: "PDF",
-      includeDocs: "URL",
-      mustEncode: true,
-      printFormat: "A4",
-      retourePrintFormat: "A4",
+      combine: attributes?.dhl_courier_label_combined ?? config?.combine ?? false,
+      docFormat: attributes?.dhl_courier_label_file_format ?? config?.docFormat ?? 'PDF',
+      includeDocs: attributes?.dhl_courier_label_source_format ?? config?.includeDocs ?? 'URL',
+      mustEncode: attributes?.dhl_courier_label_encoding_required ?? config?.mustEncode ?? false,
+      printFormat: attributes?.dhl_courier_label_print_format ?? config?.printFormat ?? 'A4',
+      retourePrintFormat: attributes?.dhl_courier_label_retoure_print_format ?? config?.retourePrintFormat ?? "A4",
       ...kwargs,
     };
   }
 
   protected override async evaluateImpl(
-    fulfillments: FlatAggregatedFulfillment[]
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
   ): Promise<FlatAggregatedFulfillment[]> {
-    const headers = await this.getHeaders(fulfillments);
-    const query = await this.getQuery(fulfillments, { validate: true });
-    const body = this.fulfillment2ShipmentOrder(fulfillments);
+    const attributes = parseAttributes(
+      this.urns,
+      DHLAttributeParser,
+      this.courier.attributes ?? []
+    );
+    const headers = await this.getHeaders(attributes, aggregation);
+    const query = await this.getQuery(attributes, { validate: true });
+    const body = this.fulfillment2ShipmentOrder(
+      fulfillments,
+      aggregation,
+    );
     const response = await this.client.POST(
       '/orders', 
       {
@@ -563,11 +669,20 @@ export class DHLRest extends Stub {
   }
 
   protected override async submitImpl(
-    fulfillments: FlatAggregatedFulfillment[]
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
   ): Promise<FlatAggregatedFulfillment[]> {
-    const headers = await this.getHeaders(fulfillments);
-    const query = await this.getQuery(fulfillments, { validate: false });
-    const body = this.fulfillment2ShipmentOrder(fulfillments);
+    const attributes = parseAttributes(
+      this.urns,
+      DHLAttributeParser,
+      this.courier.attributes ?? []
+    );
+    const headers = await this.getHeaders(attributes, aggregation);
+    const query = await this.getQuery(attributes, { validate: false });
+    const body = this.fulfillment2ShipmentOrder(
+      fulfillments,
+      aggregation,
+    );
     const response = await this.client.POST(
       '/orders', 
       {
@@ -579,11 +694,74 @@ export class DHLRest extends Stub {
     return await this.shipmentOrder2fulfillment(fulfillments, response);
   }
 
-  protected override async trackImpl(
-    fulfillments: FlatAggregatedFulfillment[]
+  protected override async trackImpl (
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
   ): Promise<FlatAggregatedFulfillment[]> {
-    return fulfillments;
-  }
+    const promises = fulfillments.map(async item => {
+      try {
+        const credential = (
+          this.courier.credential_id
+          ? aggregation.credentials.get(
+            this.courier.credential_id,
+          )
+          : undefined
+        );
+        const options = unmarshallProtobufAny(item?.options);
+        const config = {
+          ...this.config.tracking,
+          ...credential
+            ? {
+                username: credential?.user,
+                password: credential?.pass,
+              } 
+            : undefined,
+          ...unmarshallProtobufAny(credential?.credentials)?.tracking,
+        };
+
+        const auth = 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+        const attributes = {
+          appname: config.appname,
+          password: config.secret,
+          'piece-code': item.labels[0].shipment_number,
+          'language-code': options?.['language-code'] ?? 'de',
+          request: options?.request ?? 'd-get-piece-detail'
+        };
+        const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>${
+          js2xml({ data: { _attributes: attributes } }, { compact: true })
+        }`;
+        const params = new URLSearchParams();
+        params.append('xml', xml);
+        const payload = {
+          method: 'get',
+          headers: {
+            Host: 'cig.dhl.de',
+            Authorization: auth,
+            Connection: 'Keep-Alive',
+          },
+          // body: params,
+        };
+
+        return await fetch(`${config.endpoint}?${params}`, payload).then(
+          response => DHLTracking2FulfillmentTracking(item, response),
+          err => {
+            this.logger?.error(`${this.type}: ${err}`);
+            return DHLTracking2FulfillmentTracking(item, null, err);
+          }
+        );
+      } catch (err) {
+        this.logger?.error(`${this.type}: ${err}`);
+        item.status = {
+          id: item.payload.id,
+          code: 500,
+          message: JSON.stringify(err)
+        };
+        return item;
+      }
+    });
+
+    return await Promise.all(promises);
+  };
 
   protected override async cancelImpl(
     fulfillments: FlatAggregatedFulfillment[]

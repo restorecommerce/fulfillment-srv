@@ -139,7 +139,7 @@ const currencies: CurrencyListResponse = {
       countryIds: ['germany'],
       name: 'Euro',
       precision: 2,
-      symbol: '€',
+      symbol: 'EUR',
       meta,
     },
     status,
@@ -242,7 +242,7 @@ const products: ProductResponse[] = [
               name: 'Physical Product 1 Blue',
               description: 'This is a physical product in blue',
               price: {
-                currencyId: 'currency_1',
+                currencyId: 'euro',
                 regularPrice: 9.99,
                 salePrice: 8.99,
                 sale: false,
@@ -693,9 +693,6 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
               },
             }
           ],
-          exportDescription: '',
-          exportType: '',
-          invoiceNumber: '',
           notify: 'someone@nowhere.com'
         },
         labels: [],
@@ -764,9 +761,6 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
               },
             }
           ],
-          exportDescription: '',
-          exportType: '',
-          invoiceNumber: '',
           notify: 'someone@nowhere.com'
         },
         labels: [
@@ -781,7 +775,7 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
             }
           }
         ],
-        fulfillmentState: FulfillmentState.PENDING,
+        fulfillmentState: FulfillmentState.SUBMITTED,
         meta,
       },
     ],

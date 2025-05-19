@@ -81,9 +81,21 @@ import {
   ArrayResolver,
   ResourceMap,
 } from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
-import { Product } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import {
+  Product,
+  IndividualProduct,
+  PhysicalProduct,
+  VirtualProduct,
+  ServiceProduct,
+  PhysicalVariant,
+  VirtualVariant,
+  ServiceVariant,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import { Setting } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
 import { Attribute } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js';
+
+export type ProductNature = PhysicalProduct & VirtualProduct & ServiceProduct;
+export type ProductVariant = PhysicalVariant & VirtualVariant & ServiceVariant;
 
 export class OperationStatusError
   extends Error
@@ -143,14 +155,11 @@ export const StateRank = Object.values(FulfillmentState).reduce((a, b, i) => {
 export interface FlatAggregatedFulfillment extends FulfillmentResponse
 {
   product?: FulfillmentProduct;
-  courier?: Courier;
-  credential?: Credential;
-  sender_country?: Country;
-  recipient_country?: Country;
   parcel?: Parcel;
   labels?: Label[];
   trackings?: Tracking[];
-  options?: Any;
+  fulfillment_state?: FulfillmentState;
+  options?: any;
 };
 
 export const DefaultUrns = {
@@ -252,18 +261,22 @@ export const parseSetting = (key: string, value: string) => {
   }
 };
 
-export const parseAttributes = <U, P extends { [K in keyof U]?: (str: string) => any }> (
+export type AttributeParser<U> = { [K in keyof U]?: (str: string) => any };
+export type ParsedAttributes<U, P extends AttributeParser<U>> = { 
+  [K in keyof U]?: P[K] extends (str: string) => infer R ? R : string 
+};
+export const parseAttributes = <U, P extends AttributeParser<U>> (
   urns: U,
   parser: P,
-  ...attributes: Attribute[]
-): { [K in keyof U]: { value: U[K], parse: P[K] } } => 
+  attributes: Attribute[]
+): ParsedAttributes<U, P> => 
   Object.assign(
   {},
   ...Object.entries(urns).map(
     ([key, urn]) => {
       const value = attributes.find(a => a.id === urn)?.value;
       const parse = parser[key as Extract<keyof U, string>];
-      return { [key]: value && parse ? parse(value) : value };
+      return { [key]: parse ? parse(value) : value };
     }
   ),
 );
@@ -681,28 +694,88 @@ export const packRenderData = (
   return buffer;
 };
 
-export const flatMapAggregatedFulfillmentListResponse = (aggregation: AggregatedFulfillmentListResponse): FlatAggregatedFulfillment[] => {
+const mergeProductVariantRecursive = (
+  nature: ProductNature,
+  variant_id: string
+): ProductVariant => {
+  const variant = nature?.templates?.find(
+    v => v.id === variant_id
+  ) ?? nature?.variants?.find(
+    v => v.id === variant_id
+  );
+  if (variant?.parent_variant_id) {
+    const template = mergeProductVariantRecursive(
+      nature, variant.parent_variant_id
+    );
+    return {
+      ...template,
+      ...variant,
+    };
+  }
+  else {
+    return variant;
+  }
+};
+
+export const mergeProductVariant = (
+  product: IndividualProduct,
+  variant_id: string
+): IndividualProduct => {
+  const key = Object.keys(product).find(
+    key => ['physical', 'virtual', 'service'].includes(key)
+  ) as 'physical' | 'virtual' | 'service';
+  const nature = product[key];
+  const variant = mergeProductVariantRecursive(nature, variant_id);
+  return {
+    ...product,
+    [key]: {
+      variants: [variant]
+    }
+  }
+};
+
+export const flatMapAggregatedFulfillmentListResponse = (
+  aggregation: AggregatedFulfillmentListResponse
+): FlatAggregatedFulfillment[] => {
   return aggregation.items.flatMap((item) => {
     const payload = item.payload;
     return payload?.packaging?.parcels.map((parcel): FlatAggregatedFulfillment => {
       const product = aggregation.fulfillment_products.get(parcel.product_id);
-      const courier = aggregation.fulfillment_couriers.get(product.courier_id);
-      const credential = aggregation.fulfillment_couriers.get(courier.credential_id, null);
       const labels = payload.labels?.filter(label => label.parcel_id === parcel.id);
       const trackings = payload.trackings?.filter(
         tracking => labels.some(label => label.shipment_number === tracking.shipment_number)
       );
+      const fulfillment_state = labels?.reduce(
+        (x, y) => StateRank[x?.state] < StateRank[y?.state] ? x : y,
+        undefined
+      )?.state
+      parcel.items?.forEach(
+        item => {
+          const main = aggregation?.products.get(item.product_id)?.product;
+          const product = mergeProductVariant(main, item.variant_id);
+          const variant = product.physical?.variants?.find(
+            v => v.id === item.variant_id
+          );
+
+          item.name ??= variant.name;
+          item.description ??= variant.export_description ?? variant.description;
+          item.value ??= {
+            gross: variant.price?.regular_price,
+            currency_id: variant.price?.currency_id,
+          };
+          item.origin_country_id ??= product.origin_country_id;
+          item.package ??= variant.package;
+          item.hs_code ??= variant.hs_code ?? variant.taric_code;
+        } 
+      );
 
       return {
         payload,
-        sender_country: aggregation.countries.get(payload.packaging.sender.address?.country_id),
-        recipient_country: aggregation.countries.get(payload.packaging.recipient.address?.country_id),
         product: mergeFulfillmentProduct(product, parcel.variant_id),
-        courier,
-        credential,
         parcel,
         labels,
         trackings,
+        fulfillment_state,
         status: item.status,
       };
     });
@@ -711,7 +784,7 @@ export const flatMapAggregatedFulfillmentListResponse = (aggregation: Aggregated
 
 export const mergeFulfillments = (
   fulfillments: FlatAggregatedFulfillment[],
-  currency_map: ResourceMap<Currency>,
+  aggregation: AggregatedFulfillmentListResponse,
 ): FulfillmentResponse[] => {
   const fulfillment_map: Record<string, FulfillmentResponse> = {};
   fulfillments.forEach(a => {
@@ -721,7 +794,7 @@ export const mergeFulfillments = (
       if (a.parcel) c.payload.packaging.parcels.push(a.parcel);
       if (a.labels) c.payload.labels.push(...a.labels);
       if (a.trackings) c.payload.trackings.push(...a.trackings);
-      c.payload.fulfillment_state = c.payload.labels.reduce(
+      c.payload.fulfillment_state = c.payload.labels?.reduce(
         (x, y) => StateRank[x?.state] < StateRank[y?.state] ? x : y,
         undefined
       )?.state;
@@ -740,7 +813,7 @@ export const mergeFulfillments = (
   merged_fulfillments.forEach(f => {
     f.payload.total_amounts = calcTotalAmounts(
       f.payload.total_amounts,
-      currency_map,
+      aggregation.currencies,
     )
   });
   return merged_fulfillments;
