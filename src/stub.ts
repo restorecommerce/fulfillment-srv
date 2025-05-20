@@ -94,28 +94,25 @@ export abstract class Stub
     );
   }
 
-  protected handleStatusError<T>(id: string, error: any, payload?: any): T {
-    this.logger?.warn(error);
-    return {
-      payload,
-      status: {
-        id,
-        code: error?.code ?? 500,
-        message: error?.details ?? error?.message ?? error?.toString(),
-      }
-    } as T;
-  }
-
-  protected handleOperationError<T>(error: any, items: any[] = []): T {
-    this.logger?.error(error);
-    return {
-      items: items ?? [],
-      total_count: items?.length ?? 0,
-      operation_status: {
-        code: error?.code ?? 500,
-        message: error?.details ?? error?.message ?? error?.toString(),
-      }
-    } as T;
+  protected catchStatusError(e?: any, item?: FlatAggregatedFulfillment): FlatAggregatedFulfillment {
+    item ??= {};
+    const {
+      code,
+      title,
+      message,
+      details,
+    } = e ?? {};
+    item.status = {
+      id: item?.payload?.id,
+      code: Number.isInteger(code) ? code : 500,
+      message: message ? [
+        title,
+        message,
+        details,
+      ].filter(s => s).join('; ') : 'Unknwon Error!'
+    };
+    this.logger?.debug(e?.stack ?? item.status.message, item);
+    return item;
   }
 
   public async evaluate(
@@ -127,6 +124,15 @@ export abstract class Stub
       return await this.evaluateImpl(
         fulfillments,
         aggregation,
+      ).catch(
+        error => fulfillments.map(
+          fulfillment => {
+            fulfillment = this.catchStatusError(
+              error, fulfillment
+            );
+            return fulfillment;
+          }
+        )
       );
     }
     else {
@@ -149,6 +155,15 @@ export abstract class Stub
       return await this.submitImpl(
         fulfillments,
         aggregation,
+      ).catch(
+        error => fulfillments.map(
+          fulfillment => {
+            fulfillment = this.catchStatusError(
+              error, fulfillment
+            );
+            return fulfillment;
+          }
+        )
       );
     }
     else {
@@ -172,6 +187,15 @@ export abstract class Stub
       return await this.trackImpl(
         fulfillments,
         aggregation,
+      ).catch(
+        error => fulfillments.map(
+          fulfillment => {
+            fulfillment = this.catchStatusError(
+              error, fulfillment
+            );
+            return fulfillment;
+          }
+        )
       );
     }
     else {
@@ -194,6 +218,15 @@ export abstract class Stub
       return await this.cancelImpl(
         fulfillments,
         aggregation,
+      ).catch(
+        error => fulfillments.map(
+          fulfillment => {
+            fulfillment = this.catchStatusError(
+              error, fulfillment
+            );
+            return fulfillment;
+          }
+        )
       );
     }
     else {

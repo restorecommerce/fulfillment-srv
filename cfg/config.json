@@ -176,7 +176,7 @@
       "fulfillmentWithdrawn": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
-      "fulfillmentCanceled": {
+      "fulfillmentCancelled": {
         "messageObject": "io.restorecommerce.fulfillment.Fulfillment"
       },
       "fulfillmentDeleted": {

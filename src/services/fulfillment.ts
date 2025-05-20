@@ -1144,12 +1144,13 @@ export class FulfillmentService
         )
       );
 
-      const items = Object.values(response_map);
+      const items = [...response_map.values()];
+      const multi_state = items.some(item => item.status?.code !== 200);
       return {
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          this.operation_status_codes.SUCCESS,
+          multi_state ? this.OperationStatusCodes.MULTI_STATUS : this.operation_status_codes.SUCCESS,
           this.name,
         ),
       };
@@ -1183,54 +1184,72 @@ export class FulfillmentService
   })
   public async cancel(request: FulfillmentIdList, context?: CallContext): Promise<FulfillmentListResponse> {
     try {
-      const request_map = request.items!.reduce(
-        (a, b) => {
-          a[b.id] = b.shipment_numbers;
-          return a;
-        },
-        {} as { [key: string]: string[] }
-      );
-
-      const fulfillments = await this.get(
+      const response_map = new Map<string, FulfillmentResponse>();
+      const aggregation = await this.get(
         request.items.map(item => item.id),
         request.subject,
-        context
-      );
-
-      const aggregation = await this.aggregate(
-        fulfillments,
-        request.subject,
-        context
-      );
-
-      const updates = await Stub.cancel(
-        aggregation
+        context,
       ).then(
-        merged => super.update({
-          items: merged.map(
-            f => f.payload
-          ),
-          total_count: merged.length,
-          subject: request.subject
-        }, context)
+        response => response.items.filter(
+          item => {
+            response_map.set(item.payload?.id ?? item.status?.id, item);
+            return item.status?.code === 200;
+          }
+        )
+      ).then(
+        items => this.aggregate(
+          { items },
+          request.subject,
+          context,
+        ),
       );
-
-      if (this.isEventsEnabled) {
-        updates.items.forEach(item => {
-          if (this.emitters && item.payload.fulfillment_state in this.emitters) {
-            switch (item.payload.fulfillment_state) {
-              case FulfillmentState.INVALID:
-              case FulfillmentState.FAILED:
-                this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item);
-                break;
-              default:
-                this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
-                break;
+      await Stub.cancel(aggregation).then(
+        response => response.filter(
+          item => {
+            response_map.set(item.payload?.id ?? item.status?.id, item);
+            return item.status.code === 200;
+          }
+        ).map(
+          item => item.payload
+        )
+      ).then(
+        items => super.update(
+          {
+            items,
+            total_count: items.length,
+            subject: request.subject
+          },
+          context
+        )
+      ).then(
+        updates => this.isEventsEnabled && updates.items.forEach(
+          item => {
+            response_map.set(item.payload?.id ?? item.status?.id, item);
+            if (this.emitters && item.payload.fulfillment_state in this.emitters) {
+              switch (item.payload.fulfillment_state) {
+                case FulfillmentState.INVALID:
+                case FulfillmentState.FAILED:
+                  this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item);
+                  break;
+                default:
+                  this.fulfillmentTopic?.emit(this.emitters[item.payload.fulfillment_state], item.payload);
+                  break;
+              }
             }
           }
-        });
-      }
-      return updates;
+        )
+      );
+
+      const items = [...response_map.values()];
+      const multi_state = items.some(item => item.status?.code !== 200);
+      return {
+        items,
+        total_count: items.length,
+        operation_status: createOperationStatusCode(
+          multi_state ? this.OperationStatusCodes.MULTI_STATUS : this.operation_status_codes.SUCCESS,
+          this.name,
+        ),
+      };
     }
     catch (e: any) {
       return this.catchOperationError<FulfillmentListResponse>(e);

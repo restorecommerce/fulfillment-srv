@@ -144,6 +144,7 @@ export class DHLRest extends Stub {
     ordering: {
       grant_type: 'password',
       profile: 'STANDARD_GRUPPENPROFIL',
+      includeDocs: 'URL',
     },
   };
 
@@ -551,10 +552,9 @@ export class DHLRest extends Stub {
       ); 
     }
     else if (Number.isInteger(status) && status >= 300) {
-      const text = await response.response.text();
       throw new OperationStatusError(
         status,
-        text ?? 'Unknown Error!',
+        response.response?.statusText ?? 'Unknown Error!',
       );
     }
     else if (response.data) {
@@ -581,15 +581,30 @@ export class DHLRest extends Stub {
         };
         if (status.code < 300) {
           fulfillment.labels ??= [];
-          fulfillment.labels.push(
-            {
-              parcel_id: fulfillment.parcel.id,
-              shipment_number: item.shipmentNo,
-              state: FulfillmentState.SUBMITTED,
-              url: item.label?.url,
-              status,
-            } as Label
+          const label = fulfillment.labels.find(
+            label => label.shipment_number === item.shipmentNo
           );
+          if (label) {
+            label.state = FulfillmentState.SUBMITTED;
+          }
+          else {
+            fulfillment.labels.push(
+              {
+                parcel_id: fulfillment.parcel.id,
+                shipment_number: item.shipmentNo,
+                state: FulfillmentState.SUBMITTED,
+                file: {
+                  url: item.label?.url,
+                  blob: item.label?.b64 ? {
+                    data: Buffer.from(item.label.b64),
+                    encoding: 'base64',
+                  } : undefined
+                },
+                status,
+              } as Label
+            );
+          }
+          fulfillment.fulfillment_state = FulfillmentState.SUBMITTED;
         }
         if (fulfillment.status?.code < status.code) {
           fulfillment.status = status;
@@ -606,7 +621,6 @@ export class DHLRest extends Stub {
   }
 
   protected async getHeaders(
-    attributes: ParsedDHLAttributes,
     aggregation: AggregatedFulfillmentListResponse,
   ) {
     const credential = (
@@ -622,22 +636,21 @@ export class DHLRest extends Stub {
     const config = this.config?.ordering;
     return {
       Authorization: `${token_type} ${access_token}`,
-      'Accept-Language': attributes.dhl_courier_language ?? config?.language ?? 'DE',
+      'Accept-Language': this.attributes.dhl_courier_language ?? config?.language ?? 'DE',
     };
   }
 
   protected async getQuery(
-    attributes?: ParsedDHLAttributes,
     kwargs?: any
   ): Promise<ShipmentOrderQuery> {
     const config = this.config?.ordering;
     return {
-      combine: attributes?.dhl_courier_label_combined ?? config?.combine ?? false,
-      docFormat: attributes?.dhl_courier_label_file_format ?? config?.docFormat ?? 'PDF',
-      includeDocs: attributes?.dhl_courier_label_source_format ?? config?.includeDocs ?? 'URL',
-      mustEncode: attributes?.dhl_courier_label_encoding_required ?? config?.mustEncode ?? false,
-      printFormat: attributes?.dhl_courier_label_print_format ?? config?.printFormat ?? 'A4',
-      retourePrintFormat: attributes?.dhl_courier_label_retoure_print_format ?? config?.retourePrintFormat ?? "A4",
+      combine: this.attributes?.dhl_courier_label_combined ?? config?.combine ?? false,
+      docFormat: this.attributes?.dhl_courier_label_file_format ?? config?.docFormat ?? 'PDF',
+      includeDocs: this.attributes?.dhl_courier_label_source_format ?? config?.includeDocs ?? 'URL',
+      mustEncode: this.attributes?.dhl_courier_label_encoding_required ?? config?.mustEncode ?? false,
+      printFormat: this.attributes?.dhl_courier_label_print_format ?? config?.printFormat ?? 'A4',
+      retourePrintFormat: this.attributes?.dhl_courier_label_retoure_print_format ?? config?.retourePrintFormat ?? "A4",
       ...kwargs,
     };
   }
@@ -646,13 +659,8 @@ export class DHLRest extends Stub {
     fulfillments: FlatAggregatedFulfillment[],
     aggregation: AggregatedFulfillmentListResponse,
   ): Promise<FlatAggregatedFulfillment[]> {
-    const attributes = parseAttributes(
-      this.urns,
-      DHLAttributeParser,
-      this.courier.attributes ?? []
-    );
-    const headers = await this.getHeaders(attributes, aggregation);
-    const query = await this.getQuery(attributes, { validate: true });
+    const headers = await this.getHeaders(aggregation);
+    const query = await this.getQuery({ validate: true });
     const body = this.fulfillment2ShipmentOrder(
       fulfillments,
       aggregation,
@@ -661,8 +669,10 @@ export class DHLRest extends Stub {
       '/orders', 
       {
         headers,
-        query,
         body,
+        params: {
+          query
+        }
       }
     );
     return await this.shipmentOrder2fulfillment(fulfillments, response);
@@ -672,13 +682,8 @@ export class DHLRest extends Stub {
     fulfillments: FlatAggregatedFulfillment[],
     aggregation: AggregatedFulfillmentListResponse,
   ): Promise<FlatAggregatedFulfillment[]> {
-    const attributes = parseAttributes(
-      this.urns,
-      DHLAttributeParser,
-      this.courier.attributes ?? []
-    );
-    const headers = await this.getHeaders(attributes, aggregation);
-    const query = await this.getQuery(attributes, { validate: false });
+    const headers = await this.getHeaders(aggregation);
+    const query = await this.getQuery({ validate: false });
     const body = this.fulfillment2ShipmentOrder(
       fulfillments,
       aggregation,
@@ -687,8 +692,10 @@ export class DHLRest extends Stub {
       '/orders', 
       {
         headers,
-        query,
         body,
+        params: {
+          query,
+        }
       }
     );
     return await this.shipmentOrder2fulfillment(fulfillments, response);
@@ -764,8 +771,82 @@ export class DHLRest extends Stub {
   };
 
   protected override async cancelImpl(
-    fulfillments: FlatAggregatedFulfillment[]
+    fulfillments: FlatAggregatedFulfillment[],
+    aggregation: AggregatedFulfillmentListResponse,
   ): Promise<FlatAggregatedFulfillment[]> {
+
+    const headers = await this.getHeaders(aggregation);
+    const labels = fulfillments.flatMap(f => f.labels);
+    await Promise.all(labels.map(async label => {
+      const response = await this.client.DELETE('/orders', {
+        params: {
+          headers,
+          query: {
+            profile: this.attributes?.dhl_courier_profile,
+            shipment: label.shipment_number
+          },
+        },
+        headers,
+      });
+      const status = response.error?.status ?? response.response?.status;
+      if (isShipmentOrderStatus(status)) {
+        const vms = (response.error as ShipmentOrderResponse)?.items?.flatMap(
+          item => item.validationMessages?.map(vm => vm.validationMessage)
+        ) ?? [];
+        throw new OperationStatusError(
+          status.statusCode,
+          [
+            status.title,
+            status.instance,
+            status.detail,
+            ...vms,
+          ].filter(s => s).join('\n'),
+        ); 
+      }
+      else if (Number.isInteger(status) && status >= 300) {
+        throw new OperationStatusError(
+          status,
+          response.response?.statusText ?? 'Unknown Error!',
+        );
+      }
+      else if (response.data) {
+        const item = response.data.items.find(
+          item => item.shipmentNo === label.shipment_number
+        );
+        if (Number.isInteger(item?.sstatus?.statusCode)) {
+          label.status = {
+            id: label.shipment_number,
+            code: item.sstatus.statusCode,
+            message: [
+              item.sstatus.title,
+              item.sstatus.instance,
+              item.sstatus.detail,
+            ].filter(s => s).join(', ')
+          };
+          if (label.status.code === 200) {
+            label.state = FulfillmentState.CANCELLED;
+          }
+        }
+        else {
+          const status = response.data?.status;
+          label.status = {
+            id: label.shipment_number,
+            code: status?.statusCode ?? 500,
+            message: status ? [
+              status.title,
+              status.instance,
+              status.detail,
+            ].filter(s => s).join(', ') : 'Unknwon Error!'
+          }
+        }
+      }
+      else {
+        throw new OperationStatusError(
+          500,
+          'Unknown Error!',
+        );
+      }
+    }));
     return fulfillments;
   }
 

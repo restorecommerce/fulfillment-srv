@@ -146,28 +146,6 @@ describe('Testing Fulfillment Service Cluster:', () => {
         );
       });
     }
-    
-    /*
-    for (let [sample_name, sample] of Object.entries(samples.couriers.invalid)) {
-      it(`should not create couriers based on invalid sample: ${sample_name}`, async () => {
-        sample.items.map((item:any) => {
-          item.configuration = {
-            value: Buffer.from(JSON.stringify(item.configuration ?? null))
-          }
-          return item;
-        });
-        const response = await courier_client.create(sample);
-        should.equal(
-          response?.operationStatus?.code, 200,
-          response?.operationStatus?.message ?? 'response.operationStatus.code should be 200'
-        );
-        should.exist(
-          response?.items[0]?.payload?.id,
-          'response.data.items[0].payload.id should exist'
-        );
-      });
-    }
-    */
   });
 
   describe('The Fulfillment Product Service:', () => {
@@ -354,7 +332,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
         const response = await fulfillment_client.track(sample);
         should.equal(
           response?.operationStatus?.code, 200,
-          'response.operationStatus.code expected to be 200'
+          [
+            'response.operationStatus.code expected to be 200',
+            JSON.stringify(response, null, 2)
+          ].join('\n')
         );
         should.ok(
           response?.items?.length ?? 0 > 0,
@@ -364,7 +345,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
           !response?.items?.some(
             item => item.status?.code !== 200
           ),
-          'response.items[*].status.code expected all to be 200',
+          [
+            'response.items[*].status.code expected all to be 200',
+            JSON.stringify(response, null, 2)
+          ].join('\n')
         );
       });
 
@@ -374,28 +358,36 @@ describe('Testing Fulfillment Service Cluster:', () => {
       });
     }
 
-    /*
-    
+    for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
+      it(`should cancel fulfillment by valid samples: ${sample_name}`, async function() {
+        this.timeout(30000);
+        const response = await fulfillment_client.cancel(sample);
+        should.equal(
+          response?.operationStatus?.code, 200,
+          [
+            'response.operationStatus.code expected to be 200',
+            JSON.stringify(response, null, 2)
+          ].join('\n')
+        );
+        should.ok(
+          response?.items?.length ?? 0 > 0,
+          'response.items.length expected to be greater 0',
+        );
+        should.ok(
+          !response?.items?.some(
+            item => item.status?.code !== 200
+          ),
+          [
+            'response.items[*].status.code expected all to be 200',
+            JSON.stringify(response, null, 2)
+          ].join('\n')
+        );
+      });
 
-    it('should cancel fulfillment orders of DHL', async function() {
-      this.timeout(30000);
-      const sample = samples.DHL.CancelFulfillments;
-      should.exist(sample, 'samples.DHL.CancelFulfillments should exist in samples.json');
-
-      offset = await topics.$offset(-1);
-      const response = await fulfillment_client.cancel(sample);
-      should.equal(response?.operationStatus?.code, 200, 'response.operationStatus.code should be 200');
-      should.equal(response?.items[0]?.status?.code, 200, 'response.items[0].status.code should be 200');
-      should.equal(response?.items[0]?.payload?.labels[0]?.state?.toString(),
-        'Cancelled',
-        'response.items[0]?.labels[0].state should be Cancelled'
-      );
-    });
-
-    it('should have received an event of "fulfillmentCancelled"', async function() {
-      this.timeout(12000);
-      await topics.$wait(offset);
-    });
-    */
+      it(`should have received fulfillment cancel event for ${sample_name}`, async function() {
+        this.timeout(5000);
+        await fulfillmentCancelledSemaphore.acquire(1);
+      });
+    }
   });
 });

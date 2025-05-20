@@ -797,7 +797,7 @@ export const mergeFulfillments = (
       c.payload.fulfillment_state = c.payload.labels?.reduce(
         (x, y) => StateRank[x?.state] < StateRank[y?.state] ? x : y,
         undefined
-      )?.state;
+      )?.state ?? FulfillmentState.PENDING;
       c.status = c.status?.code > a.status?.code ? c.status : a.status ?? c.status;
       c.payload.total_amounts.push(...(b.total_amounts ?? []));
     }
@@ -806,6 +806,10 @@ export const mergeFulfillments = (
       b.labels = a.labels ? a.labels : [];
       b.trackings = a.trackings ? a.trackings : [];
       b.total_amounts ??= [];
+      b.fulfillment_state = b.labels?.reduce(
+        (x, y) => StateRank[x?.state] < StateRank[y?.state] ? x : y,
+        undefined
+      )?.state ?? FulfillmentState.PENDING;
       fulfillment_map[b.id] = a;
     }
   });
