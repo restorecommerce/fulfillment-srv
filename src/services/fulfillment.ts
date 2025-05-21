@@ -521,17 +521,22 @@ export class FulfillmentService
               aggregation.customers?.all.map(
                 customer => customer?.setting_id
               )
-            ].flatMap(ids => ids),
+            ].flat(),
             container: 'settings',
             entity: 'Setting',
           },
           {
             service: CurrencyServiceDefinition,
-            map_by_ids: (aggregation) => aggregation.fulfillment_products?.all.flatMap(
-              product => product.variants?.map(
-                t => t.price?.currency_id
+            map_by_ids: (aggregation) => [
+              aggregation.fulfillment_products?.all.flatMap(
+                product => product.variants?.map(
+                  t => t.price?.currency_id
+                ),
               ),
-            ),
+              aggregation.products?.all.map(
+                p => p.product.origin_country_id
+              ),
+            ].flat(),
             container: 'currencies',
             entity: 'Currency'
           }
@@ -546,17 +551,17 @@ export class FulfillmentService
         [
           {
             service: UserServiceDefinition,
-            map_by_ids: (aggregation) => [].concat(
+            map_by_ids: (aggregation) => [
               subject?.id,
               aggregation.items?.map(item => item.payload.user_id),
               aggregation.customers?.all.map(customer => customer.private?.user_id)
-            ),
+            ].flat(),
             container: 'users',
             entity: 'User',
           },
           {
             service: OrganizationServiceDefinition,
-            map_by_ids: (aggregation) => [].concat(
+            map_by_ids: (aggregation) => [
               aggregation.customers?.all.map(
                 customer => customer.public_sector?.organization_id
               ),
@@ -566,7 +571,7 @@ export class FulfillmentService
               aggregation.shops?.all.map(
                 shop => shop?.organization_id
               ),
-            ),
+            ].flat(),
             container: 'organizations',
             entity: 'Organization',
           },
@@ -588,7 +593,7 @@ export class FulfillmentService
               aggregation.organizations.all.flatMap(
                 organization => organization.contact_point_ids
               )
-            ].flatMap(ids => ids),
+            ].flat(),
             container: 'contact_points',
             entity: 'ContactPoint',
           },
@@ -603,7 +608,7 @@ export class FulfillmentService
         [
           {
             service: AddressServiceDefinition,
-            map_by_ids: (aggregation) => [].concat(
+            map_by_ids: (aggregation) => [
               aggregation.contact_points.all.map(
                 cp => cp.physical_address_id
               ),
@@ -613,7 +618,7 @@ export class FulfillmentService
               aggregation.items.map(
                 item => item.payload?.packaging?.recipient?.address?.id
               ),
-            ),
+            ].flat(),
             container: 'addresses',
             entity: 'Address',
           },
@@ -628,7 +633,7 @@ export class FulfillmentService
         [
           {
             service: CountryServiceDefinition,
-            map_by_ids: (aggregation) => [].concat(
+            map_by_ids: (aggregation) => [
               aggregation.addresses.all.map(
                 a => a.country_id
               ),
@@ -638,7 +643,10 @@ export class FulfillmentService
               aggregation.currencies.all.flatMap(
                 currency => currency.country_ids
               ),
-            ),
+              aggregation.products.all.map(
+                p => p.product?.origin_country_id
+              )
+          ].flat(),
             container: 'countries',
             entity: 'Country',
           },

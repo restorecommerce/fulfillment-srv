@@ -92,7 +92,7 @@ const KnownUrns = {
   dhl_courier_label_combined: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:combined', // flag
   dhl_courier_label_encoding_required: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:encoding:required', // flag
   dhl_courier_label_print_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:print:format', // e.g. A4
-  dhl_courier_label_source_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:source:format', // e.g. URL / Blob
+  dhl_courier_label_source_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:source:format', // e.g. URL / b64
   dhl_courier_label_file_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:file:format', // e.g. PDF /
   dhl_courier_label_retoure_print_format: 'urn:restorecommerce:fulfillment:product:attribute:dhl:label:retoure:print:format', // e.g. A4
 
@@ -586,6 +586,14 @@ export class DHLRest extends Stub {
           );
           if (label) {
             label.state = FulfillmentState.SUBMITTED;
+            label.file = {
+              url: item.label?.url,
+              blob: item.label?.b64 ? {
+                data: Buffer.from(item.label.b64),
+                encoding: 'base64',
+              } : undefined,
+              content_type: 'application/pdf',
+            };
           }
           else {
             fulfillment.labels.push(
@@ -598,7 +606,8 @@ export class DHLRest extends Stub {
                   blob: item.label?.b64 ? {
                     data: Buffer.from(item.label.b64),
                     encoding: 'base64',
-                  } : undefined
+                  } : undefined,
+                  content_type: 'application/pdf',
                 },
                 status,
               } as Label
