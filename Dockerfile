@@ -24,7 +24,7 @@ WORKDIR $APP_HOME
 COPY --chown=node:node ./cfg $APP_HOME/cfg
 COPY --chown=node:node ./queries $APP_HOME/queries
 COPY --chown=node:node ./templates $APP_HOME/templates
-COPY --chown=node:node ./wsdl $APP_HOME/wsdl
+COPY --chown=node:node ./api $APP_HOME/api
 COPY --chown=node:node --from=build $APP_HOME/lib $APP_HOME/lib
 
 EXPOSE 50051

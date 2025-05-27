@@ -2,7 +2,7 @@
   "logger": {
     "console": {
       "handleExceptions": false,
-      "level": "warn",
+      "level": "silly",
       "colorize": true,
       "prettyPrint": true
     }
@@ -46,7 +46,7 @@
   "server": {
     "transports": [
       {
-        "name": "grpcFulfillmentSrv",
+        "name": "grpcFulfillmentSrvTest",
         "provider": "grpc",
         "addr": "0.0.0.0:50167"
       }

@@ -11,9 +11,7 @@
         "password",
         "request.password",
         "request.token",
-        "items.[0].password"
-      ],
-      "omitFields": [
+        "items.[0].password",
         "request.context.subject.value.data",
         "request.context.security.value.data",
         "request.context.resources.[0].value.data",

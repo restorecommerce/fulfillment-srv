@@ -653,7 +653,7 @@ export class FulfillmentProductService
                   },
                   weight_in_kg: container.getStackWeight(),
                 };
-                const gross = await stub.calcGross(variant, pack);
+                const gross = await stub.calcGross(variant, pack, currency.precision ?? 2);
                 const price = variant.price;
                 const amount = calcAmount(
                   gross, taxes, shop_country, customer_country,

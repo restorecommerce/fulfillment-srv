@@ -10,11 +10,10 @@ import {
   Topic,
   registerProtoMeta
 } from '@restorecommerce/kafka-client';
-import { createLogger } from '@restorecommerce/logger';
-import { createServiceConfig } from '@restorecommerce/service-config';
+import { createLogger, Logger } from '@restorecommerce/logger';
+import { createServiceConfig, ServiceConfig } from '@restorecommerce/service-config';
 import { RedisClientType as RedisClient, createClient } from 'redis';
 import { Arango } from '@restorecommerce/chassis-srv/lib/database/provider/arango/base.js';
-import { Logger } from 'winston';
 import { BindConfig } from '@restorecommerce/chassis-srv/lib/microservice/transport/provider/grpc/index.js';
 import {
   FulfillmentServiceDefinition,
@@ -179,12 +178,12 @@ export class Worker {
     };
   }
 
-  async start(cfg?: any, logger?: any): Promise<any> {
+  async start(cfg?: ServiceConfig, logger?: Logger): Promise<any> {
     // Load config
-    this._cfg = cfg = cfg ?? createServiceConfig(process.cwd());
+    this._cfg = cfg ??= createServiceConfig(process.cwd());
 
     // create server
-    this.logger = logger = logger ?? createLogger(cfg.get('logger'));
+    this.logger = logger ??= createLogger(cfg.get('logger'));
     this.server = new Server(cfg.get('server'), logger);
 
     // register api stubs
