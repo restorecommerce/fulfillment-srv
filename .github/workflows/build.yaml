@@ -26,6 +26,12 @@ jobs:
       defaults__Couriers__DHLSoap__configuration__value__ordering__password: ${{ secrets.STUBS__DHLSOAP__DEFAULTS__ORDERING__PASSWORD }}
       defaults__Couriers__DHLSoap__configuration__value__tracking__username: ${{ secrets.STUBS__DHLSOAP__DEFAULTS__TRACKING__USERNAME }}
       defaults__Couriers__DHLSoap__configuration__value__tracking__password: ${{ secrets.STUBS__DHLSOAP__DEFAULTS__TRACKING__PASSWORD }}
+      defaults__Couriers__DHLRest__configuration__value__ordering__username: 'user-valid'
+      defaults__Couriers__DHLRest__configuration__value__ordering__password: 'SandboxPasswort2023!'
+      defaults__Couriers__DHLRest__configuration__value__ordering__client_id: ${{ secrets.DHL_REST_ORDERING_CLIENT_ID }}
+      defaults__Couriers__DHLRest__configuration__value__ordering__client_secret: ${{ DHL_REST_ORDERING_CLIENT_SECRET }}
+      defaults__Couriers__DHLRest__configuration__value__tracking__username: ${{ secrets.STUBS__DHLSOAP__DEFAULTS__TRACKING__USERNAME }}
+      defaults__Couriers__DHLRest__configuration__value__tracking__password: ${{ secrets.STUBS__DHLSOAP__DEFAULTS__TRACKING__PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
