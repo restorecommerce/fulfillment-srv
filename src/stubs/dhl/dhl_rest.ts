@@ -264,7 +264,7 @@ export class DHLRest extends Stub {
   }
 
   protected async getAccessToken(credential?: Credential): Promise<AccessToken> {
-    if (this.access_token?.expires_in < Date.now()) {
+    if (this.access_token?.expires_in > Date.now()) {
       return this.access_token;
     }
     else {
@@ -588,10 +588,7 @@ export class DHLRest extends Stub {
             label.state = FulfillmentState.SUBMITTED;
             label.file = {
               url: item.label?.url,
-              blob: item.label?.b64 ? {
-                data: Buffer.from(item.label.b64),
-                encoding: 'base64',
-              } : undefined,
+              blob: item.label?.b64 ? Buffer.from(item.label.b64) : undefined,
               content_type: 'application/pdf',
             };
           }
@@ -603,10 +600,7 @@ export class DHLRest extends Stub {
                 state: FulfillmentState.SUBMITTED,
                 file: {
                   url: item.label?.url,
-                  blob: item.label?.b64 ? {
-                    data: Buffer.from(item.label.b64),
-                    encoding: 'base64',
-                  } : undefined,
+                  blob: item.label?.b64 ? Buffer.from(item.label.b64) : undefined,
                   content_type: 'application/pdf',
                 },
                 status,

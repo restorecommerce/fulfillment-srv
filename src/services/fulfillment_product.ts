@@ -155,7 +155,11 @@ export class FulfillmentProductService
     },
     MISSING_PACKAGING_INFO: {
       code: 500,
-      message: '{entity} {id} is missing packaging info: {error}'
+      message: '{entity} {id} is missing packaging info: {details}'
+    },
+    NO_SOLUTION_FOUND: {
+      code: 404,
+      message: 'No solution found for {id}',
     },
   };
 
@@ -203,7 +207,6 @@ export class FulfillmentProductService
       cfg.get('events:enableEvents')?.toString() === 'true',
       cfg.get('database:main:collections:2') ?? 'fulfillment_products',
     );
-
     this.status_codes = {
       ...this.status_codes,
       ...cfg.get('statusCodes'),
@@ -719,20 +722,20 @@ export class FulfillmentProductService
             )
           );
 
+          const status = solutions.length ? createStatusCode(
+            'Solution',
+            query.reference?.instance_id,
+            this.status_codes.OK,
+          ) : createStatusCode(
+            'Solution',
+            query.reference?.instance_id,
+            this.status_codes.NO_SOLUTION_FOUND,
+          );
+
           const solution: FulfillmentSolutionResponse = {
             reference: query.reference,
             solutions,
-            status: {
-              id: query.reference?.instance_id,
-              code: 200,
-              message: `Best Solution: ${
-                Math.min(
-                  ...solutions.flatMap(
-                    (s) => s.amounts.map(a => a.net)
-                  )
-                )
-              }`
-            }
+            status,
           };
 
           return solution;
@@ -741,10 +744,11 @@ export class FulfillmentProductService
           const solution: FulfillmentSolutionResponse = {
             reference: query.reference,
             solutions: [],
-            status: this.catchStatusError(
-              query.reference?.instance_id,
-              e,
-            ),
+            status: {
+              id: query?.reference?.instance_id,
+              code: Number.isInteger(e?.code) ? e?.code : 500,
+              message: e?.details ?? e?.message ?? e
+            }
           };
           return solution;
         }

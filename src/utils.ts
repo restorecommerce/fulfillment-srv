@@ -93,6 +93,7 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import { Setting } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
 import { Attribute } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js';
+import * as _ from 'lodash-es';
 
 export type ProductNature = PhysicalProduct & VirtualProduct & ServiceProduct;
 export type ProductVariant = PhysicalVariant & VirtualVariant & ServiceVariant;
@@ -289,11 +290,11 @@ export const createStatusCode = (
 ): Status => ({
   id,
   code: status?.code ?? 500,
-  message: status?.message?.replace(
+  message: status?.message?.replaceAll(
     '{entity}', entity
-  ).replace(
+  ).replaceAll(
     '{id}', id
-  ).replace(
+  ).replaceAll(
     '{details}', details
   ) ?? 'Unknown status',
 });
@@ -318,9 +319,9 @@ export const createOperationStatusCode = (
   id?: string,
 ): OperationStatus => new OperationStatusError(
   status?.code ?? 500,
-  status?.message?.replace(
+  status?.message?.replaceAll(
     '{entity}', entity ?? 'undefined'
-  ).replace(
+  ).replaceAll(
     '{id}', id ?? 'undefined'
   ) ?? 'Unknown status',
 );
@@ -687,7 +688,7 @@ export const packRenderData = (
   const resolved = {
     fulfillment: resolveFulfillment(
       aggregation,
-      fulfillment
+      _.cloneDeep(fulfillment)
     ),
   };
   const buffer = marshallProtobufAny(resolved);

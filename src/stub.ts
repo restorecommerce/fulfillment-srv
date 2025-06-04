@@ -71,11 +71,11 @@ export abstract class Stub
     return {
       id,
       code: status?.code ?? 500,
-      message: status?.message?.replace(
+      message: status?.message?.replaceAll(
         '{details}', details
-      ).replace(
+      ).replaceAll(
         '{entity}', entity
-      ).replace(
+      ).replaceAll(
         '{id}', id
       ) ?? 'Unknown status',
     };
@@ -350,16 +350,21 @@ export abstract class Stub
     logger?: Logger,
     kwargs?: any,
   ): Stub {
-    let stub = Stub.REGISTER[courier.id];
-    if (!stub && (courier.api in Stub.STUB_TYPES))
-    {
-      stub = new Stub.STUB_TYPES[courier.api](
-        courier,
-        cfg ?? Stub.cfg,
-        logger ?? Stub.logger,
-        kwargs,
-      );
-      Stub.REGISTER[courier.id] = stub;
+    let stub = Stub.REGISTER[courier?.id];
+    if (!stub) {
+      if (courier.api in Stub.STUB_TYPES)
+      {
+        stub = new Stub.STUB_TYPES[courier.api](
+          courier,
+          cfg ?? Stub.cfg,
+          logger ?? Stub.logger,
+          kwargs,
+        );
+        Stub.REGISTER[courier.id] = stub;
+      }
+      else {
+        throw new Error(`No API Stub registered for courier id ${courier?.id} with stub type ${courier.api}`);
+      }
     }
     return stub;
   }

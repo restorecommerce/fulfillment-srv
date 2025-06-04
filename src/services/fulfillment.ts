@@ -685,6 +685,8 @@ export class FulfillmentService
           this.contact_point_type_ids.shipping,
         );
         item.payload.packaging.notify ??= item.payload.packaging.sender?.contact?.email
+        delete item.payload.packaging.sender.address.meta;
+        delete item.payload.packaging.recipient.address.meta;
 
         if (!item.payload.packaging.sender?.address) {
           throwStatusCode(
@@ -881,14 +883,14 @@ export class FulfillmentService
       const items = await Stub.evaluate(
         aggregation
       );
-
+      const multi_state = items.some(item => item.status?.code !== 200);
       return {
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          this.operation_status_codes.SUCCESS,
+          multi_state ? this.OperationStatusCodes.MULTI_STATUS : this.operation_status_codes.SUCCESS,
           this.name,
-        )
+        ),
       };
     }
     catch (e: any) {
