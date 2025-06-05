@@ -183,28 +183,28 @@
       "fulfillmentDeletedAll": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
-      "fulfillmentCourierCreated": {
+      "fulfillment_courierCreated": {
         "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
       },
-      "fulfillmentCourierModified": {
+      "fulfillment_courierModified": {
         "messageObject": "io.restorecommerce.fulfillment_courier.FulfillmentCourier"
       },
-      "fulfillmentCourierDeleted": {
+      "fulfillment_courierDeleted": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
-      "fulfillmentCourierDeletedAll": {
+      "fulfillment_courierDeletedAll": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
-      "fulfillmentProductCreated": {
+      "fulfillment_productCreated": {
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
       },
-      "fulfillmentProductModified": {
+      "fulfillment_productModified": {
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
       },
-      "fulfillmentProductDeleted": {
+      "fulfillment_productDeleted": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
-      "fulfillmentProductDeletedAll": {
+      "fulfillment_productDeletedAll": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
       
