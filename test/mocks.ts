@@ -140,6 +140,7 @@ const currencies: CurrencyListResponse = {
       name: 'Euro',
       precision: 2,
       symbol: 'EUR',
+      code: 'EUR',
       meta,
     },
     status,
@@ -424,8 +425,8 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
         name: 'DHL National (Germany)',
         description: 'Versendungen innerhalb Deutschland',
         courierId: 'dhl_rest',
-        startZones: ['DE'],
-        destinationZones: ['DE'],
+        startZones: ['DEU'],
+        destinationZones: ['DEU'],
         taxIds: [taxes[0].payload?.id as string],
         attributes: [{
           id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
