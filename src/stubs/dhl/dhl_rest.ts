@@ -134,6 +134,10 @@ type ParsedDHLAttributes = ParsedAttributes<KnownDHLUrns, DHLAttributeParser>;
 
 const join = (...args: string[]) => args.join(':');
 
+function nullify(value: string) {
+  return value?.length ? value : undefined;
+}
+
 export class DHLRest extends Stub {
   protected readonly client: Client<paths>;
   protected readonly urns = KnownUrns;
@@ -447,8 +451,8 @@ export class DHLRest extends Stub {
                 sender.address.residential_address?.family_name,
                 sender.address.business_address?.name,
               ].filter(s => s).join(' '),
-              name2: sender.address.address_addition?.field1,
-              name3: sender.address.address_addition?.field2,
+              name2: nullify(sender.address.address_addition?.field1),
+              name3: nullify(sender.address.address_addition?.field2),
               addressStreet: [
                 sender.address.street,
                 sender.address.building_number,
@@ -468,8 +472,8 @@ export class DHLRest extends Stub {
                 recipient.address.pack_station?.post_number,
                 recipient.address.business_address?.name,
               ].filter(s => s).join(' '),
-              name2: recipient.address.address_addition?.field1,
-              name3: recipient.address.address_addition?.field2,
+              name2: nullify(recipient.address.address_addition?.field1),
+              name3: nullify(recipient.address.address_addition?.field2),
               addressStreet: [
                 recipient.address.street,
                 recipient.address.building_number,
