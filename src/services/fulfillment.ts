@@ -533,9 +533,6 @@ export class FulfillmentService
                   t => t.price?.currency_id
                 ),
               ),
-              aggregation.products?.all.map(
-                p => p.product.origin_country_id
-              ),
             ].flat(),
             container: 'currencies',
             entity: 'Currency'
