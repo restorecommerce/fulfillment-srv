@@ -423,7 +423,7 @@ export class DHLSoap extends Stub {
         product.attributes.find(attr => attr.id === this.urns.dhl_product_stepWeight)?.value ?? '1'
       );
       const step_price = Number.parseFloat(
-        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '1'
+        product.attributes.find(attr => attr.id === this.urns.dhl_product_stepPrice)?.value ?? '0'
       );
       const price = new BigNumber(
         pack.weight_in_kg / step_weight * step_price

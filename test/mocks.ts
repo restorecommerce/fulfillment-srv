@@ -481,7 +481,7 @@ const validFulfillmentProducts: { [key:string]: FulfillmentProductList } = {
           id: 'urn:restorecommerce:fulfillment:product:attribute:dhl:productName',
           value: 'V01PAK',
         },{
-          id: 'urn:restorecommerce:fulfillment:attribute:dhl:accountNumber',
+          id: 'urn:restorecommerce:fulfillment:attribute:dhl:billingNumber',
           value: '33333333330102',
         }],
         variants: [{

@@ -325,7 +325,7 @@ export class DHLRest extends Stub {
     try{
       const roundWeightUp = attributes.dhl_product_roundWeightUp;
       const step_weight = attributes.dhl_product_stepWeight || 1;
-      const step_price = attributes.dhl_product_stepPrice || 1;
+      const step_price = attributes.dhl_product_stepPrice || 0;
       const weight = Number.isNaN(roundWeightUp)
         ? new BigNumber(pack.weight_in_kg)
         : new BigNumber(pack.weight_in_kg).decimalPlaces(roundWeightUp, BigNumber.ROUND_UP) 
@@ -488,7 +488,7 @@ export class DHLRest extends Stub {
             details: {
               weight: {
                 uom: 'kg',
-                value: f.parcel.package.weight_in_kg
+                value: Math.max(f.parcel.package.weight_in_kg, 0.01)
               }
             },
             services: this.getServices([
