@@ -1,6 +1,6 @@
 {
   "name": "@restorecommerce/fulfillments-srv",
-  "version": "0.2.5",
+  "version": "0.5.3",
   "main": "./lib/start.js",
   "description": "fulfillment service for creating and managing fulfillments",
   "author": "n-fuse GmbH",
