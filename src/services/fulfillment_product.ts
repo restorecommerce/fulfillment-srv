@@ -656,10 +656,10 @@ export class FulfillmentProductService
                   },
                   weight_in_kg: container.getStackWeight(),
                 };
-                const gross = await stub.calcGross(variant, pack, currency.precision ?? 2);
+                const net = await stub.calcNet(variant, pack, currency.precision ?? 2);
                 const price = variant.price;
                 const amount = calcAmount(
-                  gross, taxes, shop_country, customer_country,
+                  net, taxes, shop_country, customer_country,
                   currency,
                   !!customer?.private?.user_id,
                 );
@@ -716,9 +716,9 @@ export class FulfillmentProductService
           ));
           solutions.sort(
             (a, b) => Math.min(
-              ...(a.amounts?.map(am => am.net) ?? [])
+              ...(a.amounts?.map(am => am.gross) ?? [])
             ) - Math.min(
-              ...(b.amounts?.map(am => am.net) ?? [])
+              ...(b.amounts?.map(am => am.gross) ?? [])
             )
           );
 

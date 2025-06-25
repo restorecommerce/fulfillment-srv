@@ -32,7 +32,6 @@ import {
   FulfillmentServiceImplementation,
   FulfillmentInvoiceRequestList,
   FulfillmentResponse,
-  FulfillmentId,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
 import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
@@ -729,10 +728,10 @@ export class FulfillmentService
             const currency = aggregation.currencies.get(variant.price?.currency_id);
             const stub = Stub.getInstance(courier);
             const taxes = aggregation.taxes.getMany(product.tax_ids);
-            const gross = await stub.calcGross(variant, p.package, currency.precision ?? 2);
+            const net = await stub.calcNet(variant, p.package, currency.precision ?? 2);
             p.price = variant.price;
             p.amount = calcAmount(
-              gross, taxes, origin, destination,
+              net, taxes, origin, destination,
               currency,
               !!customer?.private?.user_id,
             );

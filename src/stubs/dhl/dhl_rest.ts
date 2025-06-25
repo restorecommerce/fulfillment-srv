@@ -309,7 +309,7 @@ export class DHLRest extends Stub {
     return this.access_token;
   }
 
-  public async calcGross(
+  public async calcNet(
     product: Variant,
     pack: Package,
     precision = 2,

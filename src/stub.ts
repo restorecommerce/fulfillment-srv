@@ -56,7 +56,7 @@ export abstract class Stub
     query: FulfillmentSolutionQuery,
     helper?: T
   ): Promise<boolean>;
-  public abstract calcGross(
+  public abstract calcNet(
     product: Variant,
     pack: Package,
     precision: number,

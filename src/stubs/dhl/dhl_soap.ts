@@ -413,7 +413,7 @@ export class DHLSoap extends Stub {
     };
   }
 
-  public async calcGross(
+  public async calcNet(
     product: Variant,
     pack: Package,
     precision = 2,
