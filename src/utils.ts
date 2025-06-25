@@ -394,7 +394,7 @@ export const calcAmount = (
   const precision = currency?.precision ?? 2;
   const vats = taxes.map((tax): VAT => ({
     tax_id: tax.id,
-    vat: gross.multipliedBy(
+    vat: net.multipliedBy(
       tax.rate
     ).multipliedBy(
       tax.tax_ratio ?? 1.0
