@@ -276,7 +276,7 @@ export class DHLRest extends Stub {
         ...this.config.ordering,
         username: credential?.user ?? this.config.ordering?.username,
         password: credential?.pass ?? this.config.ordering?.password,
-        ...unmarshallProtobufAny(credential?.credentials)
+        ...unmarshallProtobufAny(credential?.credentials)?.ordering
       };
       const formData = new URLSearchParams();
       formData.append('grant_type', config.grant_type ?? 'password');
