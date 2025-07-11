@@ -57,6 +57,7 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_courier.js';
 import {
   AccessControlledServiceBase,
+  AccessControlledServiceBaseOperationStatusCodes,
 } from '@restorecommerce/resource-base-interface/lib/experimental/AccessControlledServiceBase.js';
 import { FulfillmentCourierService } from './fulfillment_courier.js';
 import {
@@ -84,6 +85,7 @@ import {
   createStatusCode,
   calcAmount,
 } from './../utils.js';
+import { OperationStatusCodes, ServiceBaseStatusCodes, StatusCodes } from '@restorecommerce/resource-base-interface';
 
 
 interface PackageSolutionTotals extends FulfillmentSolutionQuery {
@@ -128,59 +130,55 @@ const countItems = (goods: Item[], container: Container) => {
   return [...item_map.values()];
 };
 
+export const FulfillmentProductStatusCodes = {
+  ...ServiceBaseStatusCodes,
+  NOT_FOUND: {
+    code: 404,
+    message: '{entity} {id} not found!',
+  },
+  NO_LEGAL_ADDRESS: {
+    code: 404,
+    message: '{entity} {id} has no legal address!',
+  },
+  NO_SHIPPING_ADDRESS: {
+    code: 404,
+    message: '{entity} {id} has no shipping address!',
+  },
+  NO_ENTITY_ID: {
+    code: 400,
+    message: '{entity} ID not provided!'
+  },
+  MISSING_PACKAGING_INFO: {
+    code: 500,
+    message: '{entity} {id} is missing packaging info: {details}'
+  },
+  NO_SOLUTION_FOUND: {
+    code: 404,
+    message: 'No solution found for {id}',
+  },
+};
+export type FulfillmentProductStatusCodes = StatusCodes<typeof FulfillmentProductStatusCodes>;
+
+export const FulfillmentProductOperationStatusCodes = {
+  ...AccessControlledServiceBaseOperationStatusCodes,
+  COURIERS_NOT_FOUND: {
+    code: 404,
+    message: 'Couriers not found!',
+  }
+};
+export type FulfillmentProductOperationStatusCodes = OperationStatusCodes<typeof FulfillmentProductOperationStatusCodes>;
+
 export class FulfillmentProductService
   extends AccessControlledServiceBase<FulfillmentProductListResponse, FulfillmentProductList>
   implements FulfillmentProductServiceImplementation
 {
-  protected readonly status_codes = {
-    OK: {
-      code: 200,
-      message: 'OK',
-    },
-    NOT_FOUND: {
-      code: 404,
-      message: '{entity} {id} not found!',
-    },
-    NO_LEGAL_ADDRESS: {
-      code: 404,
-      message: '{entity} {id} has no legal address!',
-    },
-    NO_SHIPPING_ADDRESS: {
-      code: 404,
-      message: '{entity} {id} has no shipping address!',
-    },
-    NO_ENTITY_ID: {
-      code: 400,
-      message: '{entity} ID not provided!'
-    },
-    MISSING_PACKAGING_INFO: {
-      code: 500,
-      message: '{entity} {id} is missing packaging info: {details}'
-    },
-    NO_SOLUTION_FOUND: {
-      code: 404,
-      message: 'No solution found for {id}',
-    },
-  };
+  protected override get operationStatusCodes(): FulfillmentProductOperationStatusCodes {
+    return super.operationStatusCodes;
+  }
 
-  protected readonly operation_status_codes = {
-    SUCCESS: {
-      code: 200,
-      message: 'SUCCESS',
-    },
-    PARTIAL: {
-      code: 207,
-      message: 'Patrial executed with errors!',
-    },
-    LIMIT_EXHAUSTED: {
-      code: 500,
-      message: 'Query limit 1000 exhausted!',
-    },
-    COURIERS_NOT_FOUND: {
-      code: 404,
-      message: 'Couriers not found!',
-    }
-  };
+  protected override get statusCodes(): FulfillmentProductStatusCodes {
+    return super.statusCodes;
+  }
 
   protected readonly tech_user: Subject;
   protected readonly contact_point_type_ids = {
@@ -207,13 +205,14 @@ export class FulfillmentProductService
       cfg.get('events:enableEvents')?.toString() === 'true',
       cfg.get('database:main:collections:2') ?? 'fulfillment_products',
     );
-    this.status_codes = {
-      ...this.status_codes,
+
+    super.statusCodes = {
+      ...FulfillmentProductStatusCodes,
       ...cfg.get('statusCodes'),
     };
 
-    this.operation_status_codes = {
-      ...this.operation_status_codes,
+    super.operationStatusCodes = {
+      ...FulfillmentProductOperationStatusCodes,
       ...cfg.get('operationStatusCodes'),
     };
 
@@ -498,7 +497,7 @@ export class FulfillmentProductService
             throwStatusCode(
               'FulfillmentSolutionQuery',
               query.reference?.instance_id,
-              this.status_codes.NO_SHIPPING_ADDRESS,
+              this.statusCodes.NO_SHIPPING_ADDRESS,
             );
           }
     
@@ -506,7 +505,7 @@ export class FulfillmentProductService
             throwStatusCode(
               'FulfillmentSolutionQuery',
               query.reference?.instance_id,
-              this.status_codes.NO_SHIPPING_ADDRESS,
+              this.statusCodes.NO_SHIPPING_ADDRESS,
             );
           }
 
@@ -562,25 +561,25 @@ export class FulfillmentProductService
                   maxWeight: variant.max_weight ?? throwStatusCode(
                     'FulfillmentProduct',
                     product?.id,
-                    this.status_codes.MISSING_PACKAGING_INFO,
+                    this.statusCodes.MISSING_PACKAGING_INFO,
                     'Weight'
                   ),
                   width: variant.max_size?.width ?? throwStatusCode(
                     'FulfillmentProduct',
                     product?.id,
-                    this.status_codes.MISSING_PACKAGING_INFO,
+                    this.statusCodes.MISSING_PACKAGING_INFO,
                     'Width'
                   ),
                   height: variant.max_size?.height ?? throwStatusCode(
                     'FulfillmentProduct',
                     product?.id,
-                    this.status_codes.MISSING_PACKAGING_INFO,
+                    this.statusCodes.MISSING_PACKAGING_INFO,
                     'Height'
                   ),
                   depth: variant.max_size?.length ?? throwStatusCode(
                     'FulfillmentProduct',
                     product?.id,
-                    this.status_codes.MISSING_PACKAGING_INFO,
+                    this.statusCodes.MISSING_PACKAGING_INFO,
                     'Length'
                   ),
                   type: 'parcel'
@@ -597,25 +596,25 @@ export class FulfillmentProductService
             weight: good.package?.weight_in_kg ?? throwStatusCode(
               'Product',
               good.product_id,
-              this.status_codes.MISSING_PACKAGING_INFO,
+              this.statusCodes.MISSING_PACKAGING_INFO,
               'Weight'
             ),
             width: good.package?.size_in_cm?.width ?? throwStatusCode(
               'Product',
               good.product_id,
-              this.status_codes.MISSING_PACKAGING_INFO,
+              this.statusCodes.MISSING_PACKAGING_INFO,
               'Width',
             ),
             height: good.package?.size_in_cm?.height ?? throwStatusCode(
               'Product',
               good.product_id,
-              this.status_codes.MISSING_PACKAGING_INFO,
+              this.statusCodes.MISSING_PACKAGING_INFO,
               'Height'
             ),
             depth: good.package?.size_in_cm?.length ?? throwStatusCode(
               'Product',
               good.product_id,
-              this.status_codes.MISSING_PACKAGING_INFO,
+              this.statusCodes.MISSING_PACKAGING_INFO,
               'Length',
             ),
             price: 0.0, // placeholder
@@ -641,7 +640,7 @@ export class FulfillmentProductService
                   throw createStatusCode(
                     'FulfillmentProductVariant',
                     variant_id,
-                    this.status_codes.NOT_FOUND,
+                    this.statusCodes.NOT_FOUND,
                   );
                 }
                 const currency = currency_map.get(variant.price?.currency_id);
@@ -725,11 +724,11 @@ export class FulfillmentProductService
           const status = solutions.length ? createStatusCode(
             'Solution',
             query.reference?.instance_id,
-            this.status_codes.OK,
+            this.statusCodes.SUCCESS,
           ) : createStatusCode(
             'Solution',
             query.reference?.instance_id,
-            this.status_codes.NO_SOLUTION_FOUND,
+            this.statusCodes.NO_SOLUTION_FOUND,
           );
 
           const solution: FulfillmentSolutionResponse = {
@@ -759,7 +758,7 @@ export class FulfillmentProductService
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          this.operation_status_codes.SUCCESS,
+          this.operationStatusCodes.SUCCESS,
           this.name,
         )
       };

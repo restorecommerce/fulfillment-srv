@@ -272,12 +272,10 @@ describe('Testing Fulfillment Service Cluster:', () => {
       it(`should evaluate fulfillment by valid samples: ${sample_name}`, async function() {
         this.timeout(60000);
         const response = await fulfillment_client.evaluate(sample);
+        // logger.warn('PROBLEM:', response);
         should.equal(
           response?.operationStatus?.code, 200,
-          [
-            'response.operationStatus.code expected to be 200',
-            JSON.stringify(response, null, 2)
-          ].join('\n')
+          'response.operationStatus.code expected to be 200',
         );
         should.ok(
           response?.items?.length ?? 0 > 0,
@@ -287,10 +285,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           !response?.items?.some(
             item => item.status?.code !== 200
           ),
-          [
-            'response.items[*].status.code expected all to be 200',
-            JSON.stringify(response, null, 2)
-          ].join('\n')
+          'response.items[*].status.code expected all to be 200',
         );
       });
     }
@@ -309,10 +304,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
         );
         response.items!.should.matchEvery(
           item => item.status?.code === 200,
-          [
-            'response.items[*].status.code expected all to be 200',
-            JSON.stringify(response, null, 2)
-          ].join('\n')
+          'response.items[*].status.code expected all to be 200',
         );
         response.items!.should.matchEvery(
           item => item.payload?.labels?.length > 0,
@@ -366,10 +358,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
         const response = await fulfillment_client.cancel(sample);
         should.equal(
           response?.operationStatus?.code, 200,
-          [
-            'response.operationStatus.code expected to be 200',
-            JSON.stringify(response, null, 2)
-          ].join('\n')
+          'response.operationStatus.code expected to be 200',
         );
         should.ok(
           response?.items?.length ?? 0 > 0,
@@ -379,10 +368,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           !response?.items?.some(
             item => item.status?.code !== 200
           ),
-          [
-            'response.items[*].status.code expected all to be 200',
-            JSON.stringify(response, null, 2)
-          ].join('\n')
+          'response.items[*].status.code expected all to be 200',
         );
       });
 

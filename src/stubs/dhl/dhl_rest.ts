@@ -297,6 +297,7 @@ export class DHLRest extends Stub {
       ).then(async response => {
         if (!response.ok) {
           const text = await response.text();
+          this.logger?.error('DHL Rest Authorization Error:', response.status, text);
           throw new OperationStatusError(
             response?.status ?? 500,
             `DHL Rest Authorization Error: ${response.status} ${text}`,
@@ -613,6 +614,7 @@ export class DHLRest extends Stub {
           }
           fulfillment.fulfillment_state = FulfillmentState.SUBMITTED;
         }
+
         if (fulfillment.status?.code < status.code) {
           fulfillment.status = status;
         }
@@ -632,7 +634,7 @@ export class DHLRest extends Stub {
   ) {
     const credential = (
       this.courier.credential_id
-      ? aggregation.credentials.get(
+      ? aggregation.credentials?.get(
         this.courier.credential_id,
       )
       : undefined

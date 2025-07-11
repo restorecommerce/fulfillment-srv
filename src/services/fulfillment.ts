@@ -47,6 +47,10 @@ import {
   CustomerServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/customer.js';
 import {
+  Credential,
+  CredentialServiceDefinition
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
+import {
   ShopServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/shop.js';
 import {
@@ -74,6 +78,7 @@ import { CurrencyServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist
 import { Product, ProductServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import {
   AccessControlledServiceBase,
+  AccessControlledServiceBaseOperationStatusCodes,
   ACSContextFactory
 } from '@restorecommerce/resource-base-interface/lib/experimental/AccessControlledServiceBase.js';
 import {
@@ -103,105 +108,105 @@ import {
 } from './../utils.js';
 import { FulfillmentCourierService } from './fulfillment_courier.js';
 import { FulfillmentProductService } from './fulfillment_product.js';
+import {
+  ServiceBaseStatusCodes,
+  StatusCodes,
+  OperationStatusCodes,
+} from '@restorecommerce/resource-base-interface';
 
+export const FulfillmentStatusCodes = {
+  ...ServiceBaseStatusCodes,
+  NOT_FOUND: {
+    code: 404,
+    message: '{entity} {id} not found!',
+  },
+  NO_LEGAL_ADDRESS: {
+    code: 404,
+    message: '{entity} {id} has no legal address!',
+  },
+  NO_SHIPPING_ADDRESS: {
+    code: 404,
+    message: '{entity} {id} has no shipping address!',
+  },
+  NO_BILLING_ADDRESS: {
+    code: 404,
+    message: '{entity} {id} has no billing address!',
+  },
+  NO_LABEL: {
+    code: 404,
+    message: '{entity} {id} has no label!',
+  },
+  NO_PACKAGE_INFO: {
+    code: 500,
+    message: '{entity} {id} has no package information!',
+  },
+  NOT_SUBMITTED: {
+    code: 400,
+    message: '{entity} {id} is not submitted!',
+  },
+  SHOP_ID_NOT_IDENTICAL: {
+    code: 400,
+    message: '{entity} {id} Fulfillment.shopId must be listed in Courier.shopIds!',
+  },
+  CONFLICT: {
+    code: 409,
+    message: 'Resource conflict, ID already in use!'
+  },
+  CONTENT_NOT_SUPPORTED: {
+    code: 400,
+    message: '{entity} {id}: Content type {details} is not supported!',
+  },
+  REQUIRED_FIELD_MISSING: {
+    code: 400,
+    message: '{entity} {id}: Is missing required field {details}!',
+  },
+  PROTOCOL_NOT_SUPPORTED: {
+    code: 400,
+    message: '{entity} {id}: Protocol of {details} is not supported!',
+  },
+  FETCH_FAILED: {
+    code: 500,
+    message: '{entity} {id}: {details}!',
+  },
+  NO_TEMPLATE_BODY: {
+    code: 500,
+    message: 'No body defined in template {id}!',
+  },
+};
+export type FulfillmentStatusCodes = StatusCodes<typeof FulfillmentStatusCodes>;
+
+export const FulfillmentOperationStatusCodes = {
+  ...AccessControlledServiceBaseOperationStatusCodes,
+  TIMEOUT: {
+    code: 500,
+    message: 'Request timeout, API not responding!',
+  },
+  NO_ITEM: {
+    code: 400,
+    message: 'No {entity} in query!',
+  },
+  NO_TEMPLATES: {
+    code: 500,
+    message: 'No render templates defined!',
+  },
+  INVALID: {
+    code: 400,
+    message: 'Invalid {entity} in query!',
+  },
+};
+export type FulfillmentOperationStatusCodes = OperationStatusCodes<typeof FulfillmentOperationStatusCodes>
 
 export class FulfillmentService
   extends AccessControlledServiceBase<FulfillmentListResponse, FulfillmentList>
   implements FulfillmentServiceImplementation
 {
-  protected readonly status_codes = {
-    OK: {
-      code: 200,
-      message: 'OK',
-    },
-    NOT_FOUND: {
-      code: 404,
-      message: '{entity} {id} not found!',
-    },
-    NO_LEGAL_ADDRESS: {
-      code: 404,
-      message: '{entity} {id} has no legal address!',
-    },
-    NO_SHIPPING_ADDRESS: {
-      code: 404,
-      message: '{entity} {id} has no shipping address!',
-    },
-    NO_BILLING_ADDRESS: {
-      code: 404,
-      message: '{entity} {id} has no billing address!',
-    },
-    NO_LABEL: {
-      code: 404,
-      message: '{entity} {id} has no label!',
-    },
-    NO_PACKAGE_INFO: {
-      code: 500,
-      message: '{entity} {id} has no package information!',
-    },
-    NOT_SUBMITTED: {
-      code: 400,
-      message: '{entity} {id} is not submitted!',
-    },
-    SHOP_ID_NOT_IDENTICAL: {
-      code: 400,
-      message: '{entity} {id} Fulfillment.shopId must be listed in Courier.shopIds!',
-    },
-    CONFLICT: {
-      code: 409,
-      message: 'Resource conflict, ID already in use!'
-    },
-    CONTENT_NOT_SUPPORTED: {
-      code: 400,
-      message: '{entity} {id}: Content type {details} is not supported!',
-    },
-    REQUIRED_FIELD_MISSING: {
-      code: 400,
-      message: '{entity} {id}: Is missing required field {details}!',
-    },
-    PROTOCOL_NOT_SUPPORTED: {
-      code: 400,
-      message: '{entity} {id}: Protocol of {details} is not supported!',
-    },
-    FETCH_FAILED: {
-      code: 500,
-      message: '{entity} {id}: {details}!',
-    },
-    NO_TEMPLATE_BODY: {
-      code: 500,
-      message: 'No body defined in template {id}!',
-    },
-  };
+  protected override get operationStatusCodes(): FulfillmentOperationStatusCodes {
+    return super.operationStatusCodes;
+  }
 
-  protected readonly operation_status_codes = {
-    SUCCESS: {
-      code: 200,
-      message: 'SUCCESS',
-    },
-    PARTIAL: {
-      code: 207,
-      message: 'Patrial executed with errors!',
-    },
-    LIMIT_EXHAUSTED: {
-      code: 500,
-      message: 'Query limit 1000 exhausted!',
-    },
-    TIMEOUT: {
-      code: 500,
-      message: 'Request timeout, API not responding!',
-    },
-    NO_ITEM: {
-      code: 400,
-      message: 'No {entity} in query!',
-    },
-    NO_TEMPLATES: {
-      code: 500,
-      message: 'No render templates defined!',
-    },
-    INVALID: {
-      code: 400,
-      message: 'Invalid {entity} in query!',
-    },
-  };
+  protected override get statusCodes(): FulfillmentStatusCodes {
+    return super.statusCodes;
+  }
 
   protected readonly tech_user: Subject;
   protected readonly notification_service: Client<NotificationReqServiceDefinition>;
@@ -264,13 +269,12 @@ export class FulfillmentService
       ...cfg?.get('urns'),
       ...cfg?.get('authentication:urns'),
     };
-    this.status_codes = {
-      ...this.status_codes,
+    super.statusCodes = {
+      ...FulfillmentStatusCodes,
       ...cfg?.get('statusCodes'),
     };
-
-    this.operation_status_codes = {
-      ...this.operation_status_codes,
+    super.operationStatusCodes = {
+      ...FulfillmentOperationStatusCodes,
       ...cfg?.get('operationStatusCodes'),
     };
 
@@ -496,6 +500,14 @@ export class FulfillmentService
         aggregation,
         [
           {
+            service: CredentialServiceDefinition,
+            map_by_ids: (aggregation) => aggregation.fulfillment_couriers?.all.map(
+              courier => courier.credential_id
+            ),
+            container: 'credentials',
+            entity: 'Credential',
+          },
+          {
             service: TaxServiceDefinition,
             map_by_ids: (aggregation) => aggregation.fulfillment_products?.all.flatMap(
               product => product.tax_ids
@@ -666,7 +678,7 @@ export class FulfillmentService
           throwStatusCode(
             'Fulfillment',
             item.payload.id,
-            this.status_codes.REQUIRED_FIELD_MISSING,
+            this.statusCodes.REQUIRED_FIELD_MISSING,
             'packaging'
           );
         }
@@ -688,7 +700,7 @@ export class FulfillmentService
           throwStatusCode(
             'Fulfillment',
             item.payload.id,
-            this.status_codes.NO_SHIPPING_ADDRESS,
+            this.statusCodes.NO_SHIPPING_ADDRESS,
           );
         }
 
@@ -696,7 +708,7 @@ export class FulfillmentService
           throwStatusCode(
             'Fulfillment',
             item.payload.id,
-            this.status_codes.NO_SHIPPING_ADDRESS,
+            this.statusCodes.NO_SHIPPING_ADDRESS,
           );
         }
 
@@ -712,7 +724,7 @@ export class FulfillmentService
               throw createStatusCode(
                 'FulfillmentProduct',
                 p.product_id,
-                this.status_codes.NO_PACKAGE_INFO,
+                this.statusCodes.NO_PACKAGE_INFO,
               );
             }
             const product = aggregation.fulfillment_products.get(p.product_id);
@@ -722,7 +734,7 @@ export class FulfillmentService
               throw createStatusCode(
                 'FulfillmentProductVariant',
                 p.variant_id,
-                this.status_codes.NOT_FOUND,
+                this.statusCodes.NOT_FOUND,
               );
             }
             const currency = aggregation.currencies.get(variant.price?.currency_id);
@@ -805,7 +817,7 @@ export class FulfillmentService
           );
         };
 
-        item.status = this.status_codes.OK;
+        item.status = this.statusCodes.SUCCESS;
         return item;
       }
       catch (e: any) {
@@ -817,10 +829,10 @@ export class FulfillmentService
     const operation_status = items.some(
       a => a.status?.code !== 200
     ) ? createOperationStatusCode(
-      this.operation_status_codes.PARTIAL,
+      this.operationStatusCodes.MULTI_STATUS,
       'order',
     ) : createOperationStatusCode(
-      this.operation_status_codes.SUCCESS,
+      this.operationStatusCodes.SUCCESS,
       'order',
     );
 
@@ -859,7 +871,7 @@ export class FulfillmentService
     if (!request?.items?.length) {
       return {
         operation_status: createOperationStatusCode(
-          this.operation_status_codes.NO_ITEM,
+          this.operationStatusCodes.NO_ITEM,
           'fulfillment',
         )
       };
@@ -884,7 +896,7 @@ export class FulfillmentService
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          multi_state ? this.OperationStatusCodes.MULTI_STATUS : this.operation_status_codes.SUCCESS,
+          multi_state ? this.operationStatusCodes.MULTI_STATUS : this.operationStatusCodes.SUCCESS,
           this.name,
         ),
       };
@@ -913,7 +925,7 @@ export class FulfillmentService
     if (!request?.items?.length) {
       return {
         operation_status: createOperationStatusCode(
-          this.operation_status_codes.NO_ITEM,
+          this.operationStatusCodes.NO_ITEM,
           'Fulfillment',
         )
       };
@@ -998,7 +1010,7 @@ export class FulfillmentService
             }
           );
           if (response.operation_status?.code === 200 && multi_state) {
-            response.operation_status = this.operation_status_codes.PARTIAL
+            response.operation_status = this.operationStatusCodes.MULTI_STATUS
           }
           return response.operation_status;
         }
@@ -1156,7 +1168,7 @@ export class FulfillmentService
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          multi_state ? this.OperationStatusCodes.MULTI_STATUS : this.operation_status_codes.SUCCESS,
+          multi_state ? this.operationStatusCodes.MULTI_STATUS : this.operationStatusCodes.SUCCESS,
           this.name,
         ),
       };
@@ -1252,7 +1264,7 @@ export class FulfillmentService
         items,
         total_count: items.length,
         operation_status: createOperationStatusCode(
-          multi_state ? this.OperationStatusCodes.MULTI_STATUS : this.operation_status_codes.SUCCESS,
+          multi_state ? this.operationStatusCodes.MULTI_STATUS : this.operationStatusCodes.SUCCESS,
           this.name,
         ),
       };
@@ -1307,7 +1319,7 @@ export class FulfillmentService
       throw createStatusCode(
         'Template',
         undefined,
-        this.status_codes.PROTOCOL_NOT_SUPPORTED,
+        this.statusCodes.PROTOCOL_NOT_SUPPORTED,
         url,
       );
     }
@@ -1347,7 +1359,7 @@ export class FulfillmentService
           throw createStatusCode(
             'Template',
             template.id,
-            this.status_codes.CONTENT_NOT_SUPPORTED,
+            this.statusCodes.CONTENT_NOT_SUPPORTED,
             L.l10n.content_type,
           );
         }
@@ -1399,7 +1411,7 @@ export class FulfillmentService
     }
     else {
       throw createOperationStatusCode(
-        this.operation_status_codes.NO_TEMPLATES
+        this.operationStatusCodes.NO_TEMPLATES
       );
     }
     
@@ -1418,7 +1430,7 @@ export class FulfillmentService
         ) ?? throwStatusCode<RenderRequest_Template[]>(
           item.id,
           "Template",
-          this.status_codes.NO_TEMPLATE_BODY,
+          this.statusCodes.NO_TEMPLATE_BODY,
           template.id,
         ))
       )

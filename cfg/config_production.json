@@ -55,6 +55,9 @@
     "setting": {
       "address": "resource-srv:50051"
     },
+    "credential": {
+      "address": "resource-srv:50051"
+    },
     "currency": {
       "address": "resource-srv:50051"
     },

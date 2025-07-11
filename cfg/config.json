@@ -98,7 +98,7 @@
       "address": "localhost:50063"
     },
     "credential": {
-      "fullName": "io.restorecommerce.creadential.CredentialService",
+      "fullName": "io.restorecommerce.credential.CredentialService",
       "address": "localhost:50063"
     },
     "product": {

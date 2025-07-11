@@ -2,7 +2,7 @@
   "logger": {
     "console": {
       "handleExceptions": false,
-      "level": "silly",
+      "level": "warn",
       "colorize": true,
       "prettyPrint": true
     }
@@ -32,6 +32,9 @@
       "fulfillmentCourierDeleted": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       },
+      "fulfillmentCourierDeletedAll": {
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
+      },
       "fulfillmentProductCreated": {
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
       },
@@ -39,6 +42,9 @@
         "messageObject": "io.restorecommerce.fulfillment_product.FulfillmentProduct"
       },
       "fulfillmentProductDeleted": {
+        "messageObject": "io.restorecommerce.resourcebase.Deleted"
+      },
+      "fulfillmentProductDeletedAll": {
         "messageObject": "io.restorecommerce.resourcebase.Deleted"
       }
     }
