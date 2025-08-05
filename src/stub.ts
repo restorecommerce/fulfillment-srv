@@ -1,4 +1,3 @@
-import { BigNumber } from 'bignumber.js';
 import { Logger } from '@restorecommerce/logger';
 import { ServiceConfig } from '@restorecommerce/service-config';
 import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
@@ -8,7 +7,6 @@ import {
   FlatAggregatedFulfillment,
   flatMapAggregatedFulfillmentListResponse,
   mergeFulfillments,
-  unique,
 } from './utils.js';
 import {
   FulfillmentProduct,
@@ -111,7 +109,7 @@ export abstract class Stub
         details,
       ].filter(s => s).join('; ') : 'Unknwon Error!'
     };
-    this.logger?.debug(e?.stack ?? item.status.message, item);
+    this.logger?.warn(e?.stack ?? item.status.message, item);
     return item;
   }
 
