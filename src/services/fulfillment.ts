@@ -32,6 +32,7 @@ import {
   FulfillmentServiceImplementation,
   FulfillmentInvoiceRequestList,
   FulfillmentResponse,
+  DeepPartial,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 import { Subject } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/auth.js';
 import { AddressServiceDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/address.js';
@@ -294,6 +295,10 @@ export class FulfillmentService
     this.tech_user = cfg?.get('authorization:techUser');
     this.kafka_timeout = cfg.get('events:kafka:timeout') ?? 5000;
   }
+  
+  render(request: FulfillmentList, context: CallContext): Promise<DeepPartial<FulfillmentListResponse>> {
+    throw new Error('Method not implemented.');
+  }
 
   protected async aggregateProductBundles(
     products: ResourceMap<Product>,
@@ -468,7 +473,6 @@ export class FulfillmentService
             );
           }
         );
-
         aggregation.fulfillment_couriers= await this.fulfillmentCourierSrv.get(
           aggregation.fulfillment_products.all.map(
             item => item.courier_id
@@ -486,7 +490,6 @@ export class FulfillmentService
             );
           }
         );
-
         await this.aggregateProductBundles(
           aggregation.products,
           aggregation.products,
@@ -498,14 +501,6 @@ export class FulfillmentService
       async aggregation => await this.aggregator.aggregate(
         aggregation,
         [
-          {
-            service: CredentialServiceDefinition,
-            map_by_ids: (aggregation) => aggregation.fulfillment_couriers?.all.map(
-              courier => courier.credential_id
-            ),
-            container: 'credentials',
-            entity: 'Credential',
-          },
           {
             service: TaxServiceDefinition,
             map_by_ids: (aggregation) => aggregation.fulfillment_products?.all.flatMap(
@@ -521,19 +516,6 @@ export class FulfillmentService
             ),
             container: 'templates',
             entity: 'Template',
-          },
-          {
-            service: SettingServiceDefinition,
-            map_by_ids: (aggregation) => [
-              aggregation.shops?.all.map(
-                shop => shop?.setting_id
-              ),
-              aggregation.customers?.all.map(
-                customer => customer?.setting_id
-              )
-            ].flat(),
-            container: 'settings',
-            entity: 'Setting',
           },
           {
             service: CurrencyServiceDefinition,
@@ -556,6 +538,27 @@ export class FulfillmentService
       async aggregation => await this.aggregator.aggregate(
         aggregation,
         [
+          {
+            service: CredentialServiceDefinition,
+            map_by_ids: (aggregation) => aggregation.fulfillment_couriers?.all.map(
+              courier => courier.credential_id
+            ),
+            container: 'credentials',
+            entity: 'Credential',
+          },
+          {
+            service: SettingServiceDefinition,
+            map_by_ids: (aggregation) => [
+              aggregation.shops?.all.map(
+                shop => shop?.setting_id
+              ),
+              aggregation.customers?.all.map(
+                customer => customer?.setting_id
+              )
+            ].flat(),
+            container: 'settings',
+            entity: 'Setting',
+          },
           {
             service: UserServiceDefinition,
             map_by_ids: (aggregation) => [
@@ -968,7 +971,7 @@ export class FulfillmentService
         }
       );
 
-      const aggregation = await this.aggregate(response, request.subject, context).then(
+      const aggregation = await this.aggregate(response, this.tech_user ?? request.subject, context).then(
         aggregation => this.validateFulfillmentListResponse(aggregation, request.subject)
       );
       const settings = await this.aggregateSettings(
@@ -1069,7 +1072,7 @@ export class FulfillmentService
                   body,
                   setting,
                   title,
-                  'SUBMIT_NOTIFIED' as FulfillmentState,
+                  FulfillmentState.SUBMITTED,
                   context,
                 );
               }
