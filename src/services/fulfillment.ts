@@ -587,7 +587,7 @@ export class FulfillmentService
           },
         ],
         FulfillmentAggregationTemplate,
-        subject,
+        this.tech_user ?? subject,
         context,
       )
     ).then(
@@ -609,7 +609,7 @@ export class FulfillmentService
           },
         ],
         FulfillmentAggregationTemplate,
-        subject,
+        this.tech_user ?? subject,
         context,
       )
     ).then(
@@ -634,7 +634,7 @@ export class FulfillmentService
           },
         ],
         FulfillmentAggregationTemplate,
-        subject,
+        this.tech_user ?? subject,
         context,
       )
     ).then(
@@ -971,7 +971,7 @@ export class FulfillmentService
         }
       );
 
-      const aggregation = await this.aggregate(response, this.tech_user ?? request.subject, context).then(
+      const aggregation = await this.aggregate(response, request.subject, context).then(
         aggregation => this.validateFulfillmentListResponse(aggregation, request.subject)
       );
       const settings = await this.aggregateSettings(
