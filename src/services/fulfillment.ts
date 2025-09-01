@@ -57,6 +57,9 @@ import {
   NotificationReqServiceDefinition,
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/notification_req.js';
 import {
+  ObjectServiceDefinition,
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/ostorage.js';
+import {
   OrganizationServiceDefinition
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/organization.js';
 import {
@@ -210,6 +213,7 @@ export class FulfillmentService
 
   protected readonly tech_user: Subject;
   protected readonly notification_service: Client<NotificationReqServiceDefinition>;
+  protected readonly ostorage_service: Client<ObjectServiceDefinition>;
   protected readonly awaits_render_result = new ResourceAwaitQueue<string[]>;
   protected readonly default_setting: DefaultSetting = DefaultSetting;
   protected readonly default_templates: Template[] = [];
@@ -262,6 +266,24 @@ export class FulfillmentService
     }
     else {
       logger?.warn('notification config is missing!');
+    }
+    
+    const ostorage_cfg = cfg?.get('client:ostorage');
+    if (ostorage_cfg.disabled?.toString() === 'true') {
+      logger?.info('Ostorage disabled!');
+    }
+    else if (ostorage_cfg) {
+      this.ostorage_service = createClient(
+        {
+          ...ostorage_cfg,
+          logger
+        } as GrpcClientConfig,
+        ObjectServiceDefinition,
+        createChannel(ostorage_cfg.address),
+      );
+    }
+    else {
+      logger?.warn('ostorage config is missing!');
     }
 
     this.urns = {
@@ -597,11 +619,11 @@ export class FulfillmentService
           {
             service: ContactPointServiceDefinition,
             map_by_ids: (aggregation) => [
-              aggregation.customers.all.flatMap(
+              aggregation.customers?.all.flatMap(
                 customer => customer.private?.contact_point_ids
               ),
-              aggregation.organizations.all.flatMap(
-                organization => organization.contact_point_ids
+              aggregation.organizations?.all.flatMap(
+                organization => organization?.contact_point_ids
               )
             ].flat(),
             container: 'contact_points',
@@ -1054,6 +1076,7 @@ export class FulfillmentService
               render_id,
               [
                 TemplateUseCase.FULFILLMENT_SUBMITTED_EMAIL,
+                'FULFILLMENT_SUBMITTED_EMAIL',
                 'FULFILLMENT_SUBMITTED_EMAIL_BODY',
                 'FULFILLMENT_SUBMITTED_EMAIL_SUBJECT',
               ],
@@ -1072,7 +1095,6 @@ export class FulfillmentService
                   body,
                   setting,
                   title,
-                  FulfillmentState.SUBMITTED,
                   context,
                 );
               }
@@ -1127,6 +1149,29 @@ export class FulfillmentService
           context,
         ),
       );
+      const settings = await this.aggregateSettings(
+        aggregation
+      );
+
+      request.items?.forEach(
+        item => {
+          if (item.shipment_numbers?.length) {
+            const fulfillment = response_map.get(item.id);
+            if (fulfillment?.payload?.labels) {
+              fulfillment.payload.labels = fulfillment.payload.labels.filter(
+                label => item.shipment_numbers.includes(label.shipment_number)
+              )
+            }
+          }
+        }
+      );
+
+      const pre_state_map = new Map<string, FulfillmentState>(
+        aggregation.items.map(
+          item => [item.payload?.id, item.payload?.fulfillment_state]
+        )
+      );
+
       await Stub.track(aggregation).then(
         response => response.filter(
           item => {
@@ -1146,7 +1191,7 @@ export class FulfillmentService
           context
         )
       ).then(
-        updates => this.isEventsEnabled && updates.items.forEach(
+        updates => this.isEventsEnabled && updates.items?.forEach(
           item => {
             response_map.set(item.payload?.id ?? item.status?.id, item);
             if (this.emitters && item.payload.fulfillment_state in this.emitters) {
@@ -1165,6 +1210,88 @@ export class FulfillmentService
       );
 
       const items = [...response_map.values()];
+      if (this.notification_service) {
+        this.logger?.debug('Send notifications on track...');
+        const default_templates = await this.loadDefaultTemplates();
+        await Promise.all(items.filter(
+          item => item.status?.code === 200
+            && settings.get(item.payload.id)?.shop_fulfillment_send_tracking_enabled
+            && item.payload?.fulfillment_state !== FulfillmentState.COMPLETE
+            && item.payload?.fulfillment_state !== pre_state_map.get(item.payload?.id)
+        ).map(
+          async (item) => {
+            const render_id = `fulfillment/track/${item.payload.id}`;
+            return await this.emitRenderRequest(
+              item.payload,
+              aggregation,
+              render_id,
+              [
+                'FULFILLMENT_TRACKING_EMAIL',
+                'FULFILLMENT_TRACKING_EMAIL_SUBJECT',
+                'FULFILLMENT_TRACKING_EMAIL_BODY',
+              ],
+              default_templates,
+              request.subject,
+            ).then(
+              () => this.awaits_render_result.await(render_id, this.kafka_timeout)
+            ).then(
+              async (bodies) => {
+                const setting = settings.get(item.payload.id);
+                const title = bodies.shift();
+                const body = bodies.join('');
+  
+                return this.sendNotification(
+                  item.payload,
+                  body,
+                  setting,
+                  title,
+                  context,
+                );
+              }
+            )
+          }
+        ));
+
+        await Promise.all(items.filter(
+          item => item.status?.code === 200
+            && settings.get(item.payload.id)?.shop_fulfillment_send_complete_enabled
+            && item.payload?.fulfillment_state === FulfillmentState.COMPLETE
+            && item.payload?.fulfillment_state !== pre_state_map.get(item.payload?.id)
+        ).map(
+          async (item) => {
+            const render_id = `fulfillment/track/${item.payload.id}`;
+            return await this.emitRenderRequest(
+              item.payload,
+              aggregation,
+              render_id,
+              [
+                'FULFILLMENT_COMPLETE_EMAIL',
+                'FULFILLMENT_COMPLETE_EMAIL_SUBJECT',
+                'FULFILLMENT_COMPLETE_EMAIL_BODY',
+              ],
+              default_templates,
+              request.subject,
+            ).then(
+              () => this.awaits_render_result.await(render_id, this.kafka_timeout)
+            ).then(
+              async (bodies) => {
+                const setting = settings.get(item.payload.id);
+                const title = bodies.shift();
+                const body = bodies.join('');
+  
+                return this.sendNotification(
+                  item.payload,
+                  body,
+                  setting,
+                  title,
+                  context,
+                );
+              }
+            )
+          }
+        ));
+      }
+
       const multi_state = items.some(item => item.status?.code !== 200);
       return {
         items,
@@ -1317,10 +1444,33 @@ export class FulfillmentService
         ab => Buffer.from(ab)
       )
     }
+    else if (this.ostorage_service && url?.startsWith('//')) {
+      const splits = url.match(/[^/]+/g);
+      const bucket = splits[0];
+      const key = splits.slice(1).join('/');
+      const buffer = new Array<Buffer>();
+      for await(const chunk of this.ostorage_service.get({
+        bucket,
+        key,
+        download: true,
+        subject,
+      })) {
+        if (chunk.response?.status?.code !== 200) {
+          throw chunk.response?.status ?? createStatusCode(
+            undefined,
+            'File',
+            this.statusCodes.NOT_FOUND,
+            url,
+          );
+        }
+        buffer.push(chunk.response.payload.object);
+      }
+      return Buffer.concat(buffer);
+    }
     else {
       throw createStatusCode(
-        'Template',
         undefined,
+        'File',
         this.statusCodes.PROTOCOL_NOT_SUPPORTED,
         url,
       );
@@ -1408,13 +1558,15 @@ export class FulfillmentService
       (a, b) => (a.ordinal ?? 0) - (b.ordinal ?? 0)
     ) ?? []
 
-    if (templates.length === 0 && default_templates?.length > 0) {
-      templates.push(...default_templates);
-    }
-    else {
-      throw createOperationStatusCode(
-        this.operationStatusCodes.NO_TEMPLATES
-      );
+    if (templates.length === 0) {
+      if (default_templates?.length > 0) {
+        templates.push(...default_templates);
+      }
+      else {
+        throw createOperationStatusCode(
+          this.operationStatusCodes.NO_TEMPLATES
+        );
+      }
     }
     
     const bodies: RenderRequest_Template[][]  = await Promise.all(
@@ -1503,7 +1655,6 @@ export class FulfillmentService
     body: string,
     setting: DefaultSetting,
     title?: string,
-    state?: FulfillmentState, 
     context?: CallContext,
   ) {
     const status = await this.notification_service.send(
@@ -1526,10 +1677,6 @@ export class FulfillmentService
       },
       context
     );
-
-    if (state && status?.operation_status?.code === 200) {
-      fulfillment.fulfillment_state = state;
-    }
 
     return fulfillment;
   }

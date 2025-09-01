@@ -65,7 +65,8 @@ type Config = {
     endpoint?: string,
     username?: string,
     password?: string,
-    secret?: string,
+    client_id?: string,
+    client_secret?: string,
   }
 };
 
@@ -220,7 +221,7 @@ export class DHLRest extends Stub {
     return 'DHLRest';
   }
 
-  constructor(courier?: Courier, cfg?: ServiceConfig, logger?: Logger, credential?: Credential) {
+  constructor(courier?: Courier, cfg?: ServiceConfig, logger?: Logger) {
     super(courier, cfg, logger);
     const courier_defaults = Object.values(cfg?.get<Courier[]>('defaults:Couriers'))?.find(
       c => c.id === courier.id
@@ -733,12 +734,12 @@ export class DHLRest extends Stub {
               } 
             : undefined,
           ...unmarshallProtobufAny(credential?.credentials)?.tracking,
-        };
+        } as Config['tracking'];
 
-        const auth = 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+        const auth = 'Basic ' + Buffer.from(`${config.client_id}:${config.client_secret}`).toString('base64');
         const attributes = {
-          appname: config.appname,
-          password: config.secret,
+          appname: config.username,
+          password: config.password,
           'piece-code': item.labels[0].shipment_number,
           'language-code': options?.['language-code'] ?? 'de',
           request: options?.request ?? 'd-get-piece-detail'
@@ -757,7 +758,6 @@ export class DHLRest extends Stub {
           },
           // body: params,
         };
-
         return await fetch(`${config.endpoint}?${params}`, payload).then(
           response => DHLTracking2FulfillmentTracking(item, response),
           err => {

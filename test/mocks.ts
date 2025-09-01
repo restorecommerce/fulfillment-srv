@@ -737,36 +737,13 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
                 },
                 weightInKg: 1.0,
               },
-            },
-            {
-              id: '2',
-              productId: validFulfillmentProducts.dhl.items?.[0].id,
-              variantId: validFulfillmentProducts.dhl.items?.[0].variants?.[0].id,
-              items: [
-                {
-                  productId: products[0].payload?.id,
-                  variantId: products[0].payload?.product?.physical?.variants?.[0].id,
-                  package: products[0].payload?.product?.physical?.variants?.[0].package,
-                  quantity: 5,
-                }
-              ],
-              price: validFulfillmentProducts.dhl.items?.[0].variants?.[0].price,
-              amount: undefined,
-              package: {
-                sizeInCm: {
-                  height: 5.0,
-                  length: 5.0,
-                  width: 5.0,
-                },
-                weightInKg: 1.0,
-              },
             }
           ],
           notify: 'someone@nowhere.com'
         },
         labels: [
           {
-            parcelId: '2',
+            parcelId: '1',
             shipmentNumber: '00340434161094015902',
             state: FulfillmentState.SUBMITTED,
             status: {
@@ -781,6 +758,18 @@ const validFulfillments: { [key: string]: FulfillmentList } = {
       },
     ],
     totalCount: 2,
+    subject: subjects.superadmin
+  }
+};
+
+const validCancelRequests: { [key: string]: FulfillmentIdList } = {
+  dhl: {
+    items: [
+      {
+        id: validFulfillments.dhl.items?.[0].id,
+      }
+    ],
+    totalCount: 1,
     subject: subjects.superadmin
   }
 };
@@ -817,6 +806,10 @@ export const samples = {
   },
   fulfillments: {
     valid: validFulfillments,
+    invalid: [],
+  },
+  cancelRequests: {
+    valid: validCancelRequests,
     invalid: [],
   },
   trackingRequests: {

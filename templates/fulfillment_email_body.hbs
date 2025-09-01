@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+      <div class="email-viewport">
+        <div class="hidden-print">
+          <h1 class="align-centered">{{t 'l10n.fulfillment.email.salutation' contactName=fulfillment.recipient.address.contact.name}}</h1>
+          <h2 class="align-centered">{{t fulfillment.fulfillment_state}}</h2>
+          <h3 class="align-centered">{{t 'l10n.fulfillment.email.shipping_numbers'}}:</h3>
+          {{#each fulfillment.labels as | label |}}
+            <p class="align-centered">{{label.shipping_number}}</p>
+          {{/each}}
+          <h3 class="align-centered">{{t 'l10n.fulfillment.email.references'}}:</h3>
+          {{#each fulfillment.references as | reference |}}
+            <p class="align-centered">{{reference.instance_type}}: {{reference.instance_id}}</p>
+          {{/each}}
+          <br>
+        </div>
+        <div class="hidden-print">
+          <br>
+          <p class="align-centered outro">
+            {{t 'l10n.fulfillment.email.signature'}}
+          </p>
+          <div class="email-footer align-centered">
+            {{t 'l10n.fulfillment.email.help'}}
+            <a
+              href="mailto:device-sales@n-fuse.co"
+              moz-do-not-send="true">Email
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

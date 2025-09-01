@@ -318,7 +318,6 @@ describe('Testing Fulfillment Service Cluster:', () => {
       });
     }
 
-    /*
     for (let [sample_name, sample] of Object.entries(samples.trackingRequests.valid)) {
       it(`should track fulfillment by valid samples: ${sample_name}`, async function() {
         this.timeout(30000);
@@ -350,9 +349,8 @@ describe('Testing Fulfillment Service Cluster:', () => {
         await fulfillmentCompletedSemaphore.acquire(1);
       });
     }
-    */
 
-    for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
+    for (let [sample_name, sample] of Object.entries(samples.cancelRequests.valid)) {
       it(`should cancel fulfillment by valid samples: ${sample_name}`, async function() {
         this.timeout(30000);
         const response = await fulfillment_client.cancel(sample);

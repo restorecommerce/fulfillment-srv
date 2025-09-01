@@ -189,8 +189,6 @@ export const DHLTracking2FulfillmentTracking = async (
   if (error) {
     fulfillment.trackings = [{
       shipment_number: fulfillment.labels[0].shipment_number,
-      events: null,
-      details: null,
       status: {
         id: fulfillment.payload.id,
         code: error?.code ?? 500,
@@ -201,8 +199,6 @@ export const DHLTracking2FulfillmentTracking = async (
   else if (response?.status !== 200) {
     fulfillment.trackings = [{
       shipment_number: fulfillment.labels[0].shipment_number,
-      events: null,
-      details: null,
       status: {
         id: fulfillment.payload.id,
         code: response?.status ?? 500,
@@ -225,11 +221,13 @@ export const DHLTracking2FulfillmentTracking = async (
           fulfillment.payload.fulfillment_state = fulfillment.labels[0].state;
           return {
             shipment_number: fulfillment.labels[0].shipment_number,
+            /*
             events: response.elements[0].elements[0].elements[0].elements.map((element: any) => DHLEvent2FulfillmentEvent(element.attributes)),
             details: {
               type_url: null,
               value: Buffer.from(JSON.stringify(response.elements[0].elements[0].attributes))
             },
+            */
             status
           };
         }

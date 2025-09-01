@@ -134,7 +134,7 @@
       "INVALID": "fulfillmentInvalid",
       "SUBMITTED": "fulfillmentSubmitted",
       "IN_TRANSFER": "fulfillmentInTransfer",
-      "COMPLETED": "fulfillmentCompleted",
+      "COMPLETE": "fulfillmentCompleted",
       "WITHDRAWN": "fulfillmentWithdrawn",
       "CANCELLED": "fulfillmentCancelled",
       "CREATE_INVOICES": "createInvoices"
@@ -428,12 +428,11 @@
   },
   "defaults": {
     "Setting": {
-      "shop_fulfillment_evaluate_enabled": true,
-      "shop_fulfillment_create_enabled": true,
-      "shop_invoice_create_enabled": true,
-      "shop_invoice_render_enabled": true,
-      "shop_invoice_send_enabled": false,
-      "shop_order_error_cleanup_enabled": true
+      "shop_fulfillment_send_confirm_enabled": false,
+      "shop_fulfillment_send_cancel_enabled": false,
+      "shop_fulfillment_send_withdrawn_enabled": false,
+      "shop_fulfillment_send_tracking_enabled": false,
+      "shop_fulfillment_send_complete_enabled": false
     },
     "Couriers": {
       "DHLSoap": {
@@ -480,11 +479,11 @@
               "client_secret": null
             },
             "tracking": {
-              "appname": "zt12345",
               "endpoint": "https://api-sandbox.dhl.com/parcel/de/tracking/v0/shipments",
-              "username": null,
-              "password": null,
-              "secret": "geheim"
+              "username": "zt12345",
+              "password": "geheim",
+              "client_id": null,
+              "client_secret": null
             }
           }
         }
@@ -493,14 +492,11 @@
     "Templates": [
       {
         "bodies": [{
-          "url": "file://./templates/fulfillment_confirmation_subject.hbs"
-        }],
-        "layouts": [{
-          "url": "file://./templates/fulfillment_layout.hbs"
+          "url": "file://./templates/fulfillment_email_subject.hbs"
         }],
         "localizations": [
           {
-            "locale": ["en"],
+            "locale": ["de", "en"],
             "l10n": {
               "url": "file://./templates/l10n.csv",
               "content_type": "text/csv"
@@ -512,14 +508,11 @@
       },
       {
         "bodies": [{
-          "url": "file://./templates/fulfillment_confirmation_body.hbs"
-        }],
-        "layouts": [{
-          "url": "file://./templates/fulfillment_layout.hbs"
+          "url": "file://./templates/fulfillment_email_body.hbs"
         }],
         "localizations": [
           {
-            "locale": ["en"],
+            "locale": ["de", "en"],
             "l10n": {
               "url": "file://./templates/l10n.csv",
               "content_type": "text/csv"
@@ -528,6 +521,70 @@
         ],
         "ordinal": 1,
         "use_case": "FULFILLMENT_SUBMITTED_EMAIL"
+      },
+      {
+        "bodies": [{
+          "url": "file://./templates/fulfillment_email_subject.hbs"
+        }],
+        "localizations": [
+          {
+            "locale": ["de", "en"],
+            "l10n": {
+              "url": "file://./templates/l10n.csv",
+              "content_type": "text/csv"
+            }
+          }
+        ],
+        "ordinal": 0,
+        "use_case": "FULFILLMENT_TRACKING_EMAIL"
+      },
+      {
+        "bodies": [{
+          "url": "file://./templates/fulfillment_email_body.hbs"
+        }],
+        "localizations": [
+          {
+            "locale": ["de", "en"],
+            "l10n": {
+              "url": "file://./templates/l10n.csv",
+              "content_type": "text/csv"
+            }
+          }
+        ],
+        "ordinal": 1,
+        "use_case": "FULFILLMENT_TRACKING_EMAIL"
+      },
+      {
+        "bodies": [{
+          "url": "file://./templates/fulfillment_email_subject.hbs"
+        }],
+        "localizations": [
+          {
+            "locale": ["de", "en"],
+            "l10n": {
+              "url": "file://./templates/l10n.csv",
+              "content_type": "text/csv"
+            }
+          }
+        ],
+        "ordinal": 0,
+        "use_case": "FULFILLMENT_COMPLETE_EMAIL"
+      },
+      {
+        "bodies": [{
+          "url": "file://./templates/fulfillment_email_body.hbs"
+        }],
+        "localizations": [
+          {
+            "locale": ["de", "en"],
+            "l10n": {
+              "url": "file://./templates/l10n.csv",
+              "content_type": "text/csv"
+            }
+          }
+        ],
+        "ordinal": 1,
+        "use_case": "FULFILLMENT_COMPLETE_EMAIL"
       }
     ]
   }

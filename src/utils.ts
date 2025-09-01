@@ -173,6 +173,8 @@ export const DefaultUrns = {
   shop_fulfillment_send_confirm_enabled:  'urn:restorecommerce:shop:setting:fulfillment:submit:notification:enabled',       // Sends notification on order submit if enabled (default: true)
   shop_fulfillment_send_cancel_enabled:   'urn:restorecommerce:shop:setting:fulfillment:cancel:notification:enabled',       // Sends notification on order cancel if enabled (default: true)
   shop_fulfillment_send_withdrawn_enabled:'urn:restorecommerce:shop:setting:fulfillment:withdrawn:notification:enabled', // Sends notification on order withdrawn if enabled (default: true)
+  shop_fulfillment_send_tracking_enabled: 'urn:restorecommerce:shop:setting:fulfillment:track:change:notification:enabled', // Sends notification tracking change event if enabled (default: true)
+  shop_fulfillment_send_complete_enabled: 'urn:restorecommerce:shop:setting:fulfillment:track:complete:notification:enabled', // Sends notification tracking complete event if enabled (default: true)
 
   shop_invoice_create_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:create:enabled',     // Creates invoice on order submit if enabled (default: true)
   shop_invoice_render_enabled:      'urn:restorecommerce:shop:setting:fulfillment:submit:invoice:render:enabled',     // Renders invoice on order submit if enabled, overrides create! (default: true)
@@ -189,9 +191,11 @@ export const DefaultUrns = {
 export type DefaultUrns = typeof DefaultUrns;
 
 export const DefaultSetting = {
-  shop_fulfillment_send_confirm_enabled: true,
-  shop_fulfillment_send_cancel_enabled: true,
-  shop_fulfillment_send_withdrawn_enabled: true,
+  shop_fulfillment_send_confirm_enabled: false,
+  shop_fulfillment_send_cancel_enabled: false,
+  shop_fulfillment_send_withdrawn_enabled: false,
+  shop_fulfillment_send_tracking_enabled: false,
+  shop_fulfillment_send_complete_enabled: false,
   shop_invoice_create_enabled: false,
   shop_invoice_render_enabled: false,
   shop_invoice_send_enabled: false,
@@ -200,8 +204,8 @@ export const DefaultSetting = {
   shop_email_provider: undefined as string,
   shop_email_cc: undefined as string[],
   shop_email_bcc: undefined as string[],
-  shop_locales: ['en'] as string[],
-  customer_locales: ['en'] as string[],
+  shop_locales: [] as string[],
+  customer_locales: [] as string[],
   customer_email_cc: undefined as string[],
   customer_email_bcc: undefined as string[],
 };
@@ -237,6 +241,8 @@ const SettingParser: { [key: string]: (value: string) => any } = {
   shop_order_send_confirm_enabled: parse.True,
   shop_order_send_cancel_enabled: parse.True,
   shop_order_send_withdrawn_enabled: parse.True,
+  shop_order_send_tracking_enabled: parse.True,
+  shop_order_send_complete_enabled: parse.True,
   shop_fulfillment_evaluate_enabled: parse.True,
   shop_fulfillment_create_enabled: parse.True,
   shop_invoice_create_enabled: parse.True,
