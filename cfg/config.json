@@ -50,10 +50,17 @@
     "offsetStoreInterval": 1000,
     "db-indexes": {
       "db-offsetStore": 0,
-      "db-subject": 4
+      "db-subject": 4,
+      "db-reccurTime": 7,
+      "db-repeatJobId": 8,
+      "db-jobStore": 1
     }
   },
   "client": {
+    "fulfillment": {
+      "fullName": "io.restorecommerce.fulfillment.FulfillmentService",
+      "address": "localhost:50067"
+    },
     "fulfillment_product": {
       "fullName": "io.restorecommerce.fulfillment_product.FulfillmentProductService",
       "address": "localhost:50067"
@@ -125,6 +132,14 @@
     "currency": {
       "fullName": "io.restorecommerce.currency.CurrencyService",
       "address": "localhost:50053"
+    }
+  },
+  "scs-jobs": {
+    "fulfillment_tracking_job": {
+      "name": "FULFILLMENT_TRACKING_JOB",
+      "queue": "default-queue",
+      "concurrency": 1,
+      "import": "./jobs/fulfillment_tracking_job.cjs"
     }
   },
   "events": {
