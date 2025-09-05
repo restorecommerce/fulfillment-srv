@@ -67,6 +67,9 @@
     "manufacturer": {
       "address": "catalog-srv:50051"
     },
+    "fulfillment": {
+      "address": "fulfillment-srv:50051"
+    },
     "fulfillment_courier": {
       "address": "fulfillment-srv:50051"
     },

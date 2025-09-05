@@ -37,6 +37,9 @@ import {
 import {
   protoMetadata as RenderingMeta
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/rendering.js';
+import {
+  protoMetadata as JobMeta
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/job.js';
 import { HealthDefinition } from '@restorecommerce/rc-grpc-clients/dist/generated-server/grpc/health/v1/health.js';
 import { ServerReflectionService } from 'nice-grpc-server-reflection';
 import { FulfillmentService } from './services/fulfillment.js';
@@ -53,6 +56,7 @@ import {
   ClientRegister,
   ResourceAggregator
 } from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
+import { runWorker } from '@restorecommerce/scs-jobs';
 
 registerProtoMeta(
   FulfillmentMeta,
@@ -61,6 +65,7 @@ registerProtoMeta(
   CommandInterfaceMeta,
   ResourceBaseMeta,
   RenderingMeta,
+  JobMeta,
 );
 
 export class Worker {
@@ -224,6 +229,22 @@ export class Worker {
       );
       this.topics.set(key, topic);
     }));
+
+    for (const job of Object.values<{ import?: string }>(cfg.get('scs-jobs') ?? {})) {
+      try {
+        if (job.import?.endsWith('.js') || job.import?.endsWith('.cjs')) {
+          const fileImport = await import(job.import);
+          if (fileImport?.default?.default) {
+            await fileImport.default.default(cfg, logger, this.events, runWorker);
+          } else {
+            await fileImport.default(cfg, logger, this.events, runWorker);
+          }
+        }
+      }
+      catch (err: any) {
+        this.logger.error(`Error scheduling external job ${job.import}`, { err });
+      }
+    }
 
     Stub.cfg = cfg;
     Stub.logger = logger;
