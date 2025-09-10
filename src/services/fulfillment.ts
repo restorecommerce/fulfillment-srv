@@ -203,12 +203,20 @@ export class FulfillmentService
   extends AccessControlledServiceBase<FulfillmentListResponse, FulfillmentList>
   implements FulfillmentServiceImplementation
 {
-  protected override get operationStatusCodes(): FulfillmentOperationStatusCodes {
+  public override get operationStatusCodes(): FulfillmentOperationStatusCodes {
     return super.operationStatusCodes;
   }
 
-  protected override get statusCodes(): FulfillmentStatusCodes {
+  public override get statusCodes(): FulfillmentStatusCodes {
     return super.statusCodes;
+  }
+
+  public override set operationStatusCodes(value: FulfillmentOperationStatusCodes) {
+    super.operationStatusCodes = value;
+  }
+
+  public override set statusCodes(value: FulfillmentStatusCodes) {
+    super.statusCodes = value;
   }
 
   protected readonly tech_user: Subject;
