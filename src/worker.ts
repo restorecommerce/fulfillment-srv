@@ -230,9 +230,10 @@ export class Worker {
       this.topics.set(key, topic);
     }));
 
-    for (const job of Object.values<{ import?: string }>(cfg.get('scs-jobs') ?? {})) {
+    const jobs = Object.values<{ disabled?: boolean, import?: string }>(cfg.get('scs-jobs') ?? {});
+    for (const job of jobs) {
       try {
-        if (job.import?.endsWith('.js') || job.import?.endsWith('.cjs')) {
+        if (job.disabled?.toString() !== 'true') {
           const fileImport = await import(job.import);
           if (fileImport?.default?.default) {
             await fileImport.default.default(cfg, logger, this.events, runWorker);
@@ -241,8 +242,8 @@ export class Worker {
           }
         }
       }
-      catch (err: any) {
-        this.logger.error(`Error scheduling external job ${job.import}`, { err });
+      catch ({ code, message, details, stack }: any) {
+        this.logger?.error(`Error scheduling external job ${job.import}`, { code, message, details, stack });
       }
     }
 

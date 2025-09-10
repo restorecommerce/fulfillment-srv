@@ -172,12 +172,20 @@ export class FulfillmentProductService
   extends AccessControlledServiceBase<FulfillmentProductListResponse, FulfillmentProductList>
   implements FulfillmentProductServiceImplementation
 {
-  protected override get operationStatusCodes(): FulfillmentProductOperationStatusCodes {
+  public override get operationStatusCodes(): FulfillmentProductOperationStatusCodes {
     return super.operationStatusCodes;
   }
 
-  protected override get statusCodes(): FulfillmentProductStatusCodes {
+  public override get statusCodes(): FulfillmentProductStatusCodes {
     return super.statusCodes;
+  }
+
+  public override set operationStatusCodes(value: FulfillmentProductOperationStatusCodes) {
+    super.operationStatusCodes = value;
+  }
+
+  public override set statusCodes(value: FulfillmentProductStatusCodes) {
+    super.statusCodes = value;
   }
 
   protected readonly tech_user: Subject;

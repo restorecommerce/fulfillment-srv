@@ -227,5 +227,10 @@
         }
       }
     }
+  },
+  "scs-jobs": {
+    "fulfillment_tracking_job": {
+      "import": "../lib/jobs/fulfillment_tracking_job.cjs"
+    }
   }
 }
