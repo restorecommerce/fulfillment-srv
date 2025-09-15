@@ -46,12 +46,12 @@ import { FulfillmentService } from './services/fulfillment.js';
 import { FulfillmentCourierService } from './services/fulfillment_courier.js';
 import { FulfillmentProductService } from './services/fulfillment_product.js';
 import { FulfillmentCommandInterface } from './services/fulfillment_command_interface.js';
-import { Stub } from './stub.js';
+import { Adapter } from './adapter.js';
 import { 
   Dummy, 
   DHLSoap,
   DHLRest,
-} from './stubs/index.js';
+} from './adapters/index.js';
 import {
   ClientRegister,
   ResourceAggregator
@@ -191,11 +191,11 @@ export class Worker {
     this.logger = logger ??= createLogger(cfg.get('logger'));
     this.server = new Server(cfg.get('server'), logger);
 
-    // register api stubs
-    Stub.logger = this.logger;
-    Stub.register('Dummy', Dummy);
-    Stub.register('DHLSoap', DHLSoap);
-    Stub.register('DHLRest', DHLRest);
+    // register api adapters
+    Adapter.logger = this.logger;
+    Adapter.register('Dummy', Dummy);
+    Adapter.register('DHLSoap', DHLSoap);
+    Adapter.register('DHLRest', DHLRest);
 
     // get database connection
     const db = await database.get(cfg.get('database:main'), logger);
@@ -247,8 +247,8 @@ export class Worker {
       }
     }
 
-    Stub.cfg = cfg;
-    Stub.logger = logger;
+    Adapter.cfg = cfg;
+    Adapter.logger = logger;
     const client_register = new ClientRegister(cfg, logger);
     const aggregator = new ResourceAggregator(cfg, logger, client_register);
     logger.verbose('Setting up command interface services');

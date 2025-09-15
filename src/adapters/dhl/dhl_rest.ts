@@ -29,7 +29,7 @@ import {
   ParsedAttributes,
   unmarshallProtobufAny,
 } from "../../utils.js";
-import { Stub } from "../../stub.js";
+import { Adapter } from "../../adapter.js";
 import { Status } from "@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js";
 import { DHLTracking2FulfillmentTracking } from "./dhl_soap.js";
 
@@ -139,7 +139,7 @@ function nullify(value: string) {
   return value?.length ? value : undefined;
 }
 
-export class DHLRest extends Stub {
+export class DHLRest extends Adapter {
   protected readonly client: Client<paths>;
   protected readonly urns = KnownUrns;
   protected readonly attributes: ParsedDHLAttributes;

@@ -13,15 +13,19 @@ import {
   FulfillmentSolutionQuery,
   Variant
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment_product.js';
-import { Package } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
-import { FulfillmentState } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
+import {
+  Package
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
+import {
+  FulfillmentState
+} from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
 
-type StubType<T extends Stub> = new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => T;
+type AdapterType<T extends Adapter> = new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => T;
 
-export abstract class Stub
+export abstract class Adapter
 {
-  protected static readonly STUB_TYPES: Record<string, StubType<any>> = {};
-  protected static readonly REGISTER: Record<string, Stub> = {};
+  protected static readonly ADAPTER_TYPES: Record<string, AdapterType<any>> = {};
+  protected static readonly REGISTER: Record<string, Adapter> = {};
   static cfg: ServiceConfig = null;
   static logger: Logger = null;
 
@@ -233,7 +237,7 @@ export abstract class Stub
   }
 
   public static all() {
-    return Object.values(Stub.REGISTER);
+    return Object.values(Adapter.REGISTER);
   }
 
   public static async evaluate(
@@ -244,10 +248,10 @@ export abstract class Stub
   ) {
     const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
     const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
-      (courier) => Stub.getInstance(
+      (courier) => Adapter.getInstance(
         courier,
-        cfg ?? Stub.cfg,
-        logger ?? Stub.logger,
+        cfg ?? Adapter.cfg,
+        logger ?? Adapter.logger,
         kwargs,
       ).evaluate(
         fulfillments,
@@ -267,10 +271,10 @@ export abstract class Stub
   ) {
     const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
     const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
-      (courier) => Stub.getInstance(
+      (courier) => Adapter.getInstance(
         courier,
-        cfg ?? Stub.cfg,
-        logger ?? Stub.logger,
+        cfg ?? Adapter.cfg,
+        logger ?? Adapter.logger,
         kwargs,
       ).submit(
         fulfillments,
@@ -290,10 +294,10 @@ export abstract class Stub
   ) {
     const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
     const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
-      (courier) => Stub.getInstance(
+      (courier) => Adapter.getInstance(
         courier,
-        cfg ?? Stub.cfg,
-        logger ?? Stub.logger,
+        cfg ?? Adapter.cfg,
+        logger ?? Adapter.logger,
         kwargs,
       ).track(
         fulfillments,
@@ -313,10 +317,10 @@ export abstract class Stub
   ) {
     const fulfillments = flatMapAggregatedFulfillmentListResponse(aggregation);
     const results = await Promise.all(aggregation.fulfillment_couriers.all.map(
-      (courier) => Stub.getInstance(
+      (courier) => Adapter.getInstance(
         courier,
-        cfg ?? Stub.cfg,
-        logger ?? Stub.logger,
+        cfg ?? Adapter.cfg,
+        logger ?? Adapter.logger,
         kwargs,
       ).cancel(
         fulfillments,
@@ -328,13 +332,13 @@ export abstract class Stub
     return mergeFulfillments(results, aggregation);
   }
 
-  public static register<T extends Stub>(
+  public static register<T extends Adapter>(
     type_name: string,
-    type: StubType<T>
+    type: AdapterType<T>
   ) {
-    Stub.STUB_TYPES[type_name] = type;
-    Stub.logger?.info(
-      'Courier Stub registered:',
+    Adapter.ADAPTER_TYPES[type_name] = type;
+    Adapter.logger?.info(
+      'Courier Adapter registered:',
       {
         name: type_name,
         'type': type,
@@ -347,23 +351,23 @@ export abstract class Stub
     cfg?: ServiceConfig,
     logger?: Logger,
     kwargs?: any,
-  ): Stub {
-    let stub = Stub.REGISTER[courier?.id];
-    if (!stub) {
-      if (courier.api in Stub.STUB_TYPES)
+  ): Adapter {
+    let adapter = Adapter.REGISTER[courier?.id];
+    if (!adapter) {
+      if (courier.api in Adapter.ADAPTER_TYPES)
       {
-        stub = new Stub.STUB_TYPES[courier.api](
+        adapter = new Adapter.ADAPTER_TYPES[courier.api](
           courier,
-          cfg ?? Stub.cfg,
-          logger ?? Stub.logger,
+          cfg ?? Adapter.cfg,
+          logger ?? Adapter.logger,
           kwargs,
         );
-        Stub.REGISTER[courier.id] = stub;
+        Adapter.REGISTER[courier.id] = adapter;
       }
       else {
-        throw new Error(`No API Stub registered for courier id ${courier?.id} with stub type ${courier.api}`);
+        throw new Error(`No API Adapter registered for courier id ${courier?.id} with adapter type ${courier.api}`);
       }
     }
-    return stub;
+    return adapter;
   }
 };

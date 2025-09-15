@@ -73,7 +73,7 @@ import {
   ResourceAggregator,
   ResourceMap,
 } from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
-import { Stub } from './../stub.js';
+import { Stub } from '../adapter.js';
 import {
   AggregatedFulfillmentSolutionQueryList,
   FulfillmentSolutionQueryAggregationTemplate,

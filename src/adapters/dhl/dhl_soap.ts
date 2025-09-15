@@ -23,7 +23,7 @@ import {
   unique,
   unmarshallProtobufAny,
 } from '../../utils.js';
-import { Stub } from '../../stub.js';
+import { Adapter } from '../../adapter.js';
 import {
   FulfillmentProduct,
   FulfillmentSolutionQuery,
@@ -295,7 +295,7 @@ const DHLShipmentCancelResponse2AggregatedFulfillment = (
   });
 };
 
-export class DHLSoap extends Stub {
+export class DHLSoap extends Adapter {
   public readonly version: number[];
   protected readonly courier_defaults: Courier;
   protected readonly configuration_defaults: any;
