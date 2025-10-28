@@ -73,7 +73,7 @@ import {
   ResourceAggregator,
   ResourceMap,
 } from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
-import { Stub } from '../adapter.js';
+import { Adapter } from '../adapter.js';
 import {
   AggregatedFulfillmentSolutionQueryList,
   FulfillmentSolutionQueryAggregationTemplate,
@@ -652,7 +652,7 @@ export class FulfillmentProductService
                   );
                 }
                 const currency = currency_map.get(variant.price?.currency_id);
-                const stub = Stub.getInstance(courier_map.get(product.courier_id));
+                const adapter = Adapter.getInstance(courier_map.get(product.courier_id));
                 const taxes = tax_map.getMany(product.tax_ids);
                 const pack = {
                   rotatable: !query.items.some(i => !i.package?.rotatable),
@@ -663,7 +663,7 @@ export class FulfillmentProductService
                   },
                   weight_in_kg: container.getStackWeight(),
                 };
-                const net = await stub.calcNet(variant, pack, currency.precision ?? 2);
+                const net = await adapter.calcNet(variant, pack, currency.precision ?? 2);
                 const price = variant.price;
                 const amount = calcAmount(
                   net, taxes, shop_country, customer_country,

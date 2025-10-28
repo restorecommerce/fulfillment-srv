@@ -7,8 +7,6 @@ import {
   DefaultACSClientContextFactory,
   Operation,
   DefaultResourceFactory,
-  injects_meta_data,
-  resolves_subject
 } from '@restorecommerce/acs-client';
 import { type Logger } from '@restorecommerce/logger';
 import { type ServiceConfig } from '@restorecommerce/service-config';
@@ -82,7 +80,6 @@ import { Product, ProductServiceDefinition } from '@restorecommerce/rc-grpc-clie
 import {
   AccessControlledServiceBase,
   AccessControlledServiceBaseOperationStatusCodes,
-  ACSContextFactory
 } from '@restorecommerce/resource-base-interface/lib/experimental/AccessControlledServiceBase.js';
 import {
   ClientRegister,
@@ -90,7 +87,7 @@ import {
   ResourceAwaitQueue,
   ResourceMap
 } from '@restorecommerce/resource-base-interface/lib/experimental/index.js';
-import { Stub } from '../adapter.js';
+import { Adapter } from '../adapter.js';
 import {
   type AggregatedFulfillmentListResponse,
   type SettingMap,
@@ -770,7 +767,7 @@ export class FulfillmentService
               );
             }
             const currency = aggregation.currencies.get(variant.price?.currency_id);
-            const stub = Stub.getInstance(courier);
+            const stub = Adapter.getInstance(courier);
             const taxes = aggregation.taxes.getMany(product.tax_ids);
             const net = await stub.calcNet(variant, p.package, currency.precision ?? 2);
             p.price = variant.price;
@@ -886,8 +883,6 @@ export class FulfillmentService
     return super.superCreate(request, context);
   }
 
-  @resolves_subject()
-  @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
@@ -920,7 +915,7 @@ export class FulfillmentService
       const aggregation = await this.aggregate(response, request.subject, context).then(
         aggregation => this.validateFulfillmentListResponse(aggregation, request.subject)
       );
-      const items = await Stub.evaluate(
+      const items = await Adapter.evaluate(
         aggregation
       );
       const multi_state = items.some(item => item.status?.code !== 200);
@@ -940,12 +935,9 @@ export class FulfillmentService
     }
   }
 
-  @resolves_subject()
-  @injects_meta_data()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: ACSContextFactory,
     resource: DefaultResourceFactory('execution.submitFulfillments'),
     database: 'arangoDB',
     useCache: true,
@@ -1007,7 +999,7 @@ export class FulfillmentService
       const settings = await this.aggregateSettings(
         aggregation
       );
-      const upserts = await Stub.submit(
+      const upserts = await Adapter.submit(
         aggregation
       ).then(
         response => response.filter(
@@ -1124,11 +1116,9 @@ export class FulfillmentService
     }
   }
 
-  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
-    context: ACSContextFactory,
     resource: DefaultResourceFactory('execution.trackFulfillments'),
     database: 'arangoDB',
     useCache: true,
@@ -1180,7 +1170,7 @@ export class FulfillmentService
         )
       );
 
-      await Stub.track(aggregation).then(
+      await Adapter.track(aggregation).then(
         response => response.filter(
           item => {
             response_map.set(item.payload?.id ?? item.status?.id, item);
@@ -1315,7 +1305,6 @@ export class FulfillmentService
     }
   }
 
-  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
@@ -1328,7 +1317,6 @@ export class FulfillmentService
     return null;
   }
 
-  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.EXECUTE,
     operation: Operation.isAllowed,
@@ -1358,7 +1346,7 @@ export class FulfillmentService
           context,
         ),
       );
-      await Stub.cancel(aggregation).then(
+      await Adapter.cancel(aggregation).then(
         response => response.filter(
           item => {
             response_map.set(item.payload?.id ?? item.status?.id, item);
@@ -1411,7 +1399,6 @@ export class FulfillmentService
     }
   }
 
-  @resolves_subject()
   @access_controlled_function({
     action: AuthZAction.CREATE,
     operation: Operation.isAllowed,
