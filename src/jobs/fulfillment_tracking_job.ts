@@ -122,9 +122,9 @@ const main: DefaultExportFunc = async (
     cfg, logger, events,
     async (job: any) => {
       const { id, type, name } = job;
-      logger?.info('Processing job:', job);
       try {
         if (type === tracker.job_name || name === tracker.job_name) {
+          logger?.info('Processing job:', { id, type, name });
           await tracker.execute(job.data?.payload);
           logger?.info('Job Done');
         }

@@ -164,7 +164,7 @@ export class Worker {
   protected readonly serviceActions = new Map<string, ((msg: any, context: any, config: any, eventName: string) => Promise<void>)>();
   protected readonly jobService = {
     handleQueuedJob: (msg: any, context: any, config: any, eventName: string) => {
-      return this.serviceActions.get(msg?.type)(msg?.data?.payload, context, config, msg?.type).then(
+      return this.serviceActions.get(msg?.type)?.(msg?.data?.payload, context, config, msg?.type).then(
         () => this.logger.info(`Job ${msg?.type} done.`),
         (err: any) => this.logger.error(`Job ${msg?.type} failed: ${err}`)
       );
@@ -214,9 +214,9 @@ export class Worker {
     await Promise.all(Object.keys(kafkaCfg.topics).map(async key => {
       const topicName = kafkaCfg.topics[key].topic;
       const topic = await this.events.topic(topicName);
-      const offsetValue: number = await this.offsetStore.getOffset(topicName);
+      const offsetValue = await this.offsetStore.getOffset(topicName);
       logger.info('subscribing to topic with offset value', topicName, offsetValue);
-      Object.entries(kafkaCfg.topics[key]?.events as { [key: string]: string } ?? {}).forEach(
+      await Promise.all(Object.entries(kafkaCfg.topics[key]?.events as { [key: string]: string } ?? {}).map(
         ([eventName, handler]) => {
           const [serviceName, functionName] = handler.split('.');
           this.serviceActions.set(eventName, this.bindHandler(serviceName, functionName));
@@ -226,7 +226,7 @@ export class Worker {
             { startingOffset: offsetValue }
           );
         }
-      );
+      ));
       this.topics.set(key, topic);
     }));
 
