@@ -211,24 +211,22 @@ export class Worker {
     this.redisClient = createClient(redisConfig);
     await this.redisClient.connect();
 
-    await Promise.all(Object.keys(kafkaCfg.topics).map(async key => {
-      const topicName = kafkaCfg.topics[key].topic;
+    for(const [key, config] of Object.entries<any>(kafkaCfg.topics ?? {})) {
+      const topicName = config?.topic;
       const topic = await this.events.topic(topicName);
       const offsetValue = await this.offsetStore.getOffset(topicName);
-      logger.info('subscribing to topic with offset value', topicName, offsetValue);
-      await Promise.all(Object.entries(kafkaCfg.topics[key]?.events as { [key: string]: string } ?? {}).map(
-        ([eventName, handler]) => {
-          const [serviceName, functionName] = handler.split('.');
-          this.serviceActions.set(eventName, this.bindHandler(serviceName, functionName));
-          topic.on(
-            eventName as string,
-            this.serviceActions.get(eventName),
-            { startingOffset: offsetValue }
-          );
-        }
-      ));
+      logger?.info('subscribing to topic with offset value', topicName, offsetValue);
+      for (const [eventName, handler] of Object.entries<any>(config?.events ?? {})) {
+        const [serviceName, functionName] = handler.split('.');
+        this.serviceActions.set(eventName, this.bindHandler(serviceName, functionName));
+        await topic.on(
+          eventName as string,
+          this.serviceActions.get(eventName),
+          { startingOffset: offsetValue }
+        );
+      };
       this.topics.set(key, topic);
-    }));
+    };
 
     const jobs = Object.values<{ disabled?: boolean, import?: string }>(cfg.get('scs-jobs') ?? {});
     for (const job of jobs) {
