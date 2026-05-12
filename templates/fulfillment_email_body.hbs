@@ -10,7 +10,7 @@
           <h2 class="align-centered">{{t fulfillment.fulfillment_state}}</h2>
           <h3 class="align-centered">{{t 'l10n.fulfillment.email.shipping_numbers'}}:</h3>
           {{#each fulfillment.labels as | label |}}
-            <p class="align-centered">{{label.shipping_number}}</p>
+            <p class="align-centered">{{label.shipment_number}}</p>
           {{/each}}
           <h3 class="align-centered">{{t 'l10n.fulfillment.email.references'}}:</h3>
           {{#each fulfillment.references as | reference |}}

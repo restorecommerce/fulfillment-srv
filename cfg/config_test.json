@@ -232,5 +232,10 @@
     "fulfillment_tracking_job": {
       "import": "../lib/jobs/fulfillment_tracking_job.cjs"
     }
+  },
+  "defaults": {
+    "Setting": {
+      "shop_fulfillment_send_confirm_enabled": false
+    }
   }
 }

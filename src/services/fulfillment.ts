@@ -1004,10 +1004,11 @@ export class FulfillmentService
       ).then(
         response => response.filter(
           item => {
-            const r = response_map.get(item.payload?.id ?? item.status.id) ?? {};
-            r.payload = item.payload;
-            r.status = item.status;
-            return r.status?.code === 200;
+            response_map.set(
+              item.payload?.id ?? item.status.id,
+              item
+            )
+            return item.status?.code === 200;
           }
         ).map(
           item => item.payload
@@ -1025,10 +1026,11 @@ export class FulfillmentService
           let multi_state = false;
           response.items.forEach(
             item => {
-              const r = response_map.get(item.payload?.id ?? item.status.id) ?? {};
-              r.payload = item.payload;
-              r.status = item.status;
-              multi_state &&= r.status?.code !== 200;
+              response_map.set(
+                item.payload?.id ?? item.status.id,
+                item
+              );
+              multi_state &&= item.status?.code !== 200;
             }
           );
           if (response.operation_status?.code === 200 && multi_state) {
