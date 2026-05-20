@@ -223,24 +223,20 @@ describe('Testing Fulfillment Service Cluster:', () => {
 
     before(async function() {
       this.timeout(15000);
-      await Promise.all([
-        topics.on('fulfillmentCreated', onFulfillmentCreated),
-        topics.on('fulfillmentSubmitted', onFulfillmentSubmitted),
-        topics.on('fulfillmentCompleted', onFulfillmentCompleted),
-        topics.on('fulfillmentWithdrawn', onFulfillmentWithdrawn),
-        topics.on('fulfillmentCancelled', onFulfillmentCancelled),
-      ]);
+      await topics.on('fulfillmentCreated', onFulfillmentCreated);
+      await topics.on('fulfillmentSubmitted', onFulfillmentSubmitted);
+      await topics.on('fulfillmentCompleted', onFulfillmentCompleted);
+      await topics.on('fulfillmentWithdrawn', onFulfillmentWithdrawn);
+      await topics.on('fulfillmentCancelled', onFulfillmentCancelled);
     });
 
     after(async function() {
       this.timeout(15000);
-      await Promise.all([
-        topics.removeListener('fulfillmentCreated', onFulfillmentCreated),
-        topics.removeListener('fulfillmentSubmitted', onFulfillmentSubmitted),
-        topics.removeListener('fulfillmentCompleted', onFulfillmentCompleted),
-        topics.removeListener('fulfillmentWithdrawn', onFulfillmentWithdrawn),
-        topics.removeListener('fulfillmentCancelled', onFulfillmentCancelled),
-      ]);
+      await topics.removeListener('fulfillmentCreated', onFulfillmentCreated);
+      await topics.removeListener('fulfillmentSubmitted', onFulfillmentSubmitted);
+      await topics.removeListener('fulfillmentCompleted', onFulfillmentCompleted);
+      await topics.removeListener('fulfillmentWithdrawn', onFulfillmentWithdrawn);
+      await topics.removeListener('fulfillmentCancelled', onFulfillmentCancelled);
     });
 
     for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
