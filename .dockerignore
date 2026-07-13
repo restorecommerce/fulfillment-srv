@@ -8,6 +8,7 @@ coverage/
 
 .git*
 
+*.map
 *.log
 *~
 *.env
@@ -16,5 +17,6 @@ buildImage.bash
 Dockerfile
 .dockerignore
 lib/
+dist/
 test/*.d.ts
 test/*.js
