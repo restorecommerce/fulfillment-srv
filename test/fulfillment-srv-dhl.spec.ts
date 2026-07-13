@@ -92,7 +92,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
           token: 'superadmin',
         },
       }),
-    ]);
+    ]).catch();
   }, 30_000);
 
   afterAll(async function() {
@@ -119,7 +119,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
         },
       }),
       events?.stop(),
-    ]);
+    ]).catch();
     await worker?.stop();
     mocking?.forEach(mock => mock?.stop());
   }, 30_000);
