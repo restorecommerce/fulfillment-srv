@@ -1,5 +1,5 @@
 ### Build
-FROM node:24.10.0-alpine3.22 AS build
+FROM node:26-alpine3.24 AS build
 ENV NO_UPDATE_NOTIFIER=true
 
 USER node
@@ -13,7 +13,7 @@ RUN npm run build
 
 
 ### Deployment
-FROM node:24.10.0-alpine3.22 AS deployment
+FROM node:26-alpine3.24 AS deployment
 
 ENV NO_UPDATE_NOTIFIER=true
 
@@ -25,8 +25,8 @@ COPY --chown=node:node ./cfg $APP_HOME/cfg
 COPY --chown=node:node ./queries $APP_HOME/queries
 COPY --chown=node:node ./templates $APP_HOME/templates
 COPY --chown=node:node ./api $APP_HOME/api
-COPY --chown=node:node --from=build $APP_HOME/lib $APP_HOME/lib
+COPY --chown=node:node --from=build $APP_HOME/dist $APP_HOME/dist
 
 EXPOSE 50051
 
-CMD [ "node", "./lib/start.cjs" ]
+CMD [ "node", "./dist/start.cjs" ]
