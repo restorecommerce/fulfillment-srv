@@ -1,0 +1,4 @@
+reject:
+  - '@types/soap'
+  - 'soap'
+  - 'redis'

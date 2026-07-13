@@ -160,6 +160,7 @@
       "latestOffset": false,
       "timeout": 15000,
       "kafka": {
+        "retries": 1,
         "clientId": "restore-fulfillment-srv",
         "brokers": [
           "localhost:29092"

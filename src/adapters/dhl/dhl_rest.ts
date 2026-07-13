@@ -27,6 +27,7 @@ import {
   OperationStatusError,
   parseAttributes,
   ParsedAttributes,
+  throwStatusCode,
   unmarshallProtobufAny,
 } from "../../utils.js";
 import { Adapter } from "../../adapter.js";
@@ -346,7 +347,7 @@ export class DHLRest extends Adapter {
       return price;
     }
     catch (e: any) {
-      this.throwStatusCode(
+      throwStatusCode(
         'FulfillmentProduct',
         product?.id,
         this.status_codes.INVALID_PRICE,

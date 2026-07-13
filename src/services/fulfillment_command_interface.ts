@@ -1,4 +1,4 @@
-import { RedisClientType as RedisClient } from 'redis';
+import { RedisClientType } from 'redis';
 import { type Logger } from '@restorecommerce/logger';
 import { type ServiceConfig } from '@restorecommerce/service-config';
 import { Events } from '@restorecommerce/kafka-client';
@@ -13,9 +13,9 @@ export class FulfillmentCommandInterface extends CommandInterface {
     cfg: ServiceConfig,
     logger: Logger,
     events: Events,
-    redisClient: RedisClient,
+    redisClient: RedisClientType,
   ) {
-    super(server, cfg, logger, events as any, redisClient);
+    super(server, cfg, logger, events as any, redisClient as any);
     this.logger = logger;
   }
 }

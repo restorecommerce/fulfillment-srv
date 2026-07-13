@@ -1,3 +1,4 @@
+import { BigNumber } from 'bignumber.js';
 import { FlatAggregatedFulfillment } from '../utils.js';
 import { Adapter } from '../adapter.js';
 import {

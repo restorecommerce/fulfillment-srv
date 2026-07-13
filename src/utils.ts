@@ -296,12 +296,12 @@ export const createStatusCode = (
 ): Status => ({
   id,
   code: status?.code ?? 500,
-  message: status?.message?.replaceAll(
-    '{entity}', entity
-  ).replaceAll(
-    '{id}', id
-  ).replaceAll(
-    '{details}', details
+  message: status?.message?.replace(
+    /{entity}/g, entity
+  ).replace(
+    /\{id\}/g, id
+  ).replace(
+    /\{details\}/g, details
   ) ?? 'Unknown status',
 });
 
@@ -325,10 +325,10 @@ export const createOperationStatusCode = (
   id?: string,
 ): OperationStatus => new OperationStatusError(
   status?.code ?? 500,
-  status?.message?.replaceAll(
-    '{entity}', entity ?? 'undefined'
-  ).replaceAll(
-    '{id}', id ?? 'undefined'
+  status?.message?.replace(
+    /\{entity\}/g, entity ?? 'undefined'
+  ).replace(
+    /\{id\}/g, id ?? 'undefined'
   ) ?? 'Unknown status',
 );
 

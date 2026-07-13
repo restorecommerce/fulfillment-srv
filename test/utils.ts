@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import should from 'should';
 import { RedisClientType, createClient as RedisCreateClient } from 'redis';
 import { GrpcMockServer } from '@alenon/grpc-mock-server';
@@ -7,6 +8,7 @@ import { Events, Topic } from '@restorecommerce/kafka-client';
 import { Worker } from '../src/worker';
 import { rules } from './mocks';
 
+dotenv.config();
 export const cfg = createServiceConfig(process.cwd());
 export const logger = createLogger(cfg.get('logger'));
 export { samples } from './mocks';

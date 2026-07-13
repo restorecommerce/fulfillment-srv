@@ -18,8 +18,10 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/credential.js';
 import {
   AggregatedFulfillmentListResponse,
+  createStatusCode,
   FlatAggregatedFulfillment,
   throwOperationStatusCode,
+  throwStatusCode,
   unique,
   unmarshallProtobufAny,
 } from '../../utils.js';
@@ -436,7 +438,7 @@ export class DHLSoap extends Adapter {
       return price;
     }
     catch (e: any) {
-      this.throwStatusCode(
+      throwStatusCode(
         'FulfillmentProduct',
         product?.id,
         this.status_codes.INVALID_PRICE,
@@ -468,25 +470,25 @@ export class DHLSoap extends Adapter {
     details?: string
   ) {
     switch (code) {
-      case 0: return this.createStatusCode(
+      case 0: return createStatusCode(
         'Fulfillment',
         id,
         this.status_codes.OK,
         details,
       );
-      case 1101: return this.createStatusCode(
+      case 1101: return createStatusCode(
         'Fulfillment',
         id,
         this.status_codes.INVALID_ADDRESS,
         details,
       );
-      case 207: return this.createStatusCode(
+      case 207: return createStatusCode(
         'Fulfillment',
         id,
         this.status_codes.WEAK_ERROR,
         details,
       );
-      default: return this.createStatusCode(
+      default: return createStatusCode(
         'Fulfillment',
         id,
         this.status_codes.UNKNOWN_ERROR,

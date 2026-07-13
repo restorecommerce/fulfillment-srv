@@ -1,13 +1,6 @@
+import { BigNumber } from 'bignumber.js'
 import { Logger } from '@restorecommerce/logger';
 import { ServiceConfig } from '@restorecommerce/service-config';
-import { Status } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/status.js';
-import {
-  AggregatedFulfillmentListResponse,
-  Courier,
-  FlatAggregatedFulfillment,
-  flatMapAggregatedFulfillmentListResponse,
-  mergeFulfillments,
-} from './utils.js';
 import {
   FulfillmentProduct,
   FulfillmentSolutionQuery,
@@ -19,6 +12,13 @@ import {
 import {
   FulfillmentState
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/fulfillment.js';
+import {
+  AggregatedFulfillmentListResponse,
+  Courier,
+  FlatAggregatedFulfillment,
+  flatMapAggregatedFulfillmentListResponse,
+  mergeFulfillments
+} from './utils.js';
 
 type AdapterType<T extends Adapter> = new (courier: Courier, cfg?: ServiceConfig, logger?: Logger, kwargs?: any) => T;
 
@@ -63,38 +63,6 @@ export abstract class Adapter
     pack: Package,
     precision: number,
   ): Promise<BigNumber>;
-
-  protected createStatusCode(
-    entity: string,
-    id: string,
-    status: Status,
-    details?: string,
-  ): Status {
-    return {
-      id,
-      code: status?.code ?? 500,
-      message: status?.message?.replaceAll(
-        '{details}', details
-      ).replaceAll(
-        '{entity}', entity
-      ).replaceAll(
-        '{id}', id
-      ) ?? 'Unknown status',
-    };
-  }
-
-  protected throwStatusCode<T>(
-    entity: string,
-    id: string,
-    status: Status,
-    error?: string,
-  ): T {
-    throw this.createStatusCode(
-      entity,
-      id,
-      status,error
-    );
-  }
 
   protected catchStatusError(e?: any, item?: FlatAggregatedFulfillment): FlatAggregatedFulfillment {
     item ??= {};

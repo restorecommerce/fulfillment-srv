@@ -230,7 +230,7 @@
   },
   "scs-jobs": {
     "fulfillment_tracking_job": {
-      "import": "../lib/jobs/fulfillment_tracking_job.cjs"
+      "import": "../dist/jobs/fulfillment_tracking_job.cjs"
     }
   },
   "defaults": {

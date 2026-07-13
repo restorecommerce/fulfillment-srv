@@ -1,4 +1,4 @@
-import {} from 'mocha';
+import { it, describe, beforeAll, afterAll } from 'vitest';
 import should from 'should';
 import { Semaphore } from 'async-mutex';
 import { 
@@ -37,8 +37,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
   let product_client: Client<FulfillmentProductServiceDefinition>;
   let fulfillment_client: Client<FulfillmentServiceDefinition>;
 
-  before(async function() {
-    this.timeout(30000);
+  beforeAll(async function() {
     mocking = await mockServices(cfg.get('client'));
     worker = await startWorker();
     events = await connectEvents();
@@ -94,10 +93,9 @@ describe('Testing Fulfillment Service Cluster:', () => {
         },
       }),
     ]);
-  });
+  }, 30_000);
 
-  after(async function() {
-    this.timeout(30000);
+  afterAll(async function() {
     await Promise.allSettled([
       courier_client?.delete({
         collection: true,
@@ -124,7 +122,7 @@ describe('Testing Fulfillment Service Cluster:', () => {
     ]);
     await worker?.stop();
     mocking?.forEach(mock => mock?.stop());
-  });
+  }, 30_000);
 
   describe('The Fulfillment Courier Service:', () => {
     for (let [sample_name, sample] of Object.entries(samples.couriers.valid)) {
@@ -221,23 +219,21 @@ describe('Testing Fulfillment Service Cluster:', () => {
       fulfillmentCancelledSemaphore.release(1);
     };
 
-    before(async function() {
-      this.timeout(15000);
+    beforeAll(async function() {
       await topics.on('fulfillmentCreated', onFulfillmentCreated);
       await topics.on('fulfillmentSubmitted', onFulfillmentSubmitted);
       await topics.on('fulfillmentCompleted', onFulfillmentCompleted);
       await topics.on('fulfillmentWithdrawn', onFulfillmentWithdrawn);
       await topics.on('fulfillmentCancelled', onFulfillmentCancelled);
-    });
+    }, 15_0000);
 
-    after(async function() {
-      this.timeout(15000);
+    afterAll(async function() {
       await topics.removeListener('fulfillmentCreated', onFulfillmentCreated);
       await topics.removeListener('fulfillmentSubmitted', onFulfillmentSubmitted);
       await topics.removeListener('fulfillmentCompleted', onFulfillmentCompleted);
       await topics.removeListener('fulfillmentWithdrawn', onFulfillmentWithdrawn);
       await topics.removeListener('fulfillmentCancelled', onFulfillmentCancelled);
-    });
+    }, 15_000);
 
     for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
       it(`should create fulfillments by valid samples: ${sample_name}`, async function() {
@@ -259,14 +255,13 @@ describe('Testing Fulfillment Service Cluster:', () => {
       });
 
       it(`should have received fulfillment create event for ${sample_name}`, async function() {
-        this.timeout(5000);
         await fulfillmentCreatedSemaphore.acquire(1);
-      });
+      }, 5000);
     }
 
     for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
       it(`should evaluate fulfillment by valid samples: ${sample_name}`, async function() {
-        this.timeout(60000);
+        should.exist(cfg.get('defaults:Couriers:DHLRest:configuration:value:ordering:username'));
         const response = await fulfillment_client.evaluate(sample);
         // logger.warn('PROBLEM:', response);
         should.equal(
@@ -283,12 +278,12 @@ describe('Testing Fulfillment Service Cluster:', () => {
           ),
           'response.items[*].status.code expected all to be 200',
         );
-      });
+      }, 60_000);
     }
 
     for (let [sample_name, sample] of Object.entries(samples.fulfillments.valid)) {
       it(`should submit fulfillment by valid samples: ${sample_name}`, async function() {
-        this.timeout(60000);
+        should.exist(cfg.get('defaults:Couriers:DHLRest:configuration:value:ordering:username'));
         const response = await fulfillment_client.submit(sample);
         should.equal(
           response?.operationStatus?.code, 200,
@@ -306,17 +301,16 @@ describe('Testing Fulfillment Service Cluster:', () => {
           item => item.payload?.labels?.length > 0,
           'response.items[*].labels.length expected all to be greater 0',
         );
-      });
+      }, 60_000);
 
       it(`should have received fulfillment submit event for ${sample_name}`, async function() {
-        this.timeout(5000);
         await fulfillmentSubmittedSemaphore.acquire(1);
-      });
+      }, 5000);
     }
 
     for (let [sample_name, sample] of Object.entries(samples.trackingRequests.valid)) {
       it(`should track fulfillment by valid samples: ${sample_name}`, async function() {
-        this.timeout(30000);
+        should.exist(cfg.get('defaults:Couriers:DHLRest:configuration:value:tracking:username'));
         const response = await fulfillment_client.track(sample);
         should.equal(
           response?.operationStatus?.code, 200,
@@ -338,17 +332,16 @@ describe('Testing Fulfillment Service Cluster:', () => {
             JSON.stringify(response, null, 2)
           ].join('\n')
         );
-      });
+      }, 30_000);
 
       it(`should have received fulfillment tracking event for ${sample_name}`, async function() {
-        this.timeout(5000);
         await fulfillmentCompletedSemaphore.acquire(1);
-      });
+      }, 5000);
     }
 
     for (let [sample_name, sample] of Object.entries(samples.cancelRequests.valid)) {
       it(`should cancel fulfillment by valid samples: ${sample_name}`, async function() {
-        this.timeout(30000);
+        should.exist(cfg.get('defaults:Couriers:DHLRest:configuration:value:ordering:username'));
         const response = await fulfillment_client.cancel(sample);
         should.equal(
           response?.operationStatus?.code, 200,
@@ -364,12 +357,11 @@ describe('Testing Fulfillment Service Cluster:', () => {
           ),
           'response.items[*].status.code expected all to be 200',
         );
-      });
+      }, 30_000);
 
       it(`should have received fulfillment cancel event for ${sample_name}`, async function() {
-        this.timeout(5000);
         await fulfillmentCancelledSemaphore.acquire(1);
-      });
+      }, 5000);
     }
   });
 });
