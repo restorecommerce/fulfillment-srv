@@ -7,5 +7,10 @@ let found = (
         filter ownerInst.id == "urn:restorecommerce:acs:names:ownerInstance"
         filter ownerInst.value in arg.instance    
         return true
+      // if !@excludeACLs
+      for aclInst in o.attributes
+        filter aclInst.id == "urn:restorecommerce:acs:names:aclInstance"
+        filter aclInst.value in arg.instance    
+        return true
 )
 filter true in found

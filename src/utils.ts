@@ -93,7 +93,7 @@ import {
 } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/product.js';
 import { Setting } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/setting.js';
 import { Attribute } from '@restorecommerce/rc-grpc-clients/dist/generated-server/io/restorecommerce/attribute.js';
-import * as _ from 'lodash-es';
+import { clone } from 'remeda';
 
 export type ProductNature = PhysicalProduct & VirtualProduct & ServiceProduct;
 export type ProductVariant = PhysicalVariant & VirtualVariant & ServiceVariant;
@@ -694,7 +694,7 @@ export const packRenderData = (
   const resolved = {
     fulfillment: resolveFulfillment(
       aggregation,
-      _.cloneDeep(fulfillment)
+      clone(fulfillment)
     ),
   };
   const buffer = marshallProtobufAny(resolved);

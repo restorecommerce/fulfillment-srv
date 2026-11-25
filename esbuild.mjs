@@ -10,3 +10,16 @@ await esbuild.build({
   sourcemap: false,
   external: [],
 });
+
+await esbuild.build({
+  ...config,
+  entryPoints: ['./src/jobs/*.ts'],
+  outdir: './dist/jobs/',
+  outfile: undefined,
+  outExtension: {
+    '.js': '.cjs',
+  },
+  tsconfig: 'tsconfig.json',
+  sourcemap: false,
+  external: [],
+});
