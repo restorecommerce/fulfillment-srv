@@ -1,16 +1,23 @@
-let found = (
-  for o in node.meta.owners
-    filter o.id == "urn:restorecommerce:acs:names:ownerIndicatoryEntity"
-    for arg in @customArguments
-      filter o.value == arg.entity
-      for ownerInst in o.attributes
-        filter ownerInst.id == "urn:restorecommerce:acs:names:ownerInstance"
-        filter ownerInst.value in arg.instance    
-        return true
-      // if !@excludeACLs
-      for aclInst in o.attributes
-        filter aclInst.id == "urn:restorecommerce:acs:names:aclInstance"
-        filter aclInst.value in arg.instance    
-        return true
+LET owners = (
+  FILTER node.meta.owners != NULL
+  FOR o IN node.meta.owners
+    FILTER o.id == "urn:restorecommerce:acs:names:ownerIndicatoryEntity"
+    FOR arg IN @customArguments
+      FILTER o.value == arg.entity
+      FOR ownerInst IN o.attributes
+        FILTER ownerInst.id == "urn:restorecommerce:acs:names:ownerInstance"
+        FILTER ownerInst.value IN arg.instance
+        RETURN TRUE
 )
-filter true in found
+LET acls = (
+  FILTER node.meta.acls != NULL
+  FOR a IN node.meta.acls
+    FILTER a.id == "urn:restorecommerce:acs:names:aclIndicatoryEntity"
+    FOR arg IN @customArguments
+      FILTER a.value == arg.entity
+      FOR aclInst IN a.attributes
+        FILTER aclInst.id == "urn:restorecommerce:acs:names:aclInstance"
+        FILTER aclInst.value IN arg.instance
+        RETURN TRUE
+)
+FILTER TRUE IN APPEND(owners, acls)
